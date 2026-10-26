@@ -4,6 +4,8 @@ __pycache__/
 build/
 .DS_Store
 .pytest_cache/
+*.sublime-project
+*.sublime-workspace
 
 # Local only: ChemDraw ground truth for development, M0 spike output, use-session issue log
 reference_renders/
