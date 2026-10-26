@@ -332,8 +332,11 @@ class Planner:
             if o.tail_side:
                 sets = [d for d in sets if d.side == o.tail_side]
                 if not sets:
+                    hint = ("" if ref.box else f"; on an unlabeled atom each {kind} sits on the largest bond gap's "
+                            "bisector, so rotate the species (orientation.rotate) to move it")
                     raise ValueError(f"step {step} arrows[{index}]: tail_side {o.tail_side!r}: atom {src.atoms[0]} "
-                                     f"has no {kind} there (has: {', '.join(d.side for d in ref.dots if d.kind == kind)})")
+                                     f"has no {kind} there (has: {', '.join(d.side for d in ref.dots if d.kind == kind)})"
+                                     f"{hint}")
         meet = self.meeting(arr)
         if meet is not None and meet[0] in self.meet_sides and not o.bow and self.strict:  # fishhooks meet on one side
             bows = [b for b in bows if (1.0 if dot(meet[1], b) >= 0 else -1.0) == self.meet_sides[meet[0]]]

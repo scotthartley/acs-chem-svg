@@ -14,7 +14,9 @@ segments), and these must hold:
   cross that bracket (its arrows reach the last contributor from outside);
 - its head and tail stay at least margin_width from label glyph boxes (each text run's ink box);
 - lone-pair and radical dots do not overlap bonds, labels, charges or other dots, and no bond
-  runs between the two dots of a pair.
+  runs between the two dots of a pair;
+- dots are not drawn on an unlabeled atom with at most one bond (a bare line end, like ⁻:C≡N
+  drawn without its C): show_carbons labels it.
 """
 
 from __future__ import annotations
@@ -101,6 +103,14 @@ def check_mechanism(lay: SchemeLayout) -> list[str]:
             for o, okind in pt.dots[k + 1:]:
                 if math.dist(c.center, o.center) < c.r + o.r:
                     problems.append(f"{what} overlaps the {okind} on atom {o.source.split(':', 1)[-1]}")
+    for sp, p in lay.species.items():
+        if p.drawer is None:
+            continue
+        for i in sorted(p.drawer.dot_sets()):
+            a = p.mol.atoms[i]
+            if i not in p.drawer.labels and len(p.mol.neighbors(i)) <= 1:  # a bare line end reads as no atom
+                problems.append(f"dots on atom {a.id} of {sp} sit on a line end with no label: "
+                                f"add show_carbons: [{a.id}] to {sp}")
     return list(dict.fromkeys(problems))
 
 

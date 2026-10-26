@@ -258,3 +258,16 @@ removed renders pixel-identical to the approved `m4_nitration_x1.0`. Inbox triag
 - **Inbox: no silyl abbreviations** (same session, `abbreviate: [TMS]`). Added TMS, TES, TBS,
   TIPS to `chem.ABBREVIATIONS`; `test_silyl_abbreviations`. They follow the existing rule: a
   bond leaving to the right is unmeasured, so turn the structure.
+
+## 2026-10-26 (inbox: ring carbanion lone pair vs ⊖)
+
+- **Place dots before the charge on an unlabeled atom.** A ring [CH-] with an arrow from its
+  pair had the ⊖ on the outward bisector first; the pair then split the 240° exterior gap and
+  landed 60° from the ⊖, touching its bar, and `tail_side` couldn't help (one set only). Now the
+  dots take the bisectors and the charge goes beside them, inside the largest bond gap. Scoring
+  by clearance alone first put the ⊖ inside the ring (nothing is near there): restrict charge
+  directions to the exterior gap. `test_mechanism.py::test_ring_carbanion_pair_on_bisector_charge_beside`.
+- **A clean geometry check is not a readable drawing.** The fix moved unlabeled cyanide's pair
+  onto the axis, so `tests/broken/lone_pair_unlabeled_carbon.yaml` stopped failing, though
+  ⁻:≡N with no C reads badly. validate now flags dots on any unlabeled atom with ≤ 1 bond
+  directly (user decision), rather than relying on a dot/bond overlap to catch it.

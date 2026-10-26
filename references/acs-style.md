@@ -178,6 +178,7 @@ point of those parts along the bond.
 | On a labeled atom with a bond within 60° of the upper right and none near the upper left (HO⁻ drawn O–H) | mirrored: center − element ink box top-left = (−x, y) of the row below | | | — | rule (user review 2026-10-24); unmeasured (`draw_mol.CHARGE_CORNER_DEG`) |
 | On a labeled atom with free upper right (O⁻, N⁺) | center − element ink box top-right: (+1.98, −1.10) O⁻; (+1.55, −2.40) N⁺ ×1.0; (+2.05, −1.45) ×0.8; (+1.78, −1.33) ×0.6. Measured ×1.0 mean (+1.77, −1.75); × k = (+1.42, −1.40) / (+1.06, −1.05) (the measured ×0.8 / ×0.6 offsets belong to ChemDraw's smaller signs; see §7 item 6). **Default (+2.0, −2.0)** | (+1.5, −1.5) | (+1.0, −1.0) | labels_x1.0, m1_set_x* | placement default (`charge.labeled_offset_x/_y`; auto-placed, varies by context) |
 | On a labeled atom with bonds near both upper corners (nitro N⁺ in a ring compound) | the first lower corner with no bond within 60° (lower right, then lower left; offsets mirrored down); if every corner has a bond within 60°: the first with none within 45° (m1_set_x*: N⁺ with bonds at 0° and 180° keeps the upper right, as ChemDraw); else on the largest gap's bisector, the corner offset's length beyond the element ink box | | | — | rule (M4, nitration); unmeasured (`draw_mol.CHARGE_CORNER_MIN_DEG`, Open 16) |
+| On an unlabeled C that draws a lone pair or radical (ring carbanion with an arrow from its pair) | the dots keep the largest-gap bisectors (§4.2; the charge does not count as a direction); the charge takes the direction inside the largest bond gap, every 5°, whose bars clear the dots and the atom's bonds the most, at `unlabeled_distance` or 0.5 pt steps beyond it (up to +2.0) until some direction clears by 1.0; ties go nearest the bisector | | | — | rule (inbox 2026-10-26); unmeasured (`draw_mol.CHARGE_DOT_CLEARANCE`, `CHARGE_DOT_STEP_*`, Open 16) |
 | NH₃⁺ (H on the right) | ⊕ centered above the N: center − atom = (+0.03, −7.43). **Default 7.5** | 6.0 | 4.5 | labels_x1.0 | placement default (`charge.above_label`) |
 
 ## 3. Schemes (source: scheme_basic_x1.0 / x0.8 / x0.6, scheme_multi_x1.0 / x0.8 / x0.6)
@@ -308,7 +309,7 @@ Curvature is dimensionless and gets a round ratio, the same at every preset.
 | Parameter | Default ×1.0 / ×0.8 / ×0.6 | Measured ×1.0 | ×0.8 | ×0.6 | Preset key |
 |---|---|---|---|---|---|
 | Lone-pair gap, dot edge → element ink box | 2.0 / 2.5 / 1.0 | 2.14 (1.60–2.60, n = 10) | 2.29 (1.65–2.51) | 1.06 (0.91–1.35) | `lone_pair.gap` (not k-scaled, like the dots) |
-| Radical dot center from an unlabeled atom (tert-butyl), on a largest-gap bisector | 3.0 / 2.5 / 2.0 | 2.79 (31°) | 2.48 (−89°) | 1.80 (−88°) | `radical.distance` |
+| Radical dot center from an unlabeled atom (tert-butyl), on a largest-gap bisector of the bonds and the sets already placed (a charge on the atom is placed after the dots, §2.2; a lone pair's midpoint sits here too, unmeasured) | 3.0 / 2.5 / 2.0 | 2.79 (31°) | 2.48 (−89°) | 1.80 (−88°) | `radical.distance` |
 | Radical on a labeled atom (Cl·): a free side, like a lone pair | `lone_pair.gap` | 1.94 | 1.36 | 1.28 | (rule) |
 | Tail from a lone pair: beyond the dots' outer edge, outward | 2.5 / 1.5 / 1.5 | 2.61 | 1.37 | 1.41 | `curved_arrow.tail_gap` |
 | Tail from a bond: off the bond axis at its midpoint | 2.5 / 2.0 / 1.5 | 2.12, 2.82 (tails 2.0–2.5 along the bond from the midpoint) | 1.70, 2.25 | 1.28, 1.69 | `curved_arrow.bond_tail_gap` |
@@ -471,7 +472,8 @@ Rules (M4; unmeasured, user decisions 2026-10-25, flagged at review):
 
 16. **M4 rules not in any reference** (user decisions or defaults, flagged at the M4 review):
     the charge on a crowded labeled atom (nitro N⁺ next to a ring: lower corner or largest gap,
-    §2.2); brackets enclosing the contributors' curved arrows and dots, and ↔ gaps measured
+    §2.2); the charge on an unlabeled atom that draws dots (ring carbanion: the pair on the
+    bisector, the charge in the clearest direction of the largest gap, §2.2); brackets enclosing the contributors' curved arrows and dots, and ↔ gaps measured
     from contributor ink including its curved arrows (§4.3); structures added above a mechanism arrow
     (reusing `conditions_above_baseline`, §4.3); a lone pair that slides along its side, at most half the side,
     off a bond (×0.6 crowding); the vertical rule per row in mixed rows (ink centers when a row

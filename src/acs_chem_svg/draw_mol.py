@@ -16,7 +16,8 @@ from dataclasses import dataclass, field
 from . import richtext
 from .chem import Bond, Molecule
 from .fontmetrics import FontFace, load_face
-from .geometry import Point, add, angle_deg, dot, length, mul, perp, ray_box_exit, seg_point_dist, sub, unit
+from .geometry import (Point, add, angle_deg, dot, length, mul, perp, ray_box_exit, seg_point_dist, segment_distance,
+                       sub, unit)
 from .preset import Preset
 from .scene import Circle, Group, Polygon, Polyline, TextRun
 
@@ -227,6 +228,10 @@ SIDES = {"top": (0.0, -1.0), "right": (1.0, 0.0), "bottom": (0.0, 1.0), "left": 
 SIDE_BLOCK_DEG = 45.0  # a bond (or the H run) within this angle of a side's direction takes the side
 CHARGE_CORNER_DEG = 60.0  # a bond within this angle of a corner's diagonal moves a labeled charge on: upper right, upper left, lower right, lower left
 CHARGE_CORNER_MIN_DEG = 45.0  # ... unless every corner has one: then the first corner with none within this (m1_set_x*: N⁺ with bonds at 0° and 180° keeps the upper right), else the largest gap
+CHARGE_DOT_CLEARANCE = 1.0  # unmeasured rule: a charge on an unlabeled atom with dots keeps its bars this far (pt) from the dots and bonds
+CHARGE_DOT_STEP_DEG = 5.0  # unmeasured: directions tried around the atom, this far apart
+CHARGE_DOT_STEP_PT = 0.5  # unmeasured: ... at unlabeled_distance, then this much farther each round
+CHARGE_DOT_EXTRA_PT = 2.0  # unmeasured: ... up to this much beyond unlabeled_distance
 
 
 @dataclass
@@ -583,6 +588,9 @@ class Drawer:
     # ---------------------------------------------------------------- charges (§2.2)
 
     def charge_center(self, i: int) -> Point:
+        """Center of atom i's charge (§2.2): a free corner of a label; on an unlabeled atom,
+        the largest gap's bisector at unlabeled_distance, or beside its dots when it draws
+        any (_charge_beside_dots)."""
         a = self.mol.atoms[i]
         c = self.preset.charge
         if i in self.labels:
@@ -609,33 +617,71 @@ class Drawer:
             d = self._largest_gap_direction(i)
             dist = ray_box_exit(ctr, d, (x0, y0, x1, y1)) + math.hypot(c.labeled_offset_x, c.labeled_offset_y)
             return add(ctr, mul(d, dist))
+        if self.dot_sets().get(i):
+            return self._charge_beside_dots(i)
         d = self._largest_gap_direction(i)
         return (a.x + c.unlabeled_distance * d[0], a.y + c.unlabeled_distance * d[1])
+
+    def _charge_beside_dots(self, i: int) -> Point:
+        """Unlabeled atom that draws a lone pair or radical (unmeasured rule, acs-style.md §2.2):
+        the dots keep the bisectors, and the charge takes the direction inside the largest bond
+        gap (every CHARGE_DOT_STEP_DEG, so never into a ring) whose bars clear the dots and the
+        atom's bonds the most, at
+        unlabeled_distance or the first CHARGE_DOT_STEP_PT step beyond it where some direction
+        clears by CHARGE_DOT_CLEARANCE. Ties go to the direction nearest the largest gap's
+        bisector; if nothing clears, the best direction at the farthest step."""
+        a = self.mol.atoms[i]
+        c = self.preset.charge
+        r, hw = self.preset.lone_pair.dot_radius, c.bar_thickness / 2
+        lw = self.preset.lengths.line_width
+        dots = [p for ds in self.dot_sets()[i] for p in ds.dots]
+        ends = [self.mol.atoms[j].p for j, _ in self.mol.neighbors(i)]
+        gap, g = self._largest_gap(i)
+        t0 = math.atan2(g[1], g[0])
+        half = int(math.degrees(gap) / 2 // CHARGE_DOT_STEP_DEG)  # inside the gap: off a ring's interior
+        offsets = sorted(range(-half, half + 1), key=lambda m: (abs(m), -m))
+        best = None
+        for k in range(round(CHARGE_DOT_EXTRA_PT / CHARGE_DOT_STEP_PT) + 1):
+            dist = c.unlabeled_distance + k * CHARGE_DOT_STEP_PT
+            best = None
+            for m in offsets:  # nearest the bisector first: ties keep it
+                t = t0 + math.radians(m * CHARGE_DOT_STEP_DEG)
+                ctr = (a.x + dist * math.cos(t), a.y + dist * math.sin(t))
+                segs = _charge_segments(ctr, a.charge, c.bar_length)
+                score = min([seg_point_dist(p, s, e) - r - hw for p in dots for s, e in segs] +
+                            [segment_distance(s, e, a.p, q) - lw / 2 - hw for q in ends for s, e in segs])
+                score = round(score, 6)
+                if best is None or score > best[0]:
+                    best = (score, ctr)
+            if best[0] >= CHARGE_DOT_CLEARANCE:
+                break
+        return best[1]
 
     def _largest_gap_direction(self, i: int) -> Point:
         """Unit vector along the bisector of the largest angular gap between atom i's bonds
         (+x for an atom without bonds)."""
+        return self._largest_gap(i)[1]
+
+    def _largest_gap(self, i: int) -> tuple[float, Point]:
+        """(width in radians, bisector unit vector) of the largest angular gap between atom i's
+        bonds (2π and +x for an atom without bonds)."""
         a = self.mol.atoms[i]
         angs = sorted(math.atan2(self.mol.atoms[j].y - a.y, self.mol.atoms[j].x - a.x) for j, _ in self.mol.neighbors(i))
         if not angs:
-            return (1.0, 0.0)
+            return 2 * math.pi, (1.0, 0.0)
         gaps = [((angs[(k + 1) % len(angs)] - angs[k]) % (2 * math.pi) or 2 * math.pi, angs[k]) for k in range(len(angs))]
         gap, start = max(gaps)
         t = start + gap / 2
-        return (math.cos(t), math.sin(t))
+        return gap, (math.cos(t), math.sin(t))
 
     def charge_bars(self, i: int) -> list[Polyline]:
         a = self.mol.atoms[i]
         if abs(a.charge) != 1:
             raise NotImplementedError(f"atom {a.id}: only charges of ±1 are drawn in M1 (got {a.charge})")
         c = self.preset.charge
-        cx, cy = self.charge_center(i)
-        h = c.bar_length / 2
         src = f"atom:{a.id}"
-        bars = [Polyline([(cx - h, cy), (cx + h, cy)], c.bar_thickness, source=src)]
-        if a.charge > 0:
-            bars.append(Polyline([(cx, cy - h), (cx, cy + h)], c.bar_thickness, source=src))
-        return bars
+        return [Polyline([p, q], c.bar_thickness, source=src)
+                for p, q in _charge_segments(self.charge_center(i), a.charge, c.bar_length)]
 
     # ---------------------------------------------------------------- lone pairs and radicals (§4)
 
@@ -739,17 +785,15 @@ class Drawer:
 
     def bisector_dots(self, i: int, pairs: int, radicals: int) -> list[DotSet]:
         """Unlabeled atom (§4.2, mech_basic_x*: tert-butyl radical): each dot set goes on the
-        bisector of the largest angular gap between the bonds, the charge (charge_center) and
-        the sets already placed, as charges do; ties go the way charge_center breaks them. A set
+        bisector of the largest angular gap between the bonds and the sets already placed, as
+        charges do; ties go the way charge_center breaks them. The charge does not count: it is
+        placed around the dots (charge_center, _charge_beside_dots). A set
         an arrow starts from (`tails`) goes first, into the widest gap facing its target.
         A radical sits radical.distance from the atom; a lone pair's midpoint does too
         (unmeasured: no reference has one), its dots dot_spacing apart across the bisector."""
         a = self.mol.atoms[i]
         lp, dist = self.preset.lone_pair, self.preset.radical.distance
         angs = [math.atan2(self.mol.atoms[j].y - a.y, self.mol.atoms[j].x - a.x) for j, _ in self.mol.neighbors(i)]
-        if a.charge:
-            cx, cy = self.charge_center(i)
-            angs.append(math.atan2(cy - a.y, cx - a.x))
         out = []
         kinds = ["pair"] * pairs + ["radical"] * radicals
         hint = self.tails.get(i, {})
@@ -803,6 +847,16 @@ class Drawer:
                                                  for ds in sets if ds.kind == k for p in ds.dots])
                 for k, kind in (("pair", "lone-pairs"), ("radical", "radicals"))]
         return Group(f"species-{name}", [g for g in (bonds, labels, charges, *dots) if g.children])
+
+
+def _charge_segments(center: Point, charge: int, bar_length: float) -> list[tuple[Point, Point]]:
+    """End points of the charge bars at `center`: the minus bar, plus the upright for ⊕."""
+    cx, cy = center
+    h = bar_length / 2
+    segs = [((cx - h, cy), (cx + h, cy))]
+    if charge > 0:
+        segs.append(((cx, cy - h), (cx, cy + h)))
+    return segs
 
 
 def draw_molecule(mol: Molecule, preset: Preset, name: str | None = None, face: FontFace | None = None) -> Group:

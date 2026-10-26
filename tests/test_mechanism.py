@@ -9,12 +9,13 @@ from validate import validate
 
 from acs_chem_svg import chem
 from acs_chem_svg.draw_mol import Drawer
-from acs_chem_svg.geometry import add, dot, length, mul, point_box_dist, sub, unit
+from acs_chem_svg.geometry import add, angle_deg, dot, length, mul, point_box_dist, sub, unit
+from acs_chem_svg.geometry_checks import check_mechanism
 from acs_chem_svg.layout import build_scheme
 from acs_chem_svg.mechanism import FARTHER, aims
 from acs_chem_svg.preset import load_preset
 from acs_chem_svg.scene import Circle
-from acs_chem_svg.spec import load_spec
+from acs_chem_svg.spec import Spec, load_spec
 from acs_chem_svg.svg_writer import to_svg
 
 EX = Path(__file__).resolve().parents[1] / "examples"
@@ -187,3 +188,28 @@ def test_charge_moves_left_when_a_bond_takes_the_upper_right():
     i = next(a.idx for a in m.atoms if a.map == 1)
     d = Drawer(m, P)
     assert d.charge_center(i)[0] > d.labels[i].elem_ink_box()[2]
+
+
+@pytest.mark.parametrize("rotate", range(0, 360, 30))
+def test_ring_carbanion_pair_on_bisector_charge_beside(rotate):
+    # inbox 2026-10-26: [CH-] in a ring with an arrow from its pair. The pair takes the outward
+    # bisector; the ⊖ goes beside it, outside the ring, clear of the dots and the ring bonds
+    spec = Spec.model_validate({
+        "preset": "acs1996",
+        "species": {"ion_adj": {"smiles": "[CH:1]1[CH:2]=[CH:3][CH+:4][CH-:5][CH:6]=1",
+                                "orientation": {"rotate": rotate}},
+                    "ion_para": {"smiles": "[CH-:1]1[CH:2]=[CH:3][CH+:4][CH:5]=[CH:6]1"}},
+        "steps": [{"resonance": ["ion_adj", "ion_para"],
+                   "arrows": [[{"from": "lp(5)", "to": "between(5,6)"}, {"from": "bond(6=1)", "to": "atom(1)"}]]}]})
+    lay = build_scheme(spec, EX, "ring_carbanion")
+    problems = check_mechanism(lay)
+    assert not [p for p in problems if "overlaps the charge" in p or "overlaps a bond" in p], problems
+    for name, mapno in (("ion_adj", 5), ("ion_para", 1)):
+        d = lay.species[name].drawer
+        i = next(a.idx for a in d.mol.atoms if a.map == mapno)
+        gap, out = d._largest_gap(i)
+        (pair,) = [s for s in d.dot_sets()[i] if s.kind == "pair"]
+        assert angle_deg(pair.direction, out) < 1.0
+        q = sub(d.charge_center(i), d.mol.atoms[i].p)
+        assert angle_deg(unit(q), out) <= math.degrees(gap) / 2 + 1e-6  # in the exterior gap: outside the ring
+        assert length(q) >= P.charge.unlabeled_distance - 1e-9
