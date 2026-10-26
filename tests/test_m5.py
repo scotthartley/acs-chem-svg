@@ -35,7 +35,7 @@ def test_reuse_renders_the_same_pixels_as_numbered_copies(tmp_path):
     reuse = render(ROOT / "tests" / "specs" / "nitration_reuse_x1.0.yaml", tmp_path / "reuse")
     copies = render(ROOT / "examples" / "m4_nitration_x1.0.yaml", tmp_path / "copies")
     assert reuse[1].read_bytes() == copies[1].read_bytes()
-    ids = [re.findall(r'id="([^"]*)"', p.read_text())[1:] for p in (reuse[0], copies[0])]  # [0]: the file stem
+    ids = [re.findall(r'<g id="([^"]*)"', p.read_text())[1:] for p in (reuse[0], copies[0])]  # [0]: the file stem
     assert ids[0] == ids[1]  # clones are named like the copies (species-nitronium_2)
 
 

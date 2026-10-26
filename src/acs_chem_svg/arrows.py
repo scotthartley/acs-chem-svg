@@ -11,29 +11,35 @@ scheme_multi_x*).
 
 Resonance arrows (acs-style.md §4.1; resonance_x*): the same head at both ends, and the shaft
 from shaft_end_from_tip after one tip to shaft_end_from_tip before the other.
+
+Heads are scene.Markers on the shaft (written as SVG <marker>s, or as separate shapes with
+svg_writer.to_svg(markers=False)); Polyline.head_leaves() gives them in scheme coordinates.
 """
 
 from __future__ import annotations
 
-from .geometry import Point, add, length, mul, perp, sub, unit
+from .geometry import Point, add, length, mul, sub, unit
 from .preset import Preset
-from .scene import Group, Path, Polyline
+from .scene import Group, Marker, Polyline
 
 
-def _head(tip: Point, u: Point, preset: Preset, name: str) -> Path:
-    """The reaction arrowhead with its tip at `tip`, pointing along unit vector u."""
+def head_marker(preset: Preset, start: bool = False) -> Marker:
+    """The reaction arrowhead in the marker frame: origin at the shaft's end, the tip
+    shaft_end_from_tip ahead of it. `start`: turned to point back along the shaft, for a
+    resonance arrow's first end (SVG 1.1 orients a start marker along the path)."""
     a = preset.arrow
-    n = perp(u)
+    k = -1.0 if start else 1.0
 
     def at(back: float, side: float) -> Point:
-        return add(tip, add(mul(u, -back), mul(n, side)))
+        return (k * (a.shaft_end_from_tip - back), k * side)
 
     hw = a.head_half_width
     ctl = preset.ratios.arrow_back_control_per_half_width * hw
-    notch = at(a.head_inset, 0.0)
+    tip, notch = at(0.0, 0.0), at(a.head_inset, 0.0)
     c1, c2 = at(a.head_length, hw), at(a.head_length, -hw)
-    return Path([("M", tip), ("L", c1), ("C", c1, at(a.head_inset, ctl), notch),
-                 ("C", at(a.head_inset, -ctl), c2, c2)], fill=True, stroke=a.head_outline, source=name)
+    return Marker(f"{preset.name}-head-reaction{'-start' if start else ''}",
+                  (("M", tip), ("L", c1), ("C", c1, at(a.head_inset, ctl), notch), ("C", at(a.head_inset, -ctl), c2, c2)),
+                  kind="path", stroke=a.head_outline)
 
 
 def reaction_arrow(tail: Point, head: Point, preset: Preset, name: str = "arrow") -> Group:
@@ -41,8 +47,9 @@ def reaction_arrow(tail: Point, head: Point, preset: Preset, name: str = "arrow"
     u = unit(sub(head, tail))
     if length(sub(head, tail)) <= a.head_length:
         raise ValueError(f"arrow {name} is shorter than its head ({length(sub(head, tail)):.2f} pt)")
-    shaft = Polyline([tail, add(head, mul(u, -a.shaft_end_from_tip))], a.shaft_width, source=name)
-    return Group(name, [shaft, _head(head, u, preset, name)])
+    shaft = Polyline([tail, add(head, mul(u, -a.shaft_end_from_tip))], a.shaft_width, source=name,
+                     marker_end=head_marker(preset))
+    return Group(name, [shaft])
 
 
 def resonance_arrow(tail: Point, head: Point, preset: Preset, name: str = "resonance-arrow") -> Group:
@@ -52,8 +59,9 @@ def resonance_arrow(tail: Point, head: Point, preset: Preset, name: str = "reson
     if length(sub(head, tail)) <= 2 * a.head_length:
         raise ValueError(f"arrow {name} is shorter than its two heads ({length(sub(head, tail)):.2f} pt)")
     shaft = Polyline([add(tail, mul(u, a.shaft_end_from_tip)), add(head, mul(u, -a.shaft_end_from_tip))],
-                     a.shaft_width, source=name)
-    return Group(name, [shaft, _head(tail, mul(u, -1), preset, name), _head(head, u, preset, name)])
+                     a.shaft_width, source=name, marker_start=head_marker(preset, start=True),
+                     marker_end=head_marker(preset))
+    return Group(name, [shaft])
 
 
 def notch_x(tail: Point, head: Point, preset: Preset) -> float:

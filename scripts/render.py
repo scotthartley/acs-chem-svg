@@ -9,8 +9,10 @@ labeled atom with a charge or dots, every resonance arrow and every bracket corn
 --maps also writes <stem>_maps.png: the drawing with every mapped atom's map number in small red
 type beside it, for choosing arrows and orientations. The overlay is preview only: it goes into
 a copy of the SVG text, never into <stem>.svg.
+--affinity writes each arrowhead as a separate filled shape instead of an SVG <marker>: Affinity
+drops markers on import (the shafts arrive with no heads). Markers follow edits in Inkscape.
 
-Usage: uv run python scripts/render.py spec.yaml [--out DIR] [--px-per-pt 4] [--crops] [--maps]
+Usage: uv run python scripts/render.py spec.yaml [--out DIR] [--px-per-pt 4] [--crops] [--maps] [--affinity]
 """
 
 from __future__ import annotations
@@ -98,11 +100,11 @@ def maps_svg(lay: SchemeLayout) -> str:
 
 
 def render(spec_path: Path, out_dir: Path | None = None, px_per_pt: float = 4.0,
-           with_crops: bool = False, with_maps: bool = False) -> list[Path]:
+           with_crops: bool = False, with_maps: bool = False, markers: bool = True) -> list[Path]:
     spec = load_spec(spec_path)
     lay = build_scheme(spec, spec_path.parent, spec_path.stem) if spec.steps else None
     root = lay.root if lay else render_spec(spec_path)
-    svg, offset = to_svg(root)
+    svg, offset = to_svg(root, markers=markers)
     out_dir = out_dir or spec_path.parent
     out_dir.mkdir(parents=True, exist_ok=True)
     svg_path = out_dir / f"{spec_path.stem}.svg"
@@ -135,8 +137,10 @@ def main(argv=None) -> int:
                     help="also write zoomed crops of curved arrows, charged / dotted atoms, resonance arrows and bracket corners")
     ap.add_argument("--maps", action="store_true",
                     help="also write <stem>_maps.png with each mapped atom's map number (preview only)")
+    ap.add_argument("--affinity", action="store_true",
+                    help="write arrowheads as separate shapes, not SVG markers (Affinity drops markers on import)")
     args = ap.parse_args(argv)
-    for p in render(args.spec, args.out, args.px_per_pt, args.crops, args.maps):
+    for p in render(args.spec, args.out, args.px_per_pt, args.crops, args.maps, not args.affinity):
         print(p)
     return 0
 

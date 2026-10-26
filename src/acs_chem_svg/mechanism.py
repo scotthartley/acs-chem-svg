@@ -52,7 +52,7 @@ from .geometry import (Point, add, dot, length, mul, perp, point_box_dist, ray_b
                        segment_box_dist, segment_distance, sub, unit)
 from .preset import Preset
 from .draw_mol import DotSet
-from .scene import Circle, Group, Path, Polygon, Polyline, TextRun
+from .scene import Circle, Group, Marker, Path, Polygon, Polyline, TextRun
 from .spec import ArrowOverride, CurvedArrow
 
 ARC_HANDLES = ((0.26, 1.0), (0.92, 0.48))  # mech_basic_x*: (0.261, 0.531) and (0.921, 0.256) / 0.531
@@ -72,31 +72,36 @@ def bezier(p0: Point, c1: Point, c2: Point, p3: Point, t: float) -> Point:
             s ** 3 * p0[1] + 3 * s * s * t * c1[1] + 3 * s * t * t * c2[1] + t ** 3 * p3[1])
 
 
+def head_marker(c1: Point, c2: Point, p3: Point, kind: str, preset: Preset) -> Marker:
+    """The curved arrow's head in the marker frame (origin at stroke end p3, x along the end
+    tangent); vertices as ChemDraw orders them. A fishhook's barb goes on the side the curve
+    bends toward."""
+    ca = preset.curved_arrow
+    i, L = ca.head_inset, ca.head_length
+    if kind == "two_electron":
+        hw = ca.head_half_width
+        return Marker(f"{preset.name}-head-2e", (("M", (i - L, hw)), ("L", (0.0, 0.0)), ("L", (i - L, -hw)), ("L", (i, 0.0))))
+    t = unit(sub(p3, c2 if length(sub(p3, c2)) > 1e-6 else c1))
+    bend = add(sub(p3, mul(c2, 2)), c1)  # B''(1) / 6: the curve bends toward this side
+    s = -1.0 if dot(perp(t), bend) > 0 else 1.0  # +1: barb on perp(t), right of travel (y down)
+    o, b = ca.fishhook_offset, ca.fishhook_barb  # the stroke ends beside the axis, toward the barb
+    return Marker(f"{preset.name}-head-fishhook-{'right' if s > 0 else 'left'}",
+                  (("M", (0.0, -s * o)), ("L", (i - L, -s * o + s * b)), ("L", (i, -s * o))))
+
+
 def head_polygon(c1: Point, c2: Point, p3: Point, kind: str, preset: Preset) -> list[Point]:
     """Head at stroke end p3 on the end tangent (c2 -> p3); vertices as ChemDraw orders them."""
-    ca = preset.curved_arrow
-    c_last = c2 if length(sub(p3, c2)) > 1e-6 else c1  # ChemDraw's C–Br arrow ends on its own handle
-    t = unit(sub(p3, c_last))
-    nv = perp(t)
-    tip = add(p3, mul(t, ca.head_inset))
-
-    def at(back: float, side: float) -> Point:
-        return add(tip, add(mul(t, -back), mul(nv, side)))
-    if kind == "two_electron":
-        return [at(ca.head_length, ca.head_half_width), p3, at(ca.head_length, -ca.head_half_width), tip]
-    bend = add(sub(p3, mul(c2, 2)), c1)  # B''(1) / 6: the curve bends toward this side
-    side = -1.0 if dot(nv, bend) > 0 else 1.0
-    notch = add(p3, mul(nv, -side * ca.fishhook_offset))  # the stroke ends beside the axis, toward the barb
-    tip = add(notch, mul(t, ca.head_inset))
-    return [notch, add(tip, add(mul(t, -ca.head_length), mul(nv, side * ca.fishhook_barb))), tip]
+    path = Path([("M", c1), ("C", c1, c2, p3)], fill=False, closed=False,
+                marker_end=head_marker(c1, c2, p3, kind, preset))
+    return path.head_leaves()[0].points
 
 
 def curved_arrow(p0: Point, c1: Point, c2: Point, p3: Point, kind: str, preset: Preset,
                  name: str = "curved-arrow") -> Group:
-    """Stroke p0 -> p3 (a cubic with controls c1, c2) and its head at p3."""
+    """Stroke p0 -> p3 (a cubic with controls c1, c2) with its head at p3 as an end marker."""
     stroke = Path([("M", p0), ("C", c1, c2, p3)], fill=False, stroke=preset.curved_arrow.stroke_width,
-                  closed=False, source=name)
-    return Group(name, [stroke, Polygon(head_polygon(c1, c2, p3, kind, preset), source=name)])
+                  closed=False, source=name, marker_end=head_marker(c1, c2, p3, kind, preset))
+    return Group(name, [stroke])
 
 
 # --------------------------------------------------------------------------- planning
@@ -456,7 +461,7 @@ class Planner:
         c1, c2 = controls(end)
         g = curved_arrow(tail, c1, c2, end, arr.type, P, name)
         hit = (tdata.species, tdata.idx) if tkind == "atom" and tdata.idx >= 0 else None
-        return MechArrow(step, index, arr, tail, c1, c2, end, g, g.children[1].points, src.kind, target, hit, dots)
+        return MechArrow(step, index, arr, tail, c1, c2, end, g, g.children[0].head_leaves()[0].points, src.kind, target, hit, dots)
 
 
 def clear_along(c: Point, d: Point, box: tuple | None, dots: list[Point], r: float, gap: float) -> float:

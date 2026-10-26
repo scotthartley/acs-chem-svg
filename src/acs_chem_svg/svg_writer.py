@@ -1,9 +1,14 @@
 """Scene graph -> SVG (design.md §4.4).
 
-The root width, height and viewBox are in pt, so 1 user unit = 1 pt. There are no
+The root width, height and viewBox are in pt, so 1 user unit = 1 pt. There are no explicit
 transforms, clip paths or background. Every stroke has an explicit width, cap and join.
 Coordinates are rounded to 0.01 pt. Text is real <text> so it stays editable. Groups
-keep their scene ids, which Affinity shows as layer names.
+keep their scene ids, which editors show as layer or object names.
+
+Arrowheads are <marker orient="auto"> in one <defs>, the one implicit transform: the renderer
+places each head on its path's end along the end tangent, so the head follows when the path is
+edited (Inkscape, browsers, resvg). Affinity drops markers on import, so markers=False
+(render.py --affinity) writes each head as a separate filled shape, as the scene places it.
 """
 
 from __future__ import annotations
@@ -12,7 +17,7 @@ import re
 from xml.sax.saxutils import escape
 
 from .geometry import Point
-from .scene import Circle, Group, Path, Polygon, Polyline, TextRun
+from .scene import Circle, Group, Marker, Path, Polygon, Polyline, TextRun
 
 FONT_FAMILY = "Helvetica, 'TeX Gyre Heros', 'Nimbus Sans', Arial, sans-serif"
 # Affinity takes bold and italic only from a face name in font-family (user check, 2026-10-24:
@@ -20,6 +25,7 @@ FONT_FAMILY = "Helvetica, 'TeX Gyre Heros', 'Nimbus Sans', Arial, sans-serif"
 # ChemDraw's italic name, imported correctly). preview.rasterize maps these back for resvg.
 FACE_FAMILIES = {"bold": "Helvetica Bold", "italic": "Helvetica Oblique"}
 PADDING = 2.0  # pt of empty border around the ink; an output choice, not a style value
+MARKER_MARGIN = 0.2  # pt of marker viewport around the head's control points, so its outline isn't clipped
 
 
 def num(v: float) -> str:
@@ -35,23 +41,40 @@ def safe_id(s: str) -> str:
     return re.sub(r"[^A-Za-z0-9_.-]", "_", s)
 
 
-def _element(node, dx: float, dy: float, indent: str) -> list[str]:
+def _d(segments, dx: float, dy: float, closed: bool) -> str:
+    d = " ".join(seg[0] + " ".join(f"{num(x + dx)} {num(y + dy)}" for x, y in seg[1:]) for seg in segments)
+    return d + (" Z" if closed else "")
+
+
+def _markers(node, markers: bool) -> str:
+    if not markers:
+        return ""
+    return "".join(f' marker-{end}="url(#{safe_id(m.id)})"' for end, m in
+                   (("start", node.marker_start), ("end", node.marker_end)) if m is not None)
+
+
+def _stroke(width: float, closed: bool) -> str:
+    return (f'stroke="#000" stroke-width="{num(width)}" stroke-linejoin="miter"'
+            + ('' if closed else ' stroke-linecap="butt"'))
+
+
+def _element(node, dx: float, dy: float, indent: str, markers: bool = True) -> list[str]:
     if isinstance(node, Group):
         out = [f'{indent}<g id="{safe_id(node.id)}">']
         for c in node.children:
-            out += _element(c, dx, dy, indent + "  ")
+            out += _element(c, dx, dy, indent + "  ", markers)
         return out + [f"{indent}</g>"]
+    heads = [] if markers or not isinstance(node, (Polyline, Path)) else [
+        line for h in node.head_leaves() for line in _element(h, dx, dy, indent, markers)]
     if isinstance(node, Polyline):
         d = "M" + _pts(node.points, dx, dy) + (" Z" if node.closed else "")
         return [f'{indent}<path d="{d}" fill="none" stroke="#000" stroke-width="{num(node.width)}" '
-                f'stroke-linecap="{node.cap}" stroke-linejoin="{node.join}"/>']
+                f'stroke-linecap="{node.cap}" stroke-linejoin="{node.join}"{_markers(node, markers)}/>'] + heads
     if isinstance(node, Path):
-        d = " ".join(seg[0] + " ".join(f"{num(x + dx)} {num(y + dy)}" for x, y in seg[1:]) for seg in node.segments)
-        d += " Z" if node.closed else ""
         fill = "#000" if node.fill else "none"
-        stroke = (f'stroke="#000" stroke-width="{num(node.stroke)}" stroke-linejoin="miter"'
-                  + ('' if node.closed else ' stroke-linecap="butt"') if node.stroke else 'stroke="none"')
-        return [f'{indent}<path d="{d}" fill="{fill}" {stroke}/>']
+        stroke = _stroke(node.stroke, node.closed) if node.stroke else 'stroke="none"'
+        return [f'{indent}<path d="{_d(node.segments, dx, dy, node.closed)}" fill="{fill}" {stroke}'
+                f'{_markers(node, markers)}/>'] + heads
     if isinstance(node, Circle):
         x, y = node.center
         return [f'{indent}<circle cx="{num(x + dx)}" cy="{num(y + dy)}" r="{num(node.r)}" fill="#000" stroke="none"/>']
@@ -66,6 +89,32 @@ def _element(node, dx: float, dy: float, indent: str) -> list[str]:
     raise TypeError(f"cannot write {type(node).__name__}")
 
 
+def markers_used(root: Group) -> list[Marker]:
+    """The markers in the tree, one per id, in first-use order."""
+    seen: dict[str, Marker] = {}
+    for leaf in root.leaves():
+        for m in (getattr(leaf, "marker_start", None), getattr(leaf, "marker_end", None)):
+            if m is not None:
+                seen.setdefault(m.id, m)
+    return list(seen.values())
+
+
+def _marker_def(m: Marker, indent: str) -> list[str]:
+    """userSpaceOnUse, so the head keeps its pt size whatever the stroke width; the viewBox puts
+    the shape at positive coordinates and refX/refY at the frame origin (the path's end)."""
+    pts = [q for seg in m.segments for q in seg[1:]]
+    x0, y0 = min(q[0] for q in pts) - MARKER_MARGIN, min(q[1] for q in pts) - MARKER_MARGIN
+    w = max(q[0] for q in pts) + MARKER_MARGIN - x0
+    h = max(q[1] for q in pts) + MARKER_MARGIN - y0
+    fill = "#000" if m.fill else "none"
+    stroke = _stroke(m.stroke, True) if m.stroke else 'stroke="none"'
+    return [f'{indent}<marker id="{safe_id(m.id)}" markerUnits="userSpaceOnUse" orient="auto" '
+            f'viewBox="0 0 {num(w)} {num(h)}" markerWidth="{num(w)}" markerHeight="{num(h)}" '
+            f'refX="{num(-x0)}" refY="{num(-y0)}">',
+            f'{indent}  <path d="{_d(m.segments, -x0, -y0, True)}" fill="{fill}" {stroke}/>',
+            f'{indent}</marker>']
+
+
 def faces_used(root: Group) -> list[str]:
     seen = {}
     for leaf in root.leaves():
@@ -75,11 +124,12 @@ def faces_used(root: Group) -> list[str]:
 
 
 def to_svg(root: Group, padding: float = PADDING, size: tuple[float, float] | None = None,
-           offset: Point | None = None) -> tuple[str, Point]:
+           offset: Point | None = None, markers: bool = True) -> tuple[str, Point]:
     """Serialize `root`. By default the drawing is moved so its ink box sits `padding`
     from the top-left, and the canvas fits it. Pass `size` and `offset` to place it on a
-    fixed canvas instead (the compare script uses the ChemDraw page). Returns the SVG text
-    and the (dx, dy) that was added to every scene coordinate."""
+    fixed canvas instead (the compare script uses the ChemDraw page). `markers`: arrowheads
+    as <marker>s (default); False writes each as a separate shape after its path (Affinity).
+    Returns the SVG text and the (dx, dy) that was added to every scene coordinate."""
     box = root.bbox() or (0.0, 0.0, 0.0, 0.0)
     if offset is None:
         offset = (padding - box[0], padding - box[1])
@@ -95,6 +145,12 @@ def to_svg(root: Group, padding: float = PADDING, size: tuple[float, float] | No
     faces = faces_used(root)
     if faces:
         lines.append(f"  <!-- acs-chem-svg: text measured with {'; '.join(faces)} -->")
-    lines += _element(root, dx, dy, "  ")
+    used = markers_used(root) if markers else []
+    if used:
+        lines.append("  <defs>")
+        for m in used:
+            lines += _marker_def(m, "    ")
+        lines.append("  </defs>")
+    lines += _element(root, dx, dy, "  ", markers)
     lines.append("</svg>")
     return "\n".join(lines) + "\n", (dx, dy)

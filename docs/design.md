@@ -4,7 +4,7 @@ The original design brief for development sessions (CLAUDE.md). New users: start
 [README.md](../README.md). Section numbers (§) are cited throughout the code and
 `references/acs-style.md`; where this brief and `acs-style.md` disagree, `acs-style.md` wins.
 
-A Claude Code skill for producing chemical structures, reaction schemes, and arrow-pushing mechanisms in ACS style as **SVG**, for direct use in vector editors (Affinity, Illustrator) and documents.
+A Claude Code skill for producing chemical structures, reaction schemes, and arrow-pushing mechanisms in ACS style as **SVG**, for direct use in vector editors (Inkscape; Affinity via `--affinity`) and documents.
 
 Target usage: in any Claude Code session, the user asks in plain language, e.g.
 
@@ -24,7 +24,7 @@ Items marked **[VERIFY]** are assumptions that have not been confirmed and must 
 2. **Our renderer owns ACS style.** No external program does the drawing, so the renderer must implement ACS conventions exactly (bond offsets, label clearance, wedge shapes), measured in pt.
 3. **Look before delivering.** Every render produces a PNG, and Claude inspects it, including zoomed crops of dense regions (arrowheads, labels, lone pairs).
 4. **Numbers before pictures.** Structural, electron-bookkeeping, and geometric checks run first, so visual inspection is spent on aesthetics rather than on catching errors a script can find.
-5. **Editable output.** Clean, flat, grouped SVG with real text (Helvetica by default) that opens sensibly in Affinity.
+5. **Editable output.** Clean, flat, grouped SVG with real text (Helvetica by default) that opens sensibly in Inkscape (Affinity: render with `--affinity`, which writes arrowheads as separate shapes).
 6. **Curated memory.** Use sessions log problems; development sessions turn them into fixes, tests, or lessons (§9).
 
 ---
@@ -173,8 +173,12 @@ Label layout and clearance require real glyph metrics.
 
 - Root `width`/`height` in pt, with `viewBox` in pt, so 1 user unit = 1 pt.
 - No `transform` attributes in output (bake all coordinates), no clip paths, no `vector-effect`.
+- Exception: arrowheads are `<marker orient="auto">` (`markerUnits="userSpaceOnUse"`) in one `<defs>`,
+  the one implicit transform. The renderer places each head on its path's end along the end
+  tangent, so a head follows when the curve is edited (Inkscape, browsers). Affinity drops markers
+  on import, so `render.py --affinity` writes each head as a separate filled shape instead.
 - Strokes: `stroke-width` explicit on every element, butt caps unless a convention requires round.
-- Groups with meaningful `id`s, e.g. `species-benzene`, `species-benzene-bonds`, `species-benzene-labels`, `arrows-step-1`, `conditions-step-1`, `numbers`. These appear as layer names in Affinity.
+- Groups with meaningful `id`s, e.g. `species-benzene`, `species-benzene-bonds`, `species-benzene-labels`, `arrows-step-1`, `conditions-step-1`, `numbers`. These appear as layer or object names in the editor.
 - Black on transparent background; no white rectangle.
 - Coordinates rounded to 0.01 pt for clean diffs.
 

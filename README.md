@@ -32,7 +32,9 @@ and `.png` files:
   within 0.1 pt.
 
 The SVG has real, editable text (Helvetica) and named groups, so it opens cleanly in a vector editor
-(checked in Affinity) for final touches.
+(checked in Inkscape) for final touches. Arrowheads are SVG markers, so a head follows its arrow
+when you edit the curve. Affinity drops markers on import: render with `--affinity` (heads as
+separate shapes) for Affinity, or edit in Inkscape and paste into Affinity.
 
 The output is a drawing, not ChemDraw-editable chemistry. Validation checks that every step's
 curved arrows turn its reactants into its products exactly; it does not check that the

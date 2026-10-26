@@ -271,3 +271,20 @@ removed renders pixel-identical to the approved `m4_nitration_x1.0`. Inbox triag
   onto the axis, so `tests/broken/lone_pair_unlabeled_carbon.yaml` stopped failing, though
   ⁻:≡N with no C reads badly. validate now flags dots on any unlabeled atom with ≤ 1 bond
   directly (user decision), rather than relying on a dot/bond overlap to catch it.
+
+## 2026-10-26 (arrowheads as SVG markers)
+
+- **Markers are the default; Affinity needs `--affinity`.** Every arrowhead is now a
+  `scene.Marker` on its shaft, written as `<marker orient="auto" markerUnits="userSpaceOnUse">`
+  in one `<defs>`, so a head follows the curve when it is edited (Inkscape, browsers).
+  `Marker.place` returns the leaf the heads used to be, and `head_leaves()` places them, so
+  bboxes, `head_polygon`, `clashes` and `layout._arrow_parts` read the same geometry.
+- **Probe (user check):** Affinity imports the shafts with no heads at all (both marker unit
+  modes, `auto` and `auto-start-reverse`). Inkscape → copy → paste into Affinity brings the heads
+  over, but as loose shapes that no longer follow. resvg draws markers like the separate shapes
+  (gallery: ≤ 0.26 alpha, no pixel past 0.3 at 4 px/pt).
+- **`render.py --affinity`** (`to_svg(markers=False)`) writes each head as a separate shape after
+  its path: byte-identical to the pre-marker output, so the approved gallery PNGs match it
+  exactly. compare.py uses it too, since `measure_refs.load_rendered` parses the head paths.
+- The resonance start head is a turned-around shape with `orient="auto"` (SVG 1.1), not
+  `auto-start-reverse` (SVG 2).

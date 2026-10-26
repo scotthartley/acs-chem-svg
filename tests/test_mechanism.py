@@ -213,3 +213,50 @@ def test_ring_carbanion_pair_on_bisector_charge_beside(rotate):
         q = sub(d.charge_center(i), d.mol.atoms[i].p)
         assert angle_deg(unit(q), out) <= math.degrees(gap) / 2 + 1e-6  # in the exterior gap: outside the ring
         assert length(q) >= P.charge.unlabeled_distance - 1e-9
+
+
+# ---------------------------------------------------------------- heads as markers
+
+
+def _old_head(c1, c2, p3, kind, p):
+    """The curved-arrow head as mechanism.head_polygon built it before markers."""
+    from acs_chem_svg.geometry import perp
+    ca = p.curved_arrow
+    c_last = c2 if length(sub(p3, c2)) > 1e-6 else c1
+    t = unit(sub(p3, c_last))
+    nv = perp(t)
+    tip = add(p3, mul(t, ca.head_inset))
+
+    def at(back, side):
+        return add(tip, add(mul(t, -back), mul(nv, side)))
+    if kind == "two_electron":
+        return [at(ca.head_length, ca.head_half_width), p3, at(ca.head_length, -ca.head_half_width), tip]
+    bend = add(sub(p3, mul(c2, 2)), c1)
+    side = -1.0 if dot(nv, bend) > 0 else 1.0
+    notch = add(p3, mul(nv, -side * ca.fishhook_offset))
+    tip = add(notch, mul(t, ca.head_inset))
+    return [notch, add(tip, add(mul(t, -ca.head_length), mul(nv, side * ca.fishhook_barb))), tip]
+
+
+CURVES = {"up": ((0.0, 0.0), (6.0, -22.0), (30.0, -22.0), (38.0, -2.0)),
+          "down": ((0.0, 0.0), (6.0, 22.0), (30.0, 22.0), (38.0, 2.0)),
+          "c2_on_end": ((0.0, 0.0), (10.0, -15.0), (30.0, 4.0), (30.0, 4.0))}  # ChemDraw's C–Br arrow
+
+
+@pytest.mark.parametrize("kind", ["two_electron", "fishhook"])
+@pytest.mark.parametrize("curve", sorted(CURVES))
+def test_curved_head_marker_places_the_old_head(curve, kind):
+    from acs_chem_svg.mechanism import curved_arrow, head_polygon
+    p0, c1, c2, p3 = CURVES[curve]
+    (stroke,) = curved_arrow(p0, c1, c2, p3, kind, P).children
+    (head,) = stroke.head_leaves()
+    old = _old_head(c1, c2, p3, kind, P)
+    assert len(head.points) == len(old)
+    assert all(length(sub(a, b)) < 1e-6 for a, b in zip(head.points, old))
+    assert head_polygon(c1, c2, p3, kind, P) == head.points
+
+
+def test_fishhook_markers_take_both_sides():
+    from acs_chem_svg.mechanism import head_marker
+    ids = {head_marker(*CURVES[c][1:], "fishhook", P).id for c in ("up", "down")}
+    assert ids == {"acs1996-head-fishhook-left", "acs1996-head-fishhook-right"}

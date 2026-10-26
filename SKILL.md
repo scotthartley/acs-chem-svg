@@ -47,13 +47,14 @@ Run every command as `uv run --project <repo> python <repo>/scripts/<script> ...
 3. **Render:** `scripts/render.py spec.yaml --out DIR [--crops]` writes `spec.svg` and
    `spec.png` (4 px/pt; `--px-per-pt 10` for close inspection) and prints the drawing size.
    `--crops` adds 16 px/pt crops of every curved arrow, charged or dotted label, ↔ arrow and
-   bracket corner.
+   bracket corner. `--affinity` writes arrowheads as separate shapes, not SVG markers.
 4. **Inspect** the PNG (and crops): orientation of the first species, label sides, double-bond
    sides, wedges, charges, conditions centered on their arrows, numbers on one line; for
    mechanisms, that each arrow leaves its lone pair or bond and points at its target.
 5. **Adjust** the spec only (orientation, abbreviations, line breaks, `align`, `overrides`),
    never the SVG. Stop after about 5 visual iterations and report what is left.
-6. **Deliver** `.svg` (editable text, named groups; verified in Affinity), `.yaml`, `.png`.
+6. **Deliver** `.svg` (editable text, named groups; verified in Inkscape; `--affinity` for
+   Affinity, which drops marker arrowheads), `.yaml`, `.png`.
    Mention it if stderr warned that the fallback font was used for metrics.
 
 ## From a request (mechanisms)

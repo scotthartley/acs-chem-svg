@@ -93,3 +93,94 @@ def test_bold_and_italic_name_their_face_for_affinity():
     assert 'font-family="Helvetica Oblique" font-size="10" font-weight="normal" font-style="italic"' in svg
     assert 'font-family="Helvetica Bold" font-size="10" font-weight="bold"' in svg
     assert f'font-family="{FONT_FAMILY}" font-size="10" font-weight="normal" fill="#000">-BuLi' in svg
+
+
+# ---------------------------------------------------------------- arrowheads as markers
+
+ARROW_SPECS = ["m4_nitration_x1.0", "m4_resonance_x0.8", "m3_radical_propagation_x1.0"]
+
+
+def _old_reaction_head(tip, u, p):
+    """The reaction head as arrows._head built it before markers (separate Path)."""
+    from acs_chem_svg.geometry import add, mul, perp
+    a, n = p.arrow, perp(u)
+
+    def at(back, side):
+        return add(tip, add(mul(u, -back), mul(n, side)))
+    hw = a.head_half_width
+    ctl = p.ratios.arrow_back_control_per_half_width * hw
+    c1, c2 = at(a.head_length, hw), at(a.head_length, -hw)
+    return [tip, c1, c1, at(a.head_inset, ctl), at(a.head_inset, 0.0), at(a.head_inset, -ctl), c2, c2]
+
+
+def _close(ps, qs):
+    return len(ps) == len(qs) and all(abs(p[0] - q[0]) < 1e-6 and abs(p[1] - q[1]) < 1e-6 for p, q in zip(ps, qs))
+
+
+@pytest.mark.parametrize("preset", ["acs1996", "acs1996_x0.6"])
+def test_reaction_and_resonance_markers_place_the_old_heads(preset):
+    from acs_chem_svg.arrows import reaction_arrow, resonance_arrow
+    from acs_chem_svg.geometry import mul, sub, unit
+    p = load_preset(preset)
+    tail, head = (3.0, 7.0), (40.0, -5.0)  # slanted, so a frame mix-up shows
+    u = unit(sub(head, tail))
+    (h,) = reaction_arrow(tail, head, p).children[0].head_leaves()
+    assert h.stroke == p.arrow.head_outline and h.closed and h.fill
+    assert _close(h.points, _old_reaction_head(head, u, p))
+    h1, h2 = resonance_arrow(tail, head, p).children[0].head_leaves()
+    assert _close(h1.points, _old_reaction_head(tail, mul(u, -1), p))
+    assert _close(h2.points, _old_reaction_head(head, u, p))
+
+
+@pytest.fixture(scope="module", params=ARROW_SPECS)
+def arrow_case(request):
+    from pathlib import Path
+
+    from acs_chem_svg.layout import render_spec
+    root = render_spec(Path(__file__).resolve().parents[1] / "examples" / f"{request.param}.yaml")
+    return root, to_svg(root)[0], to_svg(root, markers=False)[0]
+
+
+def _arrow_groups(svg):
+    return [g for g in etree.fromstring(svg.encode()).iter(NS + "g")
+            if re.match(r"(arrow-step|resonance-arrow|curved-arrow-step)-", g.get("id")) and not g.findall(NS + "g")]
+
+
+def test_markers_by_default(arrow_case):
+    root, svg, _ = arrow_case
+    tree = etree.fromstring(svg.encode())
+    assert len(tree.findall(NS + "defs")) == 1 and svg.count("<defs") == 1
+    ids = {m.get("id") for m in tree.iter(NS + "marker")}
+    scale = root.id.rsplit("_", 1)[-1]
+    preset = "acs1996" if scale == "x1.0" else f"acs1996_{scale}"
+    assert ids and all(i.startswith(f"{preset}-head-") for i in ids)
+    refs = re.findall(r'marker-(?:start|end)="url\(#([^)]*)\)"', svg)
+    assert refs and set(refs) == ids
+    for m in tree.iter(NS + "marker"):
+        assert m.get("markerUnits") == "userSpaceOnUse" and m.get("orient") == "auto"
+    groups = _arrow_groups(svg)
+    assert groups
+    for g in groups:
+        paths = g.findall(NS + "path")
+        assert all(p.get("fill") == "none" for p in paths)  # no head shapes outside <defs>
+        assert all(p.get("marker-end") for p in paths)
+
+
+def test_markers_false_writes_separate_heads(arrow_case):
+    root, _, svg = arrow_case
+    assert "<defs" not in svg and "<marker" not in svg and "marker-" not in svg
+    heads = sum(len(leaf.head_leaves()) for leaf in root.leaves() if hasattr(leaf, "head_leaves"))
+    filled = sum(p.get("fill") == "#000" for g in _arrow_groups(svg) for p in g.findall(NS + "path"))
+    assert heads and filled == heads
+
+
+def test_markers_render_like_separate_heads(arrow_case):
+    import io
+
+    import numpy as np
+    from PIL import Image
+
+    _, svg, aff = arrow_case
+    a, b = (np.asarray(Image.open(io.BytesIO(rasterize(s, 4))).convert("RGBA"))[:, :, 3] / 255 for s in (svg, aff))
+    assert a.shape == b.shape
+    assert (abs(a - b) > 0.3).mean() < 1e-4

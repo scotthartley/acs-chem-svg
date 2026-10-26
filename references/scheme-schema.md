@@ -51,7 +51,7 @@ species is drawn once; give a repeated compound a second name.
 ### Layout (automatic, acs-style.md §3)
 
 Structures sit on the arrow axis by their ring centers (or ink centers if a species has no
-ring); arrows grow to fit their widest line; numbers share a baseline. SVG groups (Affinity
+ring); arrows grow to fit their widest line; numbers share a baseline. SVG groups (editor
 layers): `species-<name>`, `plus-<i>`, `arrow-step-<n>`, `conditions-step-<n>` (with `-above`,
 `-below`), `numbers` (with `number-<name>`). `scripts/validate.py` checks the schema, the
 chemistry, and overlaps.

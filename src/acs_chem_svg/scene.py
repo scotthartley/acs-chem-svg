@@ -13,7 +13,46 @@ from typing import Iterator, Union
 import math
 
 from .fontmetrics import FontFace
-from .geometry import Point, add, bbox, dot, mul, perp, sub, union_box, unit
+from .geometry import Point, add, bbox, dot, length, mul, perp, sub, union_box, unit
+
+
+@dataclass(frozen=True)
+class Marker:
+    """An arrowhead the renderer places on a path's end (svg_writer: <marker orient="auto">),
+    so the head follows the path when it is edited. `segments` ("M", p), ("L", p), ("C", c1,
+    c2, p), closed, are in the marker frame: x along the path's tangent at that end, y along
+    perp(x), origin at the path's end point. A start marker's shape is already turned to point
+    backwards, since SVG 1.1 orients it along the path's own direction. `kind` is the leaf
+    type place() returns ("polygon" | "path"), as the heads were drawn before markers."""
+    id: str
+    segments: tuple
+    kind: str = "polygon"
+    stroke: float | None = None  # hairline outline width in pt
+    fill: bool = True
+
+    def place(self, p: Point, t: Point, source: str = "") -> Union["Polygon", "Path"]:
+        """The head with the frame origin at p and x along the unit vector t, in scene coordinates."""
+        n = perp(t)
+
+        def at(q: Point) -> Point:
+            return add(p, add(mul(t, q[0]), mul(n, q[1])))
+        segs = [(seg[0], *(at(q) for q in seg[1:])) for seg in self.segments]
+        if self.kind == "polygon":
+            return Polygon([seg[1] for seg in segs], source=source)
+        return Path(segs, fill=self.fill, stroke=self.stroke, source=source)
+
+
+def _heads(start: Point, start_dir: Point, end: Point, end_dir: Point, marker_start, marker_end, source: str) -> list:
+    out = []
+    if marker_start is not None:
+        out.append(marker_start.place(start, unit(start_dir), source))
+    if marker_end is not None:
+        out.append(marker_end.place(end, unit(end_dir), source))
+    return out
+
+
+def _with_heads(box, heads: list, ink: bool = False):
+    return union_box([box] + [h.ink_bbox() if ink and isinstance(h, Path) else h.bbox() for h in heads])
 
 
 @dataclass
@@ -24,16 +63,28 @@ class Polyline:
     cap: str = "butt"
     closed: bool = False
     source: str = ""
+    marker_start: Marker | None = None
+    marker_end: Marker | None = None
+
+    def head_leaves(self) -> list:
+        """The marker heads placed in scene coordinates (start first), as svg_writer's
+        markers=False writes them."""
+        pts = self.points
+        return _heads(pts[0], sub(pts[1], pts[0]), pts[-1], sub(pts[-1], pts[-2]),
+                      self.marker_start, self.marker_end, self.source)
 
     def bbox(self):
         # miter tips can poke out further than width/2; 2x covers joins at >= 60 deg
         pad = self.width if self.join == "miter" and len(self.points) > 2 else self.width / 2
         xs, ys = [p[0] for p in self.points], [p[1] for p in self.points]
-        return (min(xs) - pad, min(ys) - pad, max(xs) + pad, max(ys) + pad)
+        return _with_heads((min(xs) - pad, min(ys) - pad, max(xs) + pad, max(ys) + pad), self.head_leaves())
 
     def ink_bbox(self):
         """Exact ink box of the stroke: butt-end corners and miter tips (SVG miter limit 4).
         bbox() stays conservative because M1 layouts were approved with it."""
+        return _with_heads(self._stroke_ink_bbox(), self.head_leaves(), ink=True)
+
+    def _stroke_ink_bbox(self):
         if self.cap != "butt" or self.join != "miter":
             return self.bbox()
         h = self.width / 2
@@ -74,6 +125,22 @@ class Path:
     stroke: float | None = None  # stroke width in pt, or None
     closed: bool = True
     source: str = ""
+    marker_start: Marker | None = None
+    marker_end: Marker | None = None
+
+    def head_leaves(self) -> list:
+        """The marker heads placed in scene coordinates (start first). Each end's tangent falls
+        back to the next control point when a handle sits on that end (ChemDraw's C–Br arrow
+        ends on its own handle), as SVG orients markers."""
+        if self.marker_start is None and self.marker_end is None:
+            return []
+        start, end = self.segments[0][1], self.segments[-1][-1]
+        first = [q for q in self.segments[1][1:]] if len(self.segments) > 1 else []
+        last = [self.segments[-2][-1]] + list(self.segments[-1][1:-1]) if len(self.segments) > 1 else []
+        ahead = next((q for q in first if length(sub(q, start)) > 1e-6), None)
+        behind = next((q for q in reversed(last) if length(sub(end, q)) > 1e-6), None)
+        return _heads(start, sub(ahead, start) if ahead else (1.0, 0.0), end, sub(end, behind) if behind else (1.0, 0.0),
+                      self.marker_start, self.marker_end, self.source)
 
     @property
     def points(self) -> list[Point]:
@@ -88,7 +155,7 @@ class Path:
         # cubics stay inside their control hull, so the control points bound the curve
         pad = (self.stroke or 0.0) / 2
         xs, ys = [p[0] for p in self.points], [p[1] for p in self.points]
-        return (min(xs) - pad, min(ys) - pad, max(xs) + pad, max(ys) + pad)
+        return _with_heads((min(xs) - pad, min(ys) - pad, max(xs) + pad, max(ys) + pad), self.head_leaves())
 
     def ink_bbox(self):
         """Exact box of the segments (a cubic's extremes, not its control hull), padded by half
@@ -112,7 +179,7 @@ class Path:
             cur = seg[-1]
         pad = (self.stroke or 0.0) / 2
         b = bbox(pts)
-        return (b[0] - pad, b[1] - pad, b[2] + pad, b[3] + pad)
+        return _with_heads((b[0] - pad, b[1] - pad, b[2] + pad, b[3] + pad), self.head_leaves(), ink=True)
 
 
 def _cubic(p0: Point, c1: Point, c2: Point, p3: Point, t: float) -> Point:

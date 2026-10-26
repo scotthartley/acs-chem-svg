@@ -202,6 +202,9 @@ within runs, its PDF glyph origins (`measure_refs.pdf_char_origins`).
 | CDXML arrow attributes | HeadSize 1000, ArrowheadCenterSize 875, ArrowheadWidth 250 (= 10, 8.75, 2.5 × LineWidth) | | | | exact |
 | Arrow bounding-box center | 0.25 / 0.20 / 0.155 above the axis (the asymmetric head) | | | CDXML BoundingBox | exact |
 
+Encoding: the head is an SVG `<marker>` on the shaft's end (`render.py --affinity` expands it into
+a separate filled path, as above). The geometry is the same either way.
+
 ### 3.2 Text (exact)
 
 | Parameter | Value | Method | Class |
@@ -301,6 +304,9 @@ C–Cl bond.
 | Bracket lip length | 4.007 | 3.212 | 2.417 | exact, scaled by k (× k: 3.206 / 2.404) |
 | Bracket → content ink (x gap; above; below) | 5.82; 2.11; 2.20 | 4.63 (4.60–4.66); 1.69; 1.81 | 3.43 (3.37–3.50); 1.26; 1.04 | approx (hand-placed); placement defaults in §4.3 |
 
+Encoding: curved-arrow and resonance heads are SVG `<marker>`s on the stroke (`render.py
+--affinity` expands them into separate filled shapes). The geometry is the same either way.
+
 ### 4.2 Placement (hand-placed in the references; round defaults)
 
 Each preset is rounded to the 0.5 pt grid from its own measurement (user decision 2026-10-24).
@@ -387,9 +393,10 @@ Rules (M4; unmeasured, user decisions 2026-10-25, flagged at review):
     Bold and for Heros Regular and Bold (tolerance 0.1 pt). M2 adds Helvetica Oblique and Heros
     Italic (worst 0.012 pt), and Oblique through the default font list: `font-style="italic"` with
     our family list picks Helvetica Oblique, not Heros Italic.
-  - **Face names in font-family.** Affinity imports bold and italic only from the family name
-    (user check, 2026-10-24: `Helvetica Bold` and `Helvetica Oblique` work; a family list with
-    `font-weight="bold"` / `font-style="italic"` imports as regular). ChemDraw writes
+  - **Face names in font-family** (all output, not only `--affinity`). Affinity imports bold
+    and italic only from the family name (user check, 2026-10-24: `Helvetica Bold` and
+    `Helvetica Oblique` work; a family list with `font-weight="bold"` / `font-style="italic"`
+    imports as regular). ChemDraw writes
     `Helvetica Oblique` too. resvg matches family names only (the TTC family is `Helvetica`), so
     `preview.rasterize` maps the two face names to the family list; the attributes pick the face.
   - **Negative control:** with no fonts loaded, nothing is drawn, so resvg never substitutes a
@@ -415,7 +422,8 @@ Rules (M4; unmeasured, user decisions 2026-10-25, flagged at review):
 - **§4.3 Affinity import:** confirmed by the user (2026-10-24, M1 SVGs at all three presets).
   Text imports as editable Helvetica at the same position, using `x`/`y` baselines with no
   `dominant-baseline`. The `species-…` groups appear as named layers, bonds are editable
-  strokes, and nothing moves.
+  strokes, and nothing moves. These checks apply to `--affinity` output (and to Inkscape output
+  pasted into Affinity): Affinity drops `<marker>` arrowheads on import (2026-10-26, lessons.md).
 
 ### Resolved by stereo_x*, clearance_x*, double_bonds_2 (2026-10-24)
 - **Hash count and spacing** (§1.2): measured on 27 hashes.

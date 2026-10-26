@@ -22,7 +22,7 @@ lone pairs (electrons.lone_pair_atoms); the species are drawn with those dots, s
 above count them. After placement, each step's curved arrows are laid out on its reactants
 (mechanism.plan_step).
 
-Groups (Affinity layers): species-<name> (with -bonds, -labels, -charges, -lone-pairs,
+Groups (editor layers): species-<name> (with -bonds, -labels, -charges, -lone-pairs,
 -radicals), plus-<i>, arrow-step-<n>, conditions-step-<n> (with -above / -below), numbers (with
 number-<name>), curved-arrows-step-<n> (with curved-arrow-step-<n>-<index>).
 """
@@ -478,11 +478,12 @@ def _arrow_parts(g: Group) -> Parts:
     """A reaction or resonance arrow as an obstacle for curved arrows: its shaft and the
     outlines of its heads."""
     out = Parts()
-    for leaf in g.leaves():
-        pts = leaf.points
-        closed = not isinstance(leaf, Polyline)
-        hw = leaf.width / 2 if isinstance(leaf, Polyline) else 0.0
-        out.bonds += [(a, b, hw, g.id) for a, b in zip(pts, pts[1:] + (pts[:1] if closed else []))]
+    for shaft in g.leaves():
+        for leaf in [shaft, *shaft.head_leaves()]:
+            pts = leaf.points
+            closed = not isinstance(leaf, Polyline)
+            hw = leaf.width / 2 if isinstance(leaf, Polyline) else 0.0
+            out.bonds += [(a, b, hw, g.id) for a, b in zip(pts, pts[1:] + (pts[:1] if closed else []))]
     return out
 
 
