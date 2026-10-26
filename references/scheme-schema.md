@@ -87,7 +87,8 @@ overrides:
 
 Map numbers are atom identities. They must be unique among a step's reactants (and among its
 products) and keep the same atom across steps. H atoms that move must be atoms in the SMILES
-(`[H:4]`). An arrow can't start or end inside an abbreviation.
+(`[H:4]`). A SMILES carbon with one H written as an atom gets its other H's as unmapped atoms
+(`[H:4][CH2:3]` draws three C–H bonds), so write only the H that moves. An arrow can't start or end inside an abbreviation.
 
 ### Electron bookkeeping (`electrons.py`)
 
@@ -221,7 +222,9 @@ right with `scheme.plus_gap` between their ink boxes.
 ## Drawn conventions (automatic)
 
 - **Labels:** heteroatoms and explicit H atoms are labeled; carbons are not, except isolated
-  ones and those chosen with `show_carbons` or a molfile alias. The H count goes on the side away from the bonds (H₂N– vs –NH₂).
+  ones and those chosen with `show_carbons` or a molfile alias. The H count goes on the side away from the bonds (H₂N– vs –NH₂);
+  a shown CH₃ that would run into another label or bond is set the other way (H₃C), and `validate`
+  reports a label that still overlaps.
 - **Charges:** charges of ±1 are drawn as bars (⊕/⊖ geometry from the preset). On a labeled
   atom they sit upper right, or above if the H is on the right. On an unlabeled atom they go
   on the bisector of the largest gap.

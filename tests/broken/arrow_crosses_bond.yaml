@@ -1,9 +1,10 @@
 # expect: curved-arrow-step-1-0 crosses a bond of etbr
 # E2 with the base's arrow forced nearly straight from the lower lone pair, through the zigzag to the H.
+# etbr is turned so H4 sits beyond the chain (C3 draws all three H's since 2026-10-26).
 preset: acs1996
 species:
   hydroxide: {smiles: "[H][O-:1]"}
-  etbr:      {smiles: "[H:4][CH2:3][CH2:2][Br:5]"}
+  etbr:      {smiles: "[H:4][CH2:3][CH2:2][Br:5]", orientation: {rotate: -60}}
   water:     {smiles: "[H:4][O:1][H]"}
   ethene:    {smiles: "[CH2:3]=[CH2:2]"}
   bromide:   {smiles: "[Br-:5]"}

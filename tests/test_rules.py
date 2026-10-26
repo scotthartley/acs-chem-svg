@@ -236,6 +236,25 @@ def test_show_carbons(which, labeled):
         assert "".join(r.text for r in d.labels[0].runs) in ("CH3", "H3C")
 
 
+ENOLATE2 = "[H:6][O:13][C:11]([CH3:12])([CH3:14])/[CH:5]=[C:3](/[CH3:2])[O-:4]"
+
+
+def test_crowded_ch3_flips_to_h3c():
+    """Inbox 2026-10-26: at flip_h + rotate 30, C12's CH₃ (h_side: right) runs into the O⁻, so it is set
+    as H₃C; at flip_h + rotate 180 both sides are blocked and it keeps CH₃ (tests/broken/label_overlap)."""
+    m = chem.show_carbons(chem.from_smiles(ENOLATE2, "enolate2", P.lengths.bond_length, rotate_deg=30, flip_h=True),
+                           "terminal")
+    d = Drawer(m, P)
+    i = m.by_id("12").idx
+    assert h_side(m, i) == "right" and d.labels[i].h_side == "left"
+    assert "".join(r.text for r in d.labels[i].runs) == "H3C"
+    assert not any(d.label_hits(j, lab) for j, lab in d.labels.items())
+    m = chem.show_carbons(chem.from_smiles(ENOLATE2, "enolate2", P.lengths.bond_length, rotate_deg=180, flip_h=True),
+                          "terminal")
+    d = Drawer(m, P)
+    assert "".join(r.text for r in d.labels[m.by_id("12").idx].runs) == "CH3"
+
+
 def test_show_carbons_rejects_unknown_ids():
     m = chem.from_smiles("CCO", "ethanol", P.lengths.bond_length)
     with pytest.raises(ValueError, match="no carbon with id 3"):
@@ -369,3 +388,23 @@ def test_hash_count_at_unlabeled_ends(n, count):
     d = drawer("stereo_x1.0", n)
     g = next(d.bond_geometry(b) for b in d.mol.bonds if b.stereo == "hash")
     assert len(g.hashes) == count
+
+
+@pytest.mark.parametrize("smiles, carbon, maps", [
+    ("[H:6][CH:5]([H:20])[C:3](=[O:4])[CH3:2]", 5, {6, 20}),  # acetone with two of C5's H's written: all three drawn
+    ("[H:4][CH2:3][CH2:2][Br:5]", 3, {4}),
+])
+def test_one_explicit_h_draws_all_of_a_carbons_hs(smiles, carbon, maps):
+    """Inbox 2026-10-26: a carbon with one H atom gets all its H's as atoms; added ones are unmapped."""
+    m = chem.from_smiles(smiles, "x", P.lengths.bond_length)
+    c = next(a for a in m.atoms if a.map == carbon)
+    hs = [m.atoms[j] for j, _ in m.neighbors(c.idx) if m.atoms[j].element == "H"]
+    assert len(hs) == 3 and c.num_h == 0
+    assert {h.map for h in hs} == maps | {None}
+    assert sorted(a.map for a in m.atoms if a.map) == sorted({a.GetAtomMapNum() for a in chem.parse_smiles(smiles).GetAtoms()} - {0})
+
+
+@pytest.mark.parametrize("smiles, n_atoms", [("C[O:5][H:7]", 3), ("C[OH+:4][H:10]", 3), ("[H:2][CH3:1]", 5)])
+def test_explicit_h_on_heteroatoms_left_alone(smiles, n_atoms):
+    m = chem.from_smiles(smiles, "x", P.lengths.bond_length)
+    assert len(m.atoms) == n_atoms

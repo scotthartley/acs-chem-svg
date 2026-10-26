@@ -93,3 +93,10 @@ def test_labels():
     for bad in ("x", "X1", "Cl-", "XYZ", ""):
         with pytest.raises(ValidationError, match="plain symbol"):
             spec([{"from": "x", "to": "hx"}], species=sp, labels={9: bad})
+
+
+def test_align_on_a_step_points_to_the_species():
+    with pytest.raises(ValidationError, match=r"align belongs on the species \(species.<name>.align\), not on a step"):
+        spec([{"from": "a", "to": "b", "align": False}], species={k: SPECIES[k] for k in "ab"})
+    with pytest.raises(ValidationError, match="orientation belongs on the species"):
+        spec([{"from": "a", "to": "b", "orientation": {"flip_h": True}}], species={k: SPECIES[k] for k in "ab"})

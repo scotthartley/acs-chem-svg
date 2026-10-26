@@ -2,6 +2,8 @@
 
 The output is a plain `Molecule` in pt, y down, so drawing never touches RDKit.
 
+- A SMILES carbon with one H written as an atom ([H:6][CH2:5]...) gets all its H's as atoms
+  (unmapped), so a drawn C–H never hides the others. Molfiles keep their own H atoms.
 - Kekulé bonds are kept as written. Aromatic SMILES are kekulized by RDKit, or
   per `kekule` (pairs of atom-map numbers that are double bonds).
 - SMILES get CoordGen 2D coordinates. A molfile keeps its layout. Either way the median
@@ -162,7 +164,10 @@ def parse_smiles(smiles: str, kekule: list[str] | None = None) -> Chem.Mol:
     mol = Chem.MolFromSmiles(smiles, params)
     if mol is None:
         raise ValueError(f"RDKit could not parse SMILES {smiles!r}")
-    return _sanitize(mol, kekule)
+    mol = _sanitize(mol, kekule)
+    partial = [a.GetIdx() for a in mol.GetAtoms() if a.GetSymbol() == "C" and a.GetTotalNumHs(includeNeighbors=False)
+               and any(n.GetAtomicNum() == 1 for n in a.GetNeighbors())]
+    return Chem.AddHs(mol, onlyOnAtoms=partial) if partial else mol
 
 
 def parse_molfile(text: str, kekule: list[str] | None = None) -> Chem.Mol:

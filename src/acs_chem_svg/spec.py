@@ -221,6 +221,16 @@ class Step(BaseModel):
     stages: list[str] | None = None  # "1. ..." above and "2. ..." below, left-justified
     arrows: list[CurvedArrow] = Field(default_factory=list)  # M3 curved arrows, drawn on the reactants
 
+    @model_validator(mode="before")
+    @classmethod
+    def _species_keys(cls, data):
+        if isinstance(data, dict):
+            misplaced = [k for k in ("align", "align_to", "orientation") if k in data]
+            if misplaced:
+                raise ValueError(f"{'/'.join(misplaced)} {'belongs' if len(misplaced) == 1 else 'belong'} on the species (species.<name>.{misplaced[0]}), "
+                                 "not on a step")
+        return data
+
     @model_validator(mode="after")
     def _stages(self):
         if self.stages is not None:

@@ -74,7 +74,8 @@ Worked example and common mistakes: `references/workflow.md`.
 ## Mechanisms (curved arrows)
 
 Map every atom an arrow touches (`[O-:1]`) and keep the map numbers across the scheme. H atoms
-that move must be written as atoms (`[H:4][CH2:3]…`). Arrows are drawn on the step's reactants:
+that move must be written as atoms (`[H:4][CH2:3]…`); a carbon with one H atom draws all its H's.
+Arrows are drawn on the step's reactants:
 ```yaml
 species:
   hydroxide: {smiles: "[H][O-:1]"}

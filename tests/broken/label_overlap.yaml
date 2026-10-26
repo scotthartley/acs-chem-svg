@@ -1,0 +1,5 @@
+# expect: species-enolate2: atom:12 label overlaps atom:4 label
+# Inbox 2026-10-26: gem-dimethyl beside O⁻. C12's CH3 runs into O4, and H3C would run into C14's H3C, so the flip can't help.
+preset: acs1996
+species:
+  enolate2: {smiles: '[H:6][O:13][C:11]([CH3:12])([CH3:14])/[CH:5]=[C:3](/[CH3:2])[O-:4]', show_carbons: terminal, orientation: {flip_h: true, rotate: 180}}

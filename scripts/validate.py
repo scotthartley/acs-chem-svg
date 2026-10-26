@@ -19,9 +19,9 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from acs_chem_svg.electrons import StepCheck, check_spec
-from acs_chem_svg.geometry_checks import check_mechanism, check_scheme
+from acs_chem_svg.geometry_checks import check_labels, check_mechanism, check_scheme
 from acs_chem_svg.layout import build_scheme, m1_row
-from acs_chem_svg.spec import load_spec
+from acs_chem_svg.spec import load_spec, molecules
 
 
 def validate(path: Path) -> list[str]:
@@ -38,8 +38,9 @@ def checked(path: Path) -> tuple[list[str], list[StepCheck]]:
         return [f"schema: {e}"], []
     try:
         if not spec.steps:
-            m1_row(spec, path.parent, path.stem)
-            return [], []
+            row = m1_row(spec, path.parent, path.stem)
+            return [f"geometry: {p}" for g, m in zip(row.children, molecules(spec, path.parent))
+                    for p in check_labels(m.name, g, m)], []
         checks = check_spec(spec, path.parent)
         electrons = [f"electrons: {p}" for c in checks for p in c.problems]
     except (ValueError, NotImplementedError, RuntimeError, FileNotFoundError) as e:

@@ -5,6 +5,8 @@ M2:
   must not overlap. M4 adds resonance arrows and brackets (each bracket as its bar and two
   lips, so the contributors inside it don't count as overlaps).
 - Conditions must not run past their arrow's tail or head.
+- Inside each species (M1 rows too: check_labels), an atom label must not overlap another
+  atom's label or a bond that isn't on that atom (draw_mol flips a crowded CH₃ to H₃C first).
 
 M3 (check_mechanism). Each curved arrow is sampled into a polyline (mechanism.SAMPLES
 segments), and these must hold:
@@ -23,10 +25,13 @@ from __future__ import annotations
 
 import math
 
+from .chem import Molecule
 from .geometry import point_box_dist, seg_point_dist, segment_box_dist, segment_distance, union_box
 from .layout import SchemeLayout
 from .mechanism import clashes, species_parts
-from .scene import Polyline
+from .scene import Group, Polyline
+
+LABEL_TOL = 0.05  # pt; boxes that only touch, or a bond end grazing a label, don't count
 
 
 def _overlap(a, b, tol: float = 0.0) -> bool:
@@ -67,7 +72,26 @@ def check_scheme(lay: SchemeLayout) -> list[str]:
                 ink = ln.ink()
                 if ink[0] < st.tail[0] or ink[2] > st.head[0]:
                     problems.append(f"conditions-step-{st.n}-{side}-{k} ({ln.text!r}) is wider than its arrow")
+    for n, p in lay.species.items():
+        problems += check_labels(n, p.group, p.mol)
     return problems
+
+
+def check_labels(name: str, group: Group, mol: Molecule) -> list[str]:
+    """Labels of one drawn species that overlap another atom's label, or a bond not on their atom."""
+    pt = species_parts(group)
+    problems = []
+    for k, (box, _, src) in enumerate(pt.labels):
+        atom_id = src.split(":", 1)[-1]
+        i = next((a.idx for a in mol.atoms if a.id == atom_id), None)
+        own = {b.id for _, b in mol.neighbors(i)} if i is not None else set()
+        for obox, _, osrc in pt.labels[k + 1:]:
+            if osrc != src and _overlap(box, obox, LABEL_TOL):
+                problems.append(f"species-{name}: {src} label overlaps {osrc} label")
+        for a, b, hw, bsrc in pt.bonds:
+            if own.isdisjoint(bsrc.split(":", 1)[-1].split(",")) and segment_box_dist(a, b, box) < hw - LABEL_TOL:
+                problems.append(f"species-{name}: {src} label overlaps {bsrc}")
+    return list(dict.fromkeys(problems))
 
 
 def check_mechanism(lay: SchemeLayout) -> list[str]:

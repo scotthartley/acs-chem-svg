@@ -540,7 +540,7 @@ Module `src/acs_chem_svg/draw_mol.py` unless noted.
 | Triple bonds | §1 | `Drawer.bond_geometry` |
 | Wedge outline | §1.2 | `Drawer.wedge_polygon`, `Drawer.wedge_wide_end` (notch), `Drawer.behind_wedge` (chain bond fills the notch) |
 | Hashed wedge | §1.2 | `Drawer.hash_lines` (stroked segments, length = outline width at the far edge; ChemDraw draws trapezoids) |
-| Which atoms are labeled; H side and justification | §2 | `is_labeled` (`Atom.show_label` from `chem.show_carbons` or a molfile alias), `h_side`, `element_x` |
+| Which atoms are labeled; H side and justification | §2 | `is_labeled` (`Atom.show_label` from `chem.show_carbons` or a molfile alias), `h_side` (then `Drawer.flip_crowded_labels`, unmeasured), `element_x` |
 | Label anchor, baseline, subscripts, right-to-left forms, run splitting | §2 | `layout_label` |
 | Terminal label centered between offset double-bond lines | §2 | `Drawer.center_terminal_labels`, `Label.shift` |
 | Bond-to-label clearance | §2.1 | `clip_distance` → `clip_distance_band` (`band_extent`); fit in `measure_refs.fit_label_clip`; F-rightward exception xfail |

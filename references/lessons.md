@@ -327,3 +327,23 @@ removed renders pixel-identical to the approved `m4_nitration_x1.0`. Inbox triag
   flips. At one flip it tied with the opposite side's flip and changed
   `m3_radical_propagation_x1.0` on rank alone. Phenol itself needs `orientation: {flip_h: true}`
   so its O–H faces X· (`tests/specs/phenol_x_abstraction.yaml`).
+
+## 2026-10-26 (inbox: acetone aldol condensation)
+
+- **`validate` never looked inside a species.** `check_scheme` compared whole species boxes,
+  so a CH₃ label running into an O⁻ in the same molecule passed. `geometry_checks.check_labels`
+  now reports a label that overlaps another atom's label or a bond not on its atom, for schemes
+  and M1 rows (`tests/broken/label_overlap.yaml`). It is clean on every example and on all 482
+  ChemDraw templates.
+- **A crowded CH₃ flips to H₃C** (user decision, unmeasured; ChemDraw keeps `h_side`'s rule).
+  `Drawer.flip_crowded_labels` keeps the flip only when the other side is clear. A gem-dimethyl
+  beside O⁻ at `{flip_h: true, rotate: 180}` is blocked both ways (H₃C would hit the other
+  methyl's H₃C), so the fix there is a different `orientation`, and the validator says so.
+- **`align` / `orientation` on a step** got pydantic's "extra inputs not permitted". It now says
+  they belong on the species.
+- **One explicit C–H drew only that H.** `[H:6][CH:5]([H:20])…` showed two of three H's.
+  `chem.parse_smiles` now adds a carbon's remaining H's as unmapped atoms when any of its H's is
+  written as an atom (SMILES only; molfiles keep their own). The electron bookkeeping already
+  treats unmapped H as implicit, so no spec needed changes. `m3_e2_x1.0` gained two C–H bonds,
+  and `tests/broken/arrow_crosses_bond.yaml` needed `orientation: {rotate: -60}` on etbr to keep
+  its arrow crossing the chain.

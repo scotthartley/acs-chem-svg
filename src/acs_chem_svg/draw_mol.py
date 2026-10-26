@@ -16,8 +16,8 @@ from dataclasses import dataclass, field
 from . import richtext
 from .chem import Bond, Molecule
 from .fontmetrics import FontFace, load_face
-from .geometry import (Point, add, angle_deg, dot, length, mul, perp, ray_box_exit, seg_point_dist, segment_distance,
-                       sub, unit)
+from .geometry import (Point, add, angle_deg, dot, length, mul, perp, ray_box_exit, seg_point_dist, segment_box_dist,
+                       segment_distance, sub, unit)
 from .preset import Preset
 from .scene import Circle, Group, Polygon, Polyline, TextRun
 
@@ -63,7 +63,9 @@ def is_labeled(mol: Molecule, i: int) -> bool:
 
 
 def h_side(mol: Molecule, i: int) -> str:
-    """H goes opposite the mean bond direction in x; right on a tie (§2, H₂N vs NH₂)."""
+    """H goes opposite the mean bond direction in x; right on a tie (§2, H₂N vs NH₂).
+    Drawer.flip_crowded_labels then swaps a shown CH₃ to the other side when this side runs into
+    another label or bond: a deviation from ChemDraw's rule (a hand-placement choice, unmeasured)."""
     a = mol.atoms[i]
     sx = sum(unit(sub(mol.atoms[j].p, a.p))[0] for j, _ in mol.neighbors(i))
     return "left" if sx > 1e-6 else "right"
@@ -247,6 +249,10 @@ class DotSet:
     dots: list[Point]
 
 
+def _boxes_overlap(a, b) -> bool:
+    return a[0] < b[2] and b[0] < a[2] and a[1] < b[3] and b[1] < a[3]
+
+
 def _side_name(d: Point) -> str:
     return max(SIDES, key=lambda k: dot(SIDES[k], d))
 
@@ -259,11 +265,36 @@ class Drawer:
         self.face = face or load_face("Regular")
         self.labels = {i: layout_label(mol, i, preset, self.face)
                        for i in range(len(mol.atoms)) if is_labeled(mol, i)}
+        self.flip_crowded_labels()
         self.center_terminal_labels()
         self.show_lone_pairs = set(show_lone_pairs or ())  # atom indices whose lone pairs are drawn
         # atom index -> {"pair" | "radical": direction toward its arrow's target}: that set faces it
         self.tails = tails or {}
         self._dots: dict[int, list[DotSet]] | None = None
+
+    def label_hits(self, i: int, label: Label) -> bool:
+        """Does atom i's label overlap another atom's label, or a bond not on atom i (its
+        atom-to-atom segment, half a line width wide)?"""
+        hw = self.preset.lengths.line_width / 2
+        boxes = [b for b in (r.bbox() for r in label.runs) if b]
+        others = [b for j, lab in self.labels.items() if j != i for b in (r.bbox() for r in lab.runs) if b]
+        if any(_boxes_overlap(a, b) for a in boxes for b in others):
+            return True
+        return any(segment_box_dist(self.mol.atoms[b.a].p, self.mol.atoms[b.b].p, box) < hw
+                   for b in self.mol.bonds if i not in (b.a, b.b) for box in boxes)
+
+    def flip_crowded_labels(self) -> None:
+        """A shown terminal carbon label (CH₃) whose h_side form runs into another label or a
+        bond is set the other way (H₃C) when that side is clear; otherwise it stays, and
+        geometry_checks reports the overlap. Unmeasured: ChemDraw keeps h_side's rule."""
+        for i, lab in list(self.labels.items()):
+            a = self.mol.atoms[i]
+            if a.element != "C" or not a.show_label or a.abbrev is not None or not a.num_h or self.mol.degree(i) != 1:
+                continue
+            if self.label_hits(i, lab):
+                alt = layout_label(self.mol, i, self.preset, self.face, "left" if lab.h_side == "right" else "right")
+                if not self.label_hits(i, alt):
+                    self.labels[i] = alt
 
     def center_terminal_labels(self) -> None:
         """A label on a degree-1 atom at the end of an offset double bond sits centered
