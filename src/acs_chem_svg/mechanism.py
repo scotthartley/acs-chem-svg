@@ -13,8 +13,10 @@ Hand-placed (§4.2, round placement defaults):
   - lp(n): tail_gap beyond the outer edge of the chosen pair, outward. The pair is the one
     facing the bow side and the target, or `tail_side`.
   - electron(n): the same, from the radical dot.
-  - bond(a-b): bond_tail_gap off the bond axis at its midpoint, on the bow side. Two arrows
-    from one bond take opposite sides.
+  - bond(a-b): bond_tail_gap off the bond axis at its midpoint, on the bow side, or that far
+    beyond the bond's second line when it lies on that side (inside a ring double bond). Two
+    arrows from one bond prefer opposite sides; on the same side (counted like two flips), the
+    second tail moves bond_tail_gap along the bond toward its target.
 - Head: the tip points at the target, head_gap from it.
   - atom(n): the target is n's element ink box, or n's center when unlabeled. The tip keeps
     head_gap from the box and from n's dots, at the nearest point (clear_along), so it stops
@@ -322,9 +324,9 @@ class Planner:
             b0 = self.default_bow(arr, s0, p_anchor)
             bows = [mul(b0, -1)] if flip else [b0]
         key = frozenset(src.atoms) if src.kind == "bond" else None
-        if key is not None and key in self.bond_sides and not o.bow and self.strict:
-            nb = self.bond_normal(src)  # a second arrow from this bond: the other side
-            bows = [b for b in bows if (1.0 if dot(nb, b) >= 0 else -1.0) != self.bond_sides[key]]
+        same = False  # a second arrow from this bond on the first one's side (its tail slides along the bond)
+        if key is not None and key in self.bond_sides:
+            same = (1.0 if dot(self.bond_normal(src), bows[0]) >= 0 else -1.0) == self.bond_sides[key]
         sets: list = [None]
         if src.kind in ("lp", "electron"):
             ref = self.ref(src.atoms[0], src.text)
@@ -356,13 +358,14 @@ class Planner:
                 for rank_f, soft in enumerate(SOFTER if o.curvature is None else (1.0,)):
                     for rank_x, extra in enumerate(FARTHER):
                         for pick, far in itertools.product(range(ROOTS), sides):
-                            cand = self.build(step, index, arr, o, name, bow, ds, s0, p_anchor, pick, soft, extra, far)
+                            cand = self.build(step, index, arr, o, name, bow, ds, s0, p_anchor, pick, soft, extra, far,
+                                              same)
                             if cand is None:
                                 if far == sides[-1]:
                                     break
                                 continue
                             score = (len(clashes(cand, self.parts, self.done, self.preset)) + (not aims(cand, r)),
-                                     flip, rank_b + rank_s + rank_f + rank_x + pick + far)
+                                     flip + 2 * (same and not o.bow), rank_b + rank_s + rank_f + rank_x + pick + far)
                             if best is None or score < best[0]:
                                 best = (score, cand, bow, ds)
                         if best[0][0] == 0 and rank_x == 0:
@@ -392,8 +395,29 @@ class Planner:
         lo, hi = sorted(src.atoms)
         return perp(unit(sub(self.atoms[hi].p, self.atoms[lo].p)))
 
+    def bond_tail(self, src, s0: Point, bow: Point, p_anchor: Point, same: bool) -> Point:
+        """A bond tail: bond_tail_gap off the axis on the bow side, or that far beyond the bond's
+        second line when an offset double bond draws it on that side (inside a ring). `same`
+        (the bond's earlier arrow left from this side): also bond_tail_gap along the bond,
+        toward the target, so the two tails don't meet."""
+        gap = self.preset.curved_arrow.bond_tail_gap
+        lo, hi = sorted(src.atoms)
+        u = unit(sub(self.atoms[hi].p, self.atoms[lo].p))
+        nb = perp(u)
+        nb = nb if dot(nb, bow) >= 0 else mul(nb, -1)
+        sp = self.atoms[lo].species
+        lines = [dot(sub(mul(add(a, b), 0.5), s0), nb) for a, b, _, _ in self.parts.get(sp, Parts()).bonds
+                 if length(sub(b, a)) > 1e-9 and abs(dot(unit(sub(b, a)), u)) > 0.999
+                 and min(dot(sub(a, s0), u), dot(sub(b, s0), u)) < 0 < max(dot(sub(a, s0), u), dot(sub(b, s0), u))]
+        on_axis = any(abs(v) < 0.1 * gap for v in lines)  # an offset double bond (a centered one keeps the gap)
+        inner = max([v for v in lines if 0.5 * gap < v < 2 * gap], default=0.0) if on_axis else 0.0
+        tail = add(s0, mul(nb, inner + gap))
+        if same:
+            tail = add(tail, mul(u, gap if dot(u, sub(p_anchor, s0)) >= 0 else -gap))
+        return tail
+
     def build(self, step, index, arr, o, name, bow, ds, s0, p_anchor, pick=0, soft=1.0,
-              extra=0.0, far=0) -> MechArrow | None:
+              extra=0.0, far=0, same=False) -> MechArrow | None:
         """The arrow for one bow, tail set and solve_end root (`pick`), its curvature times
         `soft` and its tip `extra` beyond head_gap; None past the last root. A bond target's
         tip goes on the tail's side of the bond, or with `far` the other side (a ring bond next
@@ -402,9 +426,7 @@ class Planner:
         ca, r = P.curved_arrow, P.lone_pair.dot_radius
         src = arr.source
         if src.kind == "bond":
-            nb = self.bond_normal(src)
-            side = 1.0 if dot(nb, bow) >= 0 else -1.0
-            tail = add(s0, mul(nb, side * ca.bond_tail_gap))
+            tail = self.bond_tail(src, s0, bow, p_anchor, same)
         else:
             tail = add(ds.center, mul(ds.direction, r + ca.tail_gap))
         tkind, tdata = self.target(arr)

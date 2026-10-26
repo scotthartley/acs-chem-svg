@@ -44,12 +44,22 @@ M4: resonance steps, several sequences, and wrapping into rows.
 
 A step's `from` starts with one or more of the previous step's products, in order; the rest
 of those products are by-products left behind, and further reactants are added ("+ X").
+A resonance step may follow a step with several products: the first product opens the bracket
+and the rest are drawn after it ("+ HX").
+
+Generic atoms (X, R, Nu): write a real element in the SMILES as a stand-in and relabel it by
+atom-map number; the electron bookkeeping keeps the stand-in (Cl for a radical X·).
+
+    species:
+      xrad: {smiles: "[Cl:9]"}
+      hx:   {smiles: "[H:7][Cl:9]"}
+    labels: {9: X}                       # drawn X, HX
 """
 
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Annotated, Literal, Union
 
@@ -62,6 +72,7 @@ from .preset import available, load_preset
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MAX_STAGES = 2  # multistep arrows with more stages are unmeasured (acs-style.md §6 Open)
+LABEL_TEXT = re.compile(r"^[A-Z][a-z]?'*$")  # a generic atom label: X, R, Nu, R'
 
 
 @dataclass(frozen=True)
@@ -314,6 +325,7 @@ class Spec(BaseModel):
     layout: Layout = Field(default_factory=Layout)
     numbers: dict[str, int | str] | None = None
     align: Literal["auto"] | bool = "auto"
+    labels: dict[int, str] = Field(default_factory=dict)  # atom-map number -> drawn symbol (X); chemistry keeps the SMILES element
     overrides: Overrides = Field(default_factory=Overrides)
 
     @field_validator("preset")
@@ -321,6 +333,15 @@ class Spec(BaseModel):
     def _known(cls, v):
         if v not in available():
             raise ValueError(f"unknown preset {v!r}; available: {', '.join(available())}")
+        return v
+
+    @field_validator("labels")
+    @classmethod
+    def _label_text(cls, v):
+        for m, t in v.items():
+            if not LABEL_TEXT.match(t):
+                raise ValueError(f"labels: {m}: {t!r} must be a plain symbol: a capital letter, an optional "
+                                 "lower-case one and primes (X, R, Nu, R')")
         return v
 
     @model_validator(mode="after")
@@ -359,9 +380,10 @@ class Spec(BaseModel):
                 for n in st.resonance:
                     if n not in names:
                         raise ValueError(f"step {i}: unknown species {n!r}")
-                if prev and prev != st.resonance[:1]:
+                if prev and prev[0] != st.resonance[0]:
                     raise ValueError(f"step {i}: the first contributor {st.resonance[0]!r} must be the previous step's "
-                                     f"only product (it has {prev}); the bracket starts with it")
+                                     f"first product (it has {prev}); the bracket opens with it and the other "
+                                     "products follow the bracket")
                 written = st.products
                 st.resonance = (prev_ids[:1] if prev else [occurrence(st.resonance[0], False)]) + \
                     [occurrence(n, True) for n in st.resonance[1:]]
@@ -468,6 +490,22 @@ def parsed_species(spec: Spec, base_dir: Path) -> dict[str, Chem.Mol]:
     return {n: _parsed(sp, base_dir, n)[0] for n, sp in spec.species.items()}
 
 
+def check_labels(spec: Spec, base_dir: Path) -> None:
+    """Every `labels` map number must be on an atom of some species."""
+    maps = {a.GetAtomMapNum() for m in parsed_species(spec, base_dir).values() for a in m.GetAtoms()}
+    unknown = sorted(set(spec.labels) - maps)
+    if unknown:
+        raise ValueError(f"labels: no atom has map number {', '.join(map(str, unknown))}")
+
+
+def relabel(spec: Spec, mol: chem.Molecule) -> chem.Molecule:
+    """The drawing's atoms with `labels` symbols in place of their stand-in elements."""
+    if not spec.labels or not any(a.map in spec.labels for a in mol.atoms):
+        return mol
+    return replace(mol, atoms=[replace(a, element=spec.labels[a.map]) if a.map in spec.labels else a
+                               for a in mol.atoms])
+
+
 def molecules(spec: Spec, base_dir: Path) -> list[chem.Molecule]:
     """M1: every species laid out on its own."""
     bl = load_preset(spec.preset).lengths.bond_length
@@ -481,7 +519,8 @@ def molecules(spec: Spec, base_dir: Path) -> list[chem.Molecule]:
             rot = 0.0 if o.rotate is None else o.rotate
             mol = chem.from_molfile(resolve_molfile(sp.molfile, base_dir), name, bl, sp.kekule,
                                     rot, o.flip_h, o.flip_v, sp.abbreviate)
-        out.append(chem.show_carbons(mol, sp.show_carbons))
+        out.append(relabel(spec, chem.show_carbons(mol, sp.show_carbons)))
+    check_labels(spec, base_dir)
     return out
 
 
@@ -523,5 +562,6 @@ def scheme_prepared(spec: Spec, base_dir: Path) -> dict[str, chem.Prepared]:
 
 
 def scheme_molecules(spec: Spec, base_dir: Path) -> dict[str, chem.Molecule]:
-    return {n: chem.show_carbons(p.molecule(), spec.species[n].show_carbons)
+    check_labels(spec, base_dir)
+    return {n: relabel(spec, chem.show_carbons(p.molecule(), spec.species[n].show_carbons))
             for n, p in scheme_prepared(spec, base_dir).items()}

@@ -5,6 +5,7 @@ from functools import lru_cache
 from pathlib import Path
 
 import pytest
+import yaml
 from pydantic import ValidationError
 from rdkit import Chem
 from validate import validate
@@ -14,6 +15,7 @@ from acs_chem_svg.brackets import square_bracket
 from acs_chem_svg.electrons import check_resonance
 from acs_chem_svg.layout import build_scheme
 from acs_chem_svg.preset import load_preset
+from acs_chem_svg.scene import TextRun
 from acs_chem_svg.spec import ResonanceStep, Spec, load_spec
 
 REPO = Path(__file__).resolve().parents[1]
@@ -65,7 +67,7 @@ def test_resonance_step_chains_on_its_last_contributor():
 
 
 def test_resonance_rules():
-    with pytest.raises(ValidationError, match="only product"):
+    with pytest.raises(ValidationError, match="previous step's first product"):
         spec([{"from": "p", "to": "x"}, {"resonance": ["y", "x"]}], species=ALLYL)
     with pytest.raises(ValidationError, match="one list per contributor"):
         spec([{"resonance": ["x", "y"], "arrows": [[SHIFT], [SHIFT]]}], species={k: ALLYL[k] for k in "xy"})
@@ -73,6 +75,29 @@ def test_resonance_rules():
         spec([{"resonance": ["x"]}], species={"x": ALLYL["x"]})
     with pytest.raises(ValidationError):  # no conditions on a resonance step
         spec([{"resonance": ["x", "y"], "above": "hv"}], species={k: ALLYL[k] for k in "xy"})
+
+
+def test_resonance_after_a_step_with_by_products(tmp_path):
+    sp = {**ALLYL, "w": {"smiles": "O"}}
+    s = spec([{"from": "p", "to": ["x", "w"]}, {"resonance": ["x", "y"], "arrows": [[SHIFT]]}], species=sp)
+    assert s.order() == ["p", "x", "w", "y"] and s.steps[1].sources == ["x"]
+    lay = build_scheme(s, EX, "byproduct")
+    (res,) = lay.resonance
+    w = lay.species["w"].group.ink_bbox()
+    assert w[0] > res.bar_x[1] and len(lay.pluses) == 1 and lay.pluses[0].x > res.bar_x[1]
+    path = tmp_path / "byproduct.yaml"
+    path.write_text(yaml.safe_dump({"species": sp, "steps": [{"from": "p", "to": ["x", "w"]},
+                                                             {"resonance": ["x", "y"], "arrows": [[SHIFT]]}]}))
+    assert validate(path) == []
+
+
+def test_phenol_h_abstraction_by_x():
+    path = REPO / "tests" / "specs" / "phenol_x_abstraction.yaml"
+    assert validate(path) == []
+    lay = build_scheme(load_spec(path), path.parent, "phenol")
+    texts = {n: "".join(r.text for r in lay.species[n].group.leaves() if isinstance(r, TextRun)) for n in ("xrad", "hx")}
+    assert texts == {"xrad": "X", "hx": "HX"}
+    assert lay.species["hx"].group.ink_bbox()[0] > lay.resonance[0].bar_x[1]
 
 
 def test_resonance_override_index_counts_all_lists():

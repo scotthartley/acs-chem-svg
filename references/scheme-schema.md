@@ -34,6 +34,7 @@ align: auto                # or false: every species on its own layout
 | `species.<name>.align` | bool (default true) | A product takes the orientation of the species it is drawn from: atoms shared by atom map (≥ 2 common maps), else by maximum common substructure, keep their coordinates. `false` = own layout. Molfile species keep their layout unless `align_to` is set. |
 | `species.<name>.align_to` | name | Align to this species instead (it must be drawn earlier). |
 | `align` | `auto` \| `false` | `false` turns alignment off for the whole scheme. |
+| `labels` | map number → symbol | Draw a generic atom (X, Y, R, Nu, R′ as `R'`): `labels: {9: X}` draws atom 9 as X in every species. Write a real element with the same bonds, H count and electrons as its stand-in in the SMILES (`[Cl:9]` for a radical X·, `[H:6][Cl:9]` for HX); the electron bookkeeping uses the stand-in. Each map number must be on some atom. |
 
 An aligned species can't also set `orientation` (set `align: false` to orient it yourself). Each
 species is drawn once; give a repeated compound a second name.
@@ -151,7 +152,7 @@ steps:
   - {from: [nitric, sulfuric], to: [nitric_h, bisulfate], arrows: [...]}
   - {from: nitric_h, to: [nitronium, water], arrows: [...]}       # bisulfate: a by-product
   - {new_row: true, from: [benzene, nitronium], to: sigma_a, arrows: [...]}  # nitronium again
-  - resonance: [sigma_a, sigma_b, sigma_c]                        # first = the previous step's product
+  - resonance: [sigma_a, sigma_b, sigma_c]                        # first = the previous step's first product
     arrows:                                                       # one list per contributor but the last
       - [{from: "bond(13=14)", to: "between(12,13)"}]
       - [{from: "bond(15=16)", to: "between(14,15)"}]
@@ -162,7 +163,7 @@ steps:
 |---|---|---|
 | `steps[].new_row` | bool | Start a new sequence on a new row: `from` is required and the chain starts again. |
 | repeated names | — | A species named again later in the scheme (in any step) is drawn again: occurrence k is a copy with the id `name~k`, aligned to its own predecessor like any product. `numbers:` apply to the first occurrence. To give a copy its own options, declare it: `species: {"nitronium~2": {smiles: ..., align: false}}`. A copy that is a product drops the original's `orientation` (it aligns). |
-| `steps[].resonance` | list of ≥ 2 names | Contributors in square brackets, joined by double-headed arrows. The first must be the previous step's only product (or the step is the first). The next step continues from the last contributor. No conditions. |
+| `steps[].resonance` | list of ≥ 2 names | Contributors in square brackets, joined by double-headed arrows. The first must be the previous step's first product (or the step is the first); that step's other products are drawn after the closing bracket ("] + HX"). The next step continues from the last contributor. No conditions. |
 | `steps[].arrows` (resonance) | list of lists | List k is drawn on contributor k and must give contributor k + 1. Omit `arrows` for none. `overrides.arrows[].index` counts across the lists in order. |
 | `layout.width` | pt | Wrap width. Rows break only between steps; a unit that can't fit alone is an error. |
 

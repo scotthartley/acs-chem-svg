@@ -96,6 +96,7 @@ overrides:
 - Every step's arrows must turn its reactants into its products exactly (charges, radicals,
   bond orders, H moved). Read the validator's message; it names the arrow and the atom, and
   on a product mismatch it prints paste-ready `suggested:` products.
+- Generic atoms (X·, R): a stand-in element in the SMILES plus `labels: {9: X}` (map → symbol).
 - Lone pairs are drawn on arrow-tail and arrow-target atoms and on atoms that gain a pair; add
   others with `show_lone_pairs: [n]` per species. Radicals are always drawn.
 - `render.py` prints each arrow's default `bow`. If an arrow crosses something, try
@@ -111,7 +112,7 @@ overrides:
 layout: {width: 504}                                  # optional; pt
 steps:
   - {from: [benzene, nitronium], to: sigma_a, arrows: [...]}
-  - resonance: [sigma_a, sigma_b, sigma_c]            # first = the previous step's only product
+  - resonance: [sigma_a, sigma_b, sigma_c]            # first = the previous step's first product
     arrows: [[{from: "bond(13=14)", to: "between(12,13)"}], [...]]   # list k: contributor k -> k+1
   - {from: [sigma_c, bisulfate], to: [nitrobenzene, sulfuric], arrows: [...]}
   - {new_row: true, from: [a, b], to: c}             # another sequence, on a new row

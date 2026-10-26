@@ -319,6 +319,7 @@ Curvature is dimensionless and gets a round ratio, the same at every preset.
 | Radical on a labeled atom (Cl·): a free side, like a lone pair | `lone_pair.gap` | 1.94 | 1.36 | 1.28 | (rule) |
 | Tail from a lone pair: beyond the dots' outer edge, outward | 2.5 / 1.5 / 1.5 | 2.61 | 1.37 | 1.41 | `curved_arrow.tail_gap` |
 | Tail from a bond: off the bond axis at its midpoint | 2.5 / 2.0 / 1.5 | 2.12, 2.82 (tails 2.0–2.5 along the bond from the midpoint) | 1.70, 2.25 | 1.28, 1.69 | `curved_arrow.bond_tail_gap` |
+| Two arrows from one bond; a tail beside a double bond's second line | Opposite sides preferred. On the inner side of an offset (ring) double bond the tail starts `bond_tail_gap` beyond the second line. On the same side (used only when the opposite side clashes, or by `bow`), the second tail also moves `bond_tail_gap` along the bond toward its target | | | | rule (user decision 2026-10-26; unmeasured) |
 | Head tip → target element ink box (unlabeled atom: its center); the nearest distance, to the box or one of the atom's dots, whichever is nearer | 2.5 / 1.5 / 1.5 | 2.59 (2e⁻ → CH₃); fishhooks: Cl 1.70, C 2.89 | 1.31; 1.01, 1.58 | 1.30; 0.31, 0.56 | `curved_arrow.head_gap` |
 | Arc: control offset / chord | 0.5 | 0.531 | 0.531 | 0.531 | `curved_arrow.curvature` |
 | Loop (chord shorter than a bond): control offset / chord | 1.3 | 1.311 | 1.310 | 1.310 | `curved_arrow.loop_curvature` |

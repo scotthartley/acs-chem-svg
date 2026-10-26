@@ -85,3 +85,11 @@ def test_curved_arrows_and_overrides():
     with pytest.raises(ValidationError, match="raw|extra|Extra"):
         spec([{"from": "a", "to": "b", "arrows": [{"from": "lp(1)", "to": "atom(2)"}]}], species=sp,
              overrides={"arrows": [{"step": 1, "index": 0, "x": 3.0}]})  # no raw coordinates
+
+
+def test_labels():
+    sp = {"x": {"smiles": "[Cl:9]"}, "hx": {"smiles": "[ClH:9]"}}
+    assert spec([{"from": "x", "to": "hx"}], species=sp, labels={9: "X"}).labels == {9: "X"}
+    for bad in ("x", "X1", "Cl-", "XYZ", ""):
+        with pytest.raises(ValidationError, match="plain symbol"):
+            spec([{"from": "x", "to": "hx"}], species=sp, labels={9: bad})

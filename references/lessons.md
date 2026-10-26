@@ -304,3 +304,26 @@ removed renders pixel-identical to the approved `m4_nitration_x1.0`. Inbox triag
 - Editor checks of a new encoding need all three: Inkscape, Chrome and Affinity. Inkscape and
   Chrome can be checked here (`inkscape f.svg --export-type=png`; headless Chrome needs to run
   outside the sandbox); Affinity needs the user.
+
+## 2026-10-26 (inbox: phenol H abstraction by X·)
+
+- **Generic atoms are a drawing label over a real stand-in.** SMILES can't put a radical on
+  `*`, so `[*:9]` with `electron(9)` failed. `labels: {9: X}` (spec level, by map number)
+  replaces the drawn symbol only. Valence, lone pairs, radicals and the octet checks still use
+  the stand-in (`[Cl:9]` for X·, `[H:6][Cl:9]` for HX). Pick a stand-in with the bonds and H
+  count the label should show: a `[CH3:9]` stand-in for R would draw RH₃.
+- **A resonance bracket may follow a step with by-products.** The first product opens the
+  bracket and the rest follow it with "+" (`… ] + HX`). Before, abstraction and resonance had to
+  be two specs.
+- **Fishhook bookkeeping stays strict, and its message now names the missing arrow.** H
+  abstraction takes three fishhooks (`m3_radical_propagation_x1.0`). With two, both odd bonds
+  now say `add {type: fishhook, from: "bond(1-2)", to: "between(2,9)"}`.
+- **Two fishhooks from a ring double bond.** In phenoxy → o-radical, the fishhooks from
+  `bond(3=4)` took opposite sides, so the one to `atom(3)` started inside the ring on the
+  double bond's inner line, and no `bow` combination validated. Both fixes are allowed (user
+  decision): an inside tail starts `bond_tail_gap` past the inner line (offset double bonds
+  only; centered ones keep the gap from the axis), and the second arrow may share the first's
+  side, its tail moved `bond_tail_gap` along the bond toward its target. Same-side scores as two
+  flips. At one flip it tied with the opposite side's flip and changed
+  `m3_radical_propagation_x1.0` on rank alone. Phenol itself needs `orientation: {flip_h: true}`
+  so its O–H faces X· (`tests/specs/phenol_x_abstraction.yaml`).

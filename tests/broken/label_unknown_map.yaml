@@ -1,0 +1,5 @@
+# expect: labels: no atom has map number 8
+preset: acs1996
+species:
+  xrad: {smiles: "[Cl:9]"}
+labels: {8: X}

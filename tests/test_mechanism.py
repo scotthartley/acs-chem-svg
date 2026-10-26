@@ -260,3 +260,32 @@ def test_fishhook_markers_take_both_sides():
     from acs_chem_svg.mechanism import head_marker
     ids = {head_marker(*CURVES[c][1:], "fishhook", P).id for c in ("up", "down")}
     assert ids == {"acs1996-head-fishhook-left", "acs1996-head-fishhook-right"}
+
+
+PHENOL = Path(__file__).resolve().parent / "specs" / "phenol_x_abstraction.yaml"
+
+
+@pytest.mark.parametrize("bow", [None, "left", "right"])
+def test_two_fishhooks_from_a_ring_double_bond(bow, tmp_path):
+    """inbox 2026-10-26: phenoxy -> o-radical. The fishhook to atom(3) inside the ring starts
+    past the double bond's inner line; on the same side as its partner (bow: left), its tail
+    slides along the bond toward atom 3. Either way nothing crosses."""
+    import yaml
+    data = yaml.safe_load(PHENOL.read_text())
+    if bow:
+        data["overrides"] = {"arrows": [{"step": 2, "index": 2, "bow": bow}]}
+    path = tmp_path / "phenol.yaml"
+    path.write_text(yaml.safe_dump(data))
+    assert validate(path) == []
+    lay = build_scheme(load_spec(path), PHENOL.parent, "phenol")
+    one, two = (a for a in lay.curved if a.step == 2 and a.index in (1, 2))
+    sp = lay.species["phenoxy"]
+    c3, c4 = (next(add(a.p, sp.offset) for a in sp.mol.atoms if a.map == m) for m in (3, 4))
+    mid, u = mul(add(c3, c4), 0.5), unit(sub(c3, c4))
+    n = (-u[1], u[0])
+    off = [dot(sub(a.p0, mid), n) for a in (one, two)]
+    gap = P.curved_arrow.bond_tail_gap
+    if (off[0] > 0) == (off[1] > 0):  # same side: the second tail moved toward atom 3
+        assert dot(sub(two.p0, mid), u) == pytest.approx(gap)
+    else:  # the inner tail is past the inner line, not at bond_tail_gap
+        assert max(abs(v) for v in off) > gap + 1.0

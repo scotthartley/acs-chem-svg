@@ -352,8 +352,11 @@ def _place(spec: Spec, out: SchemeLayout, breaks: set[tuple[str, int]], rings: d
             unit("products", i, s.arrow_gap)
         x += s.arrow_gap
         if i < len(spec.steps) and isinstance(spec.steps[i], ResonanceStep):
-            put_bracket(i + 1)
-            after_bracket = True
+            put_bracket(i + 1)  # opens with the first product; by-products follow the bracket ("+ HX")
+            after_bracket = len(st.products) == 1
+            if not after_bracket:
+                plus()
+                put_species(st.products[1:])
         else:
             put_species(st.products)
             after_bracket = False

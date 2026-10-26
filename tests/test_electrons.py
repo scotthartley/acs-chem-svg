@@ -155,3 +155,17 @@ def test_suggested_water_draws_both_h():
              [{"from": "lp(1)", "to": "between(1,4)"}, {"from": "bond(3-4)", "to": "between(2,3)"},
               {"from": "bond(2-5)", "to": "atom(5)"}])
     assert c.suggested[0] == ("p0", "[O:1]([H:4])[H]")
+
+
+def test_odd_fishhooks_say_which_arrow_is_missing():
+    # inbox 2026-10-26: H abstraction drawn with two fishhooks; the third goes from O-H to the new H-X bond
+    c = step(["[cH:3]1[cH:4][cH:5][cH:6][cH:7][c:8]1[O:1][H:2]", "[Cl:9]"],
+             ["[cH:3]1[cH:4][cH:5][cH:6][cH:7][c:8]1[O:1]", "[H:2][Cl:9]"],
+             [{"type": "fishhook", "from": "bond(1-2)", "to": "atom(1)"},
+              {"type": "fishhook", "from": "electron(9)", "to": "between(2,9)"}])
+    hint = 'add {type: fishhook, from: "bond(1-2)", to: "between(2,9)"}'
+    assert sum(hint in p for p in c.problems) == 2, c.problems
+    c = step(["[Br:1][Br:2]"], ["[Br:1]", "[Br:2]"], [{"type": "fishhook", "from": "bond(1-2)", "to": "atom(1)"}])
+    assert any("add a fishhook from bond(1-2) to atom(1) or atom(2)" in p for p in c.problems), c.problems
+    c = step(["[Br:1]", "[Br:2]"], ["[Br:1][Br:2]"], [{"type": "fishhook", "from": "electron(1)", "to": "between(1,2)"}])
+    assert any("to between(1,2)" in p for p in c.problems), c.problems

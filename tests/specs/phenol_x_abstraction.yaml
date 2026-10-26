@@ -1,0 +1,24 @@
+# inbox 2026-10-26: phenol H abstraction by a generic radical X·, then the phenoxy radical's
+# resonance; HX (a by-product of step 1) follows the bracket. X is drawn for the Cl stand-in.
+# The two fishhooks from bond(3=4) take opposite sides; the inner one starts past the ring
+# double bond's inner line.
+preset: acs1996
+species:
+  phenol:  {smiles: "[cH:1]1[cH:2][cH:3][c:4]([O:5][H:6])[cH:7][cH:8]1", orientation: {flip_h: true}}
+  xrad:    {smiles: "[Cl:9]"}
+  phenoxy: {smiles: "[cH:1]1[cH:2][cH:3][c:4]([O:5])[cH:7][cH:8]1", kekule: ["3=4", "1=2", "7=8"]}
+  hx:      {smiles: "[H:6][Cl:9]"}
+  ortho:   {smiles: "[CH:1]1=[CH:2][CH:3][C:4](=[O:5])[CH:7]=[CH:8]1"}
+labels: {9: X}
+steps:
+  - from: [phenol, xrad]
+    to: [phenoxy, hx]
+    arrows:
+      - {type: fishhook, from: "electron(9)", to: "between(6,9)"}
+      - {type: fishhook, from: "bond(5-6)", to: "between(6,9)"}
+      - {type: fishhook, from: "bond(5-6)", to: "atom(5)"}
+  - resonance: [phenoxy, ortho]
+    arrows:
+      - - {type: fishhook, from: "electron(5)", to: "between(4,5)"}
+        - {type: fishhook, from: "bond(3=4)", to: "between(4,5)"}
+        - {type: fishhook, from: "bond(3=4)", to: "atom(3)"}

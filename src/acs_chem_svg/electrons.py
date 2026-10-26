@@ -208,11 +208,12 @@ def apply_arrows(model: Model, arrows: list[CurvedArrow], where: str) -> tuple[M
         new.bonds[pair] = new.bonds.get(pair, 0) + d
     for pair in [p for p, e in new.bonds.items() if e == 0]:
         del new.bonds[pair]
+    odd = [p for p, e in new.bonds.items() if e % 2]
     for pair, e in new.bonds.items():
         ms = "-".join(str(new.atoms[k].map or "?") for k in sorted(pair))
         if e % 2:
             problems.append(f"{where}: bond {ms} ends with {e} electrons; a bond needs an even number "
-                            "(fishhooks come in pairs)")
+                            f"(fishhooks come in pairs){_pairing_hint(model, pair, odd, de)}")
         elif e > 6:
             problems.append(f"{where}: bond {ms} ends as a {e // 2}-fold bond")
     for k in touched:
@@ -226,6 +227,29 @@ def apply_arrows(model: Model, arrows: list[CurvedArrow], where: str) -> tuple[M
         elif a.element in SECOND_ROW and total > 8:
             problems.append(f"{where}: {name} ends with {total} electrons (octet exceeded)")
     return new, problems, touched
+
+
+def _pairing_hint(model: Model, pair: frozenset, odd: list[frozenset], de: Counter) -> str:
+    """The fishhook that would even out an odd bond: from a half-broken bond to the half-formed
+    bond next to it, else from the bond to one of its atoms, or to the new bond."""
+    def maps(p):
+        return sorted(model.atoms[k].map for k in p)
+
+    def bond(p):
+        a, b = maps(p)
+        return f"bond({a}{'-=#'[model.bonds[p] // 2 - 1]}{b})"
+
+    if not all(maps(pair)):
+        return ""
+    broken = de[pair] < 0
+    partner = next((q for q in odd if q != pair and q & pair and all(maps(q)) and (de[q] < 0) != broken), None)
+    if partner is not None:
+        src, dst = (pair, partner) if broken else (partner, pair)
+        return f"; add {{type: fishhook, from: \"{bond(src)}\", to: \"between({','.join(map(str, maps(dst)))})\"}}"
+    a, b = maps(pair)
+    if broken:
+        return f"; add a fishhook from {bond(pair)} to atom({a}) or atom({b})"
+    return f"; add a fishhook (from a bond or an electron) to between({a},{b})"
 
 
 def to_mol(model: Model) -> Chem.Mol:
