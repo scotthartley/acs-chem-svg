@@ -189,10 +189,12 @@ def _cubic(p0: Point, c1: Point, c2: Point, p3: Point, t: float) -> Point:
 
 @dataclass
 class Circle:
-    """Filled dot: lone pairs and radicals (M3), as ChemDraw draws them."""
+    """Filled dot: lone pairs and radicals (M3), as ChemDraw draws them. With `stroke` (pt), a
+    ring instead: the circle around a circled charge."""
     center: Point
     r: float
     source: str = ""
+    stroke: float | None = None
 
     @property
     def points(self) -> list[Point]:
@@ -204,7 +206,8 @@ class Circle:
 
     def bbox(self):
         x, y = self.center
-        return (x - self.r, y - self.r, x + self.r, y + self.r)
+        r = self.r + (self.stroke or 0.0) / 2
+        return (x - r, y - r, x + r, y + r)
 
 
 @dataclass

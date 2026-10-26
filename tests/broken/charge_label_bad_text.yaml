@@ -1,0 +1,4 @@
+# expect: charge_labels: 1: charge text '3' must be digits with one sign
+preset: acs1996
+species:
+  iron: {smiles: "[Fe+2:1]", charge_labels: {1: "3"}}

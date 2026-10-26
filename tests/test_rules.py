@@ -154,7 +154,7 @@ def test_charge_on_unlabeled_carbon():
     dirs = [math.atan2(mol.atoms[j].y - a.y, mol.atoms[j].x - a.x) for j, _ in mol.neighbors(i)]
     bis = math.atan2(-(math.sin(dirs[0]) + math.sin(dirs[1])), -(math.cos(dirs[0]) + math.cos(dirs[1])))
     assert math.atan2(cy - a.y, cx - a.x) == pytest.approx(bis, abs=1e-6)
-    bars = d.charge_bars(i)
+    bars = d.charge_parts(i)
     assert len(bars) == 2 and all(b.width == P.charge.bar_thickness for b in bars)
     assert all(math.dist(*b.points) == pytest.approx(P.charge.bar_length) for b in bars)
 

@@ -60,6 +60,15 @@ Lewis structures (M1 only): every atom labeled, bonds on a square lattice drawn 
     species:
       ccl4: {smiles: "ClC(Cl)(Cl)Cl", lewis: true}                  # = {electrons: shared}
       co2:  {smiles: "O=C=O", lewis: {electrons: formal_charge}}     # or oxidation_state
+
+Charges: a formal charge of ±1 draws a plain sign, ±2 or more "2+" / "2−". Circled signs (⊕ / ⊖,
+±1 only) for the whole spec, with a per-species override; charge_labels draws a text instead
+(an oxidation state), by atom-map number, without changing the chemistry.
+
+    charges: {circled: true}
+    species:
+      nitro: {smiles: "C[N+](=O)[O-]", circled_charges: false}
+      iron:  {smiles: "[Fe+2:1]", charge_labels: {1: "+3"}}
 """
 
 from __future__ import annotations
@@ -74,6 +83,7 @@ from pydantic import BaseModel, ConfigDict, Discriminator, Field, Tag, field_val
 from rdkit import Chem
 
 from . import chem
+from .draw_mol import parse_charge_text
 from .preset import available, load_preset
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -179,6 +189,11 @@ class LewisOptions(BaseModel):
     electrons: Literal["shared", "formal_charge", "oxidation_state"] = "shared"
 
 
+class ChargeOptions(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    circled: bool = False  # ±1 signs in a ring (⊕ / ⊖); a species' circled_charges overrides it
+
+
 class Species(BaseModel):
     model_config = ConfigDict(extra="forbid")
     smiles: str | None = None
@@ -193,6 +208,8 @@ class Species(BaseModel):
     align_to: str | None = None  # align to this species instead
     show_lone_pairs: list[int] = Field(default_factory=list)  # atom-map numbers whose lone pairs are drawn (M3)
     lewis: bool | LewisOptions | None = None  # Lewis structure (M1 only): true = {electrons: shared}
+    circled_charges: bool | None = None  # None: the spec's charges.circled
+    charge_labels: dict[int, str] = Field(default_factory=dict)  # atom-map number -> drawn charge text (+3, 2−); display only
 
     @model_validator(mode="after")
     def _one_source(self):
@@ -223,6 +240,16 @@ class Species(BaseModel):
     @property
     def lewis_mode(self) -> str | None:
         return self.lewis.electrons if isinstance(self.lewis, LewisOptions) else None
+
+    @field_validator("charge_labels")
+    @classmethod
+    def _charge_text(cls, v):
+        for m, t in v.items():
+            try:
+                parse_charge_text(t)
+            except ValueError as e:
+                raise ValueError(f"charge_labels: {m}: {e}") from None
+        return v
 
     @field_validator("kekule")
     @classmethod
@@ -374,6 +401,7 @@ class Spec(BaseModel):
     numbers: dict[str, int | str] | None = None
     align: Literal["auto"] | bool = "auto"
     labels: dict[int, str] = Field(default_factory=dict)  # atom-map number -> drawn symbol (X); chemistry keeps the SMILES element
+    charges: ChargeOptions = Field(default_factory=ChargeOptions)
     overrides: Overrides = Field(default_factory=Overrides)
 
     @field_validator("preset")
@@ -549,6 +577,24 @@ def check_labels(spec: Spec, base_dir: Path) -> None:
         raise ValueError(f"labels: no atom has map number {', '.join(map(str, unknown))}")
 
 
+def check_charge_labels(spec: Spec, base_dir: Path) -> None:
+    """Every species' charge_labels map number must be on one of its atoms."""
+    for name, mol in parsed_species(spec, base_dir).items():
+        unknown = sorted(set(spec.species[name].charge_labels) - {a.GetAtomMapNum() for a in mol.GetAtoms()})
+        if unknown:
+            raise ValueError(f"species {name}: charge_labels: no atom has map number {', '.join(map(str, unknown))}")
+
+
+def with_charges(spec: Spec, name: str, mol: chem.Molecule) -> chem.Molecule:
+    """The drawing's charge options: circled signs (the species' circled_charges, else the
+    spec's charges.circled) and charge_labels texts. Display only: electrons.py keeps the
+    SMILES formal charges."""
+    sp = spec.species[name]
+    circled = spec.charges.circled if sp.circled_charges is None else sp.circled_charges
+    atoms = [replace(a, charge_label=sp.charge_labels[a.map]) if a.map in sp.charge_labels else a for a in mol.atoms]
+    return replace(mol, atoms=atoms, circled_charges=circled)
+
+
 def relabel(spec: Spec, mol: chem.Molecule) -> chem.Molecule:
     """The drawing's atoms with `labels` symbols in place of their stand-in elements."""
     if not spec.labels or not any(a.map in spec.labels for a in mol.atoms):
@@ -570,7 +616,7 @@ def molecules(spec: Spec, base_dir: Path) -> list[chem.Molecule]:
                                        flip_h=o.flip_h, flip_v=o.flip_v, lewis=sp.lewis_mode)
             except ValueError as e:
                 raise ValueError(f"species {name}: {e}") from None
-            out.append(relabel(spec, mol))
+            out.append(with_charges(spec, name, relabel(spec, mol)))
             continue
         if sp.smiles is not None:
             rot = "auto" if o.rotate is None else o.rotate
@@ -579,8 +625,9 @@ def molecules(spec: Spec, base_dir: Path) -> list[chem.Molecule]:
             rot = 0.0 if o.rotate is None else o.rotate
             mol = chem.from_molfile(resolve_molfile(sp.molfile, base_dir), name, bl, sp.kekule,
                                     rot, o.flip_h, o.flip_v, sp.abbreviate)
-        out.append(relabel(spec, chem.show_carbons(mol, sp.show_carbons)))
+        out.append(with_charges(spec, name, relabel(spec, chem.show_carbons(mol, sp.show_carbons))))
     check_labels(spec, base_dir)
+    check_charge_labels(spec, base_dir)
     return out
 
 
@@ -623,5 +670,6 @@ def scheme_prepared(spec: Spec, base_dir: Path) -> dict[str, chem.Prepared]:
 
 def scheme_molecules(spec: Spec, base_dir: Path) -> dict[str, chem.Molecule]:
     check_labels(spec, base_dir)
-    return {n: relabel(spec, chem.show_carbons(p.molecule(), spec.species[n].show_carbons))
+    check_charge_labels(spec, base_dir)
+    return {n: with_charges(spec, n, relabel(spec, chem.show_carbons(p.molecule(), spec.species[n].show_carbons)))
             for n, p in scheme_prepared(spec, base_dir).items()}

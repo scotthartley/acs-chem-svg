@@ -79,6 +79,7 @@ class Atom:
     abbrev: str | None = None  # abbreviation label text (OMe); `element` is its attachment atom
     radicals: int = 0  # unpaired electrons (RDKit GetNumRadicalElectrons)
     lone_pairs: int = 0  # (valence electrons - charge - bond orders - H - radicals) / 2
+    charge_label: str | None = None  # drawn charge text in place of `charge` (spec charge_labels: +3); display only
 
     @property
     def p(self) -> Point:
@@ -109,6 +110,7 @@ class Molecule:
     bonds: list[Bond]
     rings: list[list[int]] = field(default_factory=list)  # SSSR, atom indices in ring order
     lewis: str | None = None  # Lewis structure: "shared" | "formal_charge" | "oxidation_state" (draw_mol)
+    circled_charges: bool = False  # ±1 signs drawn in a ring (spec charges.circled / circled_charges)
 
     def neighbors(self, i: int) -> list[tuple[int, Bond]]:
         return [(b.other(i), b) for b in self.bonds if i in (b.a, b.b)]

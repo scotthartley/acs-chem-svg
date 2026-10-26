@@ -1,0 +1,14 @@
+# M1 charges: circled ±1 signs (charges.circled, with a per-species override), "2+" / "2−" from the
+# SMILES charge, a charge_labels text (+3), and a circled sign beside lone pairs. Unmeasured
+# (acs-style.md §2.2, Open 18).
+preset: acs1996
+charges: {circled: true}
+species:
+  nitromethane: {smiles: "C[N+](=O)[O-]"}
+  cation: {smiles: "C[CH+]C"}
+  enolate: {smiles: "C=C[O-:1]", show_lone_pairs: [1]}
+  ammonium: {smiles: "C[NH3+]"}
+  plain: {smiles: "C[N+](=O)[O-]", circled_charges: false}
+  iron: {smiles: "[Fe+2]"}
+  oxide: {smiles: "[O-2]"}
+  iron_iii: {smiles: "[Fe+2:1]", charge_labels: {1: "+3"}}

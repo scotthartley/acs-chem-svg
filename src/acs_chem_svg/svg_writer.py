@@ -85,7 +85,9 @@ def _element(node, dx: float, dy: float, indent: str, affinity: bool = False) ->
                 f'{_markers(node, affinity)}/>'] + heads
     if isinstance(node, Circle):
         x, y = node.center
-        return [f'{indent}<circle cx="{num(x + dx)}" cy="{num(y + dy)}" r="{num(node.r)}" fill="#000" stroke="none"/>']
+        paint = (f'fill="none" stroke="#000" stroke-width="{num(node.stroke)}"' if node.stroke
+                 else 'fill="#000" stroke="none"')
+        return [f'{indent}<circle cx="{num(x + dx)}" cy="{num(y + dy)}" r="{num(node.r)}" {paint}/>']
     if isinstance(node, Polygon):
         return [f'{indent}<path d="M{_pts(node.points, dx, dy)} Z" fill="#000" stroke="none"/>']
     if isinstance(node, TextRun):

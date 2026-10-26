@@ -186,6 +186,8 @@ def species_parts(group: Group) -> Parts:
                 out.bonds += [(a, b, 0.0, leaf.source) for a, b in _segments(leaf.points, True)]
             elif isinstance(leaf, TextRun) and leaf.bbox():
                 out.labels.append((leaf.bbox(), leaf.text, leaf.source))
+            elif isinstance(leaf, Circle) and kind == "charges":  # a circled charge's ring, as a disc
+                out.charges.append((leaf.center, leaf.center, leaf.r + (leaf.stroke or 0.0) / 2, leaf.source))
             elif isinstance(leaf, Circle):
                 out.dots.append((leaf, "radical" if kind == "radicals" else "lone pair"))
     return out

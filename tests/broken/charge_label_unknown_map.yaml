@@ -1,0 +1,4 @@
+# expect: species iron: charge_labels: no atom has map number 2
+preset: acs1996
+species:
+  iron: {smiles: "[Fe+2:1]", charge_labels: {2: "+3"}}

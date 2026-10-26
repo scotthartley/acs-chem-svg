@@ -69,6 +69,9 @@ class Charge(_Section):
     labeled_offset_x: float
     labeled_offset_y: float
     above_label: float
+    circle_radius: float  # circled signs (unmeasured)
+    digit_scale: float  # 2+, +3: digit size / label_size (unmeasured)
+    digit_gap: float  # digit ink to the sign bars (unmeasured)
 
 
 class Arrow(_Section):

@@ -38,6 +38,7 @@ assumed_exempt:
   - scheme.wrap_width              # 504 pt (7 in, ACS double column) at every preset: user decision 2026-10-25, not k-scaled
   - lengths.label_outline_offset_x  # fitted over x1.0/x0.8/x0.6 together as one fixed-pt shift
   - lengths.label_outline_offset_y
+  - charge.digit_scale             # unmeasured ratio (= ratios.superscript_scale), the same at every preset
 # Auto- or hand-placed by ChemDraw and context-dependent; starting defaults, not k-scaled.
 approx:
   - text.line_pitch_sub_upper       # fitted from one pitch per preset (acs-style.md §3, Open 9)
@@ -50,6 +51,8 @@ placement:
   - charge.labeled_offset_x
   - charge.labeled_offset_y
   - charge.above_label
+  - charge.circle_radius
+  - charge.digit_gap
   - scheme.arrow_min_length
   - scheme.conditions_pad
   - scheme.multistep_indent
@@ -118,6 +121,9 @@ charge:
   labeled_offset_x: 1.5             # placement default (user decision 2026-10-24); x1.0 mean 1.77 x k = 1.42; ChemDraw m1_set_x0.8 N+ was (+2.05, -1.45) for its smaller sign
   labeled_offset_y: -1.5            # placement default (user decision 2026-10-24); x1.0 mean -1.75 x k = -1.40
   above_label: 6.0                  # placement default (user decision 2026-10-24); H on the right (NH3+); unmeasured at x0.8 (labels_x1.0 7.43 x k = 5.94)
+  circle_radius: 2.5                # unmeasured placement default (user decision 2026-10-26); x1.0 3.0 x k = 2.4
+  digit_scale: 0.75                 # unmeasured (user decision 2026-10-26): the digits of 2+ / +3 at this x label_size, = ratios.superscript_scale
+  digit_gap: 0.5                    # unmeasured placement default (user decision 2026-10-26): digit ink to sign bars
 
 arrow:                              # reaction / resonance arrows
   shaft_width: 0.60                 # scheme_basic_x0.8; exempt

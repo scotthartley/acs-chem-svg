@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import itertools
 import math
+import re
 from dataclasses import dataclass, field
 
 from . import richtext
@@ -230,10 +231,10 @@ SIDES = {"top": (0.0, -1.0), "right": (1.0, 0.0), "bottom": (0.0, 1.0), "left": 
 SIDE_BLOCK_DEG = 45.0  # a bond (or the H run) within this angle of a side's direction takes the side
 CHARGE_CORNER_DEG = 60.0  # a bond within this angle of a corner's diagonal moves a labeled charge on: upper right, upper left, lower right, lower left
 CHARGE_CORNER_MIN_DEG = 45.0  # ... unless every corner has one: then the first corner with none within this (m1_set_x*: N⁺ with bonds at 0° and 180° keeps the upper right), else the largest gap
-CHARGE_DOT_CLEARANCE = 1.0  # unmeasured rule: a charge on an unlabeled atom with dots keeps its bars this far (pt) from the dots and bonds
+CHARGE_DOT_CLEARANCE = 1.0  # unmeasured rule: a charge beside dots (or a circled / 2+ sign on an unlabeled atom) keeps its ink this far (pt) from the dots and bonds
 CHARGE_DOT_STEP_DEG = 5.0  # unmeasured: directions tried around the atom, this far apart
-CHARGE_DOT_STEP_PT = 0.5  # unmeasured: ... at unlabeled_distance, then this much farther each round
-CHARGE_DOT_EXTRA_PT = 2.0  # unmeasured: ... up to this much beyond unlabeled_distance
+CHARGE_DOT_STEP_PT = 0.5  # unmeasured: ... at the first position, then this much farther each round
+CHARGE_DOT_EXTRA_PT = 2.0  # unmeasured: ... up to this much beyond it
 
 
 @dataclass
@@ -625,75 +626,126 @@ class Drawer:
 
     # ---------------------------------------------------------------- charges (§2.2)
 
-    def charge_center(self, i: int) -> Point:
-        """Center of atom i's charge (§2.2): a free corner of a label; on an unlabeled atom,
-        the largest gap's bisector at unlabeled_distance, or beside its dots when it draws
-        any (_charge_beside_dots)."""
+    def charge_sign(self, i: int) -> ChargeSign | None:
+        """Atom i's drawn charge: its charge_label text (spec charge_labels), else its formal
+        charge (2+ for [Fe+2]); None when it draws none. Only a plain ±1 sign is circled."""
         a = self.mol.atoms[i]
         c = self.preset.charge
+        size = c.digit_scale * self.preset.text.label_size
+        if a.charge_label is not None:
+            sign, digits, first = parse_charge_text(a.charge_label)
+            return ChargeSign(sign, digits, first, False, c, self.face, size)
+        if not a.charge:
+            return None
+        digits = str(abs(a.charge)) if abs(a.charge) > 1 else ""
+        return ChargeSign(1 if a.charge > 0 else -1, digits, True,
+                          self.mol.circled_charges and not digits, c, self.face, size)
+
+    def charge_center(self, i: int) -> Point:
+        """Center of atom i's charge (§2.2): a free corner of a label; on an unlabeled atom,
+        the largest gap's bisector at unlabeled_distance. A sign bigger than a plain ±1
+        (ChargeSign.extent: circled, 2+) starts that much farther out. With dots or a bigger sign,
+        a labeled atom then moves its sign out along the corner's diagonal (straight up above
+        NH₃⁺, and only for dots) until it clears the dots and bonds (_charge_clear), and an
+        unlabeled atom searches its largest gap."""
+        a = self.mol.atoms[i]
+        c = self.preset.charge
+        sign = self.charge_sign(i)
+        ex, ey = sign.extent((1.0, 0.0)), sign.extent((0.0, 1.0))
         if i in self.labels:
             lab = self.labels[i]
             if lab.num_h and lab.h_side == "right":  # NH₃⁺: centered above the element
-                return (a.x, a.y - c.above_label)
+                p = (a.x, a.y - c.above_label - ey)
+                if not self.dot_sets().get(i):  # [OH-] with its pairs: one is forced onto the top
+                    return p
+                return self._charge_clear(i, sign, lambda k: [(p[0], p[1] - k * CHARGE_DOT_STEP_PT)])
             x0, y0, x1, y1 = lab.elem_ink_box()
             bonds = [unit(sub(self.mol.atoms[j].p, a.p)) for j, _ in self.mol.neighbors(i)]
 
             def spare(corner: Point) -> float:  # angle to the nearest bond
                 return min((angle_deg(corner, b) for b in bonds), default=180.0)
-            corners = [((1.0, -1.0), (x1 + c.labeled_offset_x, y0 + c.labeled_offset_y)),  # upper right
-                       ((-1.0, -1.0), (x0 - c.labeled_offset_x, y0 + c.labeled_offset_y)),  # HO⁻ drawn O-H: upper left
-                       ((1.0, 1.0), (x1 + c.labeled_offset_x, y1 - c.labeled_offset_y)),  # nitro N⁺: a lower corner
-                       ((-1.0, 1.0), (x0 - c.labeled_offset_x, y1 - c.labeled_offset_y))]
+            corners = [((1.0, -1.0), (x1 + c.labeled_offset_x + ex, y0 + c.labeled_offset_y - ey)),  # upper right
+                       ((-1.0, -1.0), (x0 - c.labeled_offset_x - ex, y0 + c.labeled_offset_y - ey)),  # HO⁻ drawn O-H: upper left
+                       ((1.0, 1.0), (x1 + c.labeled_offset_x + ex, y1 - c.labeled_offset_y + ey)),  # nitro N⁺: a lower corner
+                       ((-1.0, 1.0), (x0 - c.labeled_offset_x - ex, y1 - c.labeled_offset_y + ey))]
+            chosen = None
             for limit in (CHARGE_CORNER_DEG, CHARGE_CORNER_MIN_DEG):
-                free = [p for d, p in corners if spare(unit(d)) >= limit - 1e-9]
-                if free:
-                    return free[0]
-            # a bond close to every corner (nitro N⁺ in a ring compound): on the largest gap's
-            # bisector, as far beyond the element ink box as the corner offset (unmeasured rule,
-            # acs-style.md §2.2)
-            ctr = ((x0 + x1) / 2, (y0 + y1) / 2)
-            d = self._largest_gap_direction(i)
-            dist = ray_box_exit(ctr, d, (x0, y0, x1, y1)) + math.hypot(c.labeled_offset_x, c.labeled_offset_y)
-            return add(ctr, mul(d, dist))
-        if self.dot_sets().get(i):
-            return self._charge_beside_dots(i)
+                chosen = next(((d, p) for d, p in corners if spare(unit(d)) >= limit - 1e-9), None)
+                if chosen:
+                    break
+            if chosen is None:
+                # a bond close to every corner (nitro N⁺ in a ring compound): on the largest gap's
+                # bisector, as far beyond the element ink box as the corner offset (unmeasured rule,
+                # acs-style.md §2.2)
+                ctr = ((x0 + x1) / 2, (y0 + y1) / 2)
+                d = self._largest_gap_direction(i)
+                dist = ray_box_exit(ctr, d, (x0, y0, x1, y1)) + math.hypot(c.labeled_offset_x, c.labeled_offset_y)
+                chosen = (d, add(ctr, mul(d, dist + sign.extent(d))))
+            d, p = chosen
+            if not (self.dot_sets().get(i) or sign.bigger):
+                return p
+            d = unit(d)
+            return self._charge_clear(i, sign, lambda k: [add(p, mul(d, k * CHARGE_DOT_STEP_PT))])
+        if self.dot_sets().get(i) or sign.bigger:
+            gap, g = self._largest_gap(i)
+            t0 = math.atan2(g[1], g[0])
+            half = int(math.degrees(gap) / 2 // CHARGE_DOT_STEP_DEG)  # inside the gap: off a ring's interior
+            dirs = [(math.cos(t), math.sin(t)) for t in (t0 + math.radians(m * CHARGE_DOT_STEP_DEG) for m in
+                    sorted(range(-half, half + 1), key=lambda m: (abs(m), -m)))]  # nearest the bisector first
+            return self._charge_clear(i, sign, lambda k: [
+                add(a.p, mul(d, c.unlabeled_distance + sign.extent(d) + k * CHARGE_DOT_STEP_PT)) for d in dirs])
         d = self._largest_gap_direction(i)
         return (a.x + c.unlabeled_distance * d[0], a.y + c.unlabeled_distance * d[1])
 
-    def _charge_beside_dots(self, i: int) -> Point:
-        """Unlabeled atom that draws a lone pair or radical (unmeasured rule, acs-style.md §2.2):
-        the dots keep the bisectors, and the charge takes the direction inside the largest bond
-        gap (every CHARGE_DOT_STEP_DEG, so never into a ring) whose bars clear the dots and the
-        atom's bonds the most, at
-        unlabeled_distance or the first CHARGE_DOT_STEP_PT step beyond it where some direction
-        clears by CHARGE_DOT_CLEARANCE. Ties go to the direction nearest the largest gap's
-        bisector; if nothing clears, the best direction at the farthest step."""
-        a = self.mol.atoms[i]
-        c = self.preset.charge
-        r, hw = self.preset.lone_pair.dot_radius, c.bar_thickness / 2
-        lw = self.preset.lengths.line_width
-        dots = [p for ds in self.dot_sets()[i] for p in ds.dots]
-        ends = [self.mol.atoms[j].p for j, _ in self.mol.neighbors(i)]
-        gap, g = self._largest_gap(i)
-        t0 = math.atan2(g[1], g[0])
-        half = int(math.degrees(gap) / 2 // CHARGE_DOT_STEP_DEG)  # inside the gap: off a ring's interior
-        offsets = sorted(range(-half, half + 1), key=lambda m: (abs(m), -m))
+    def _charge_clear(self, i: int, sign: ChargeSign, candidates) -> Point:
+        """Clearance search for atom i's charge (unmeasured rule, acs-style.md §2.2): the dots
+        keep their places, and the sign takes the candidate center whose clash segments clear
+        the atom's dots and drawn bonds the most. `candidates(k)` lists the centers at step k
+        (each CHARGE_DOT_STEP_PT farther out), in preference order: a labeled atom's corner on
+        its diagonal, or an unlabeled atom's directions inside the largest bond gap (every
+        CHARGE_DOT_STEP_DEG, so never into a ring). The first step where some candidate clears
+        by CHARGE_DOT_CLEARANCE wins, ties to the earlier candidate; if none does by
+        CHARGE_DOT_EXTRA_PT, the best candidate at the farthest step. The label's own ink needs no
+        check: a corner only moves away from it."""
         best = None
         for k in range(round(CHARGE_DOT_EXTRA_PT / CHARGE_DOT_STEP_PT) + 1):
-            dist = c.unlabeled_distance + k * CHARGE_DOT_STEP_PT
             best = None
-            for m in offsets:  # nearest the bisector first: ties keep it
-                t = t0 + math.radians(m * CHARGE_DOT_STEP_DEG)
-                ctr = (a.x + dist * math.cos(t), a.y + dist * math.sin(t))
-                segs = _charge_segments(ctr, a.charge, c.bar_length)
-                score = min([seg_point_dist(p, s, e) - r - hw for p in dots for s, e in segs] +
-                            [segment_distance(s, e, a.p, q) - lw / 2 - hw for q in ends for s, e in segs])
-                score = round(score, 6)
+            for ctr in candidates(k):
+                score = round(self.charge_clearance(i, sign.clash_segments(ctr)), 6)
                 if best is None or score > best[0]:
                     best = (score, ctr)
             if best[0] >= CHARGE_DOT_CLEARANCE:
                 break
         return best[1]
+
+    def charge_clearance(self, i: int, segs: list[tuple[Point, Point, float]]) -> float:
+        """Least gap (pt) between a sign's clash segments and atom i's drawn dots (a Lewis
+        structure's bond electrons too) and the lines of its bonds as drawn (a double bond's
+        second line, a wedge's edges, hashes)."""
+        r = self.preset.lone_pair.dot_radius
+        dots = [p for ds in self.dot_sets().get(i, []) for p in ds.dots]
+        dots += [p for ds in self.lewis_dot_sets() if i in (self.mol.bonds[ds.bond].a, self.mol.bonds[ds.bond].b)
+                 for p in ds.dots]
+        return min([seg_point_dist(p, s, e) - r - hw for p in dots for s, e, hw in segs] +
+                   [segment_distance(s, e, p, q) - w - hw for p, q, w in self.bond_lines(i) for s, e, hw in segs],
+                   default=math.inf)
+
+    def bond_lines(self, i: int) -> list[tuple[Point, Point, float]]:
+        """(a, b, half width) of the lines drawn for atom i's bonds (none in a Lewis structure)."""
+        if self.mol.lewis:
+            return []
+        lw, out = self.preset.lengths.line_width, []
+        for _, b in self.mol.neighbors(i):
+            g = self.bond_geometry(b)
+            if g.main:
+                out.append((g.frame.at(g.main[0], 0), g.frame.at(g.main[1], 0), lw / 2))
+            out += [(g.frame.at(u0, v), g.frame.at(u1, v), lw / 2) for v, u0, u1 in g.lines]
+            if g.polygon:
+                pts = g.polygon + g.polygon[:1]
+                out += [(p, q, 0.0) for p, q in zip(pts, pts[1:])]
+            out += [(g.frame.at(uc, hl), g.frame.at(uc, -hl), self.preset.lengths.hash_line_width / 2)
+                    for uc, hl in g.hashes]
+        return out
 
     def _largest_gap_direction(self, i: int) -> Point:
         """Unit vector along the bisector of the largest angular gap between atom i's bonds
@@ -712,14 +764,9 @@ class Drawer:
         t = start + gap / 2
         return gap, (math.cos(t), math.sin(t))
 
-    def charge_bars(self, i: int) -> list[Polyline]:
-        a = self.mol.atoms[i]
-        if abs(a.charge) != 1:
-            raise NotImplementedError(f"atom {a.id}: only charges of ±1 are drawn in M1 (got {a.charge})")
-        c = self.preset.charge
-        src = f"atom:{a.id}"
-        return [Polyline([p, q], c.bar_thickness, source=src)
-                for p, q in _charge_segments(self.charge_center(i), a.charge, c.bar_length)]
+    def charge_parts(self, i: int) -> list:
+        """Atom i's charge leaves (the -charges group): bars, ring and digits."""
+        return self.charge_sign(i).parts(self.charge_center(i), f"atom:{self.mol.atoms[i].id}")
 
     # ---------------------------------------------------------------- lone pairs and radicals (§4)
 
@@ -901,7 +948,7 @@ class Drawer:
         """Unlabeled atom (§4.2, mech_basic_x*: tert-butyl radical): each dot set goes on the
         bisector of the largest angular gap between the bonds and the sets already placed, as
         charges do; ties go the way charge_center breaks them. The charge does not count: it is
-        placed around the dots (charge_center, _charge_beside_dots). A set
+        placed around the dots (charge_center, _charge_clear). A set
         an arrow starts from (`tails`) goes first, into the widest gap facing its target.
         A radical sits radical.distance from the atom; a lone pair's midpoint does too
         (unmeasured: no reference has one), its dots dot_spacing apart across the bisector."""
@@ -953,8 +1000,8 @@ class Drawer:
                 bonds.children.append(Polyline([g.frame.at(uc, hl), g.frame.at(uc, -hl)],
                                                 self.preset.lengths.hash_line_width, source=src))
         labels = Group(f"species-{name}-labels", [r for i in sorted(self.labels) for r in self.labels[i].runs])
-        charges = Group(f"species-{name}-charges", [p for i, a in enumerate(self.mol.atoms) if a.charge
-                                                    for p in self.charge_bars(i)])
+        charges = Group(f"species-{name}-charges", [p for i in range(len(self.mol.atoms)) if self.charge_sign(i)
+                                                    for p in self.charge_parts(i)])
         r = self.preset.lone_pair.dot_radius
         sets = [ds for i in sorted(self.dot_sets()) for ds in self.dot_sets()[i]]
         dots = [Group(f"species-{name}-{kind}", [Circle(p, r, source=f"atom:{self.mol.atoms[ds.atom].id}")
@@ -968,14 +1015,108 @@ class Drawer:
         return Group(f"species-{name}", [g for g in (bonds, labels, charges, *dots) if g.children])
 
 
-def _charge_segments(center: Point, charge: int, bar_length: float) -> list[tuple[Point, Point]]:
-    """End points of the charge bars at `center`: the minus bar, plus the upright for ⊕."""
-    cx, cy = center
-    h = bar_length / 2
-    segs = [((cx - h, cy), (cx + h, cy))]
-    if charge > 0:
-        segs.append(((cx, cy - h), (cx, cy + h)))
-    return segs
+CHARGE_TEXT = re.compile(r"^([+−-]?)(\d*)([+−-]?)$")
+
+
+def parse_charge_text(text: str) -> tuple[int, str, bool]:
+    """(sign, digits, digits first) of a charge text: "+", "2+", "+3", "3-" (- is drawn as the
+    minus bar)."""
+    m = CHARGE_TEXT.match(text.strip())
+    if not m or bool(m[1]) == bool(m[3]):
+        raise ValueError(f"charge text {text!r} must be digits with one sign before or after them (+, 2+, +3, 2−)")
+    return (-1 if (m[1] or m[3]) in "−-" else 1), m[2], bool(m[3])
+
+
+@dataclass
+class ChargeSign:
+    """A drawn charge (§2.2) around a center point: the plain ±1 bars (minus bar, plus the
+    upright for ⊕; bar_length long, bar_thickness wide); circled, the same bars in a ring of
+    circle_radius stroked at bar_thickness; with digits (2+, +3), a digit run at `size` in the
+    label font and the bars, digit_gap apart, in the written order, the whole centered on the
+    point. Circled signs and digits are unmeasured (acs-style.md §2.2, Open)."""
+    sign: int  # +1 | -1
+    digits: str  # "" for a plain sign
+    digits_first: bool  # 2+ (True) vs +3
+    circled: bool
+    c: object  # preset.Charge
+    face: FontFace
+    size: float  # digit size
+
+    def _digit_ink(self):
+        return self.face.text_ink_bounds(self.digits, self.size) if self.digits else None
+
+    def half_size(self) -> Point:
+        """Half width and half height of the sign's ink."""
+        h = self.c.bar_length / 2
+        if self.circled:
+            return (self.c.circle_radius + self.c.bar_thickness / 2,) * 2
+        b = self._digit_ink()
+        if b is None:
+            return (h, h)
+        return ((b[2] - b[0] + self.c.digit_gap) / 2 + h, max((b[3] - b[1]) / 2, h))
+
+    @property
+    def bigger(self) -> bool:
+        return self.circled or bool(self.digits)
+
+    def extent(self, d: Point) -> float:
+        """How much farther the sign reaches along unit direction d than a plain ±1 sign (taken as
+        bar_length/2 in every direction): initial positions move out by it."""
+        if not self.bigger:
+            return 0.0
+        h = self.c.bar_length / 2
+        if self.circled:
+            return self.c.circle_radius + self.c.bar_thickness / 2 - h
+        hw, hh = self.half_size()
+        return abs(d[0]) * (hw - h) + abs(d[1]) * (hh - h)
+
+    def _layout(self, center: Point):
+        """(bar segments, digit TextRun args (x, y) or None) at center."""
+        cx, cy = center
+        h = self.c.bar_length / 2
+        b = self._digit_ink()
+        sx, run = cx, None
+        if b is not None:
+            hw = self.half_size()[0]
+            dw = b[2] - b[0]
+            if self.digits_first:
+                ink_x, sx = cx - hw, cx + hw - h
+            else:
+                sx, ink_x = cx - hw + h, cx + hw - dw
+            run = (ink_x - b[0], cy + (b[1] + b[3]) / 2)
+        segs = [((sx - h, cy), (sx + h, cy))]
+        if self.sign > 0:
+            segs.append(((sx, cy - h), (sx, cy + h)))
+        return segs, run
+
+    def parts(self, center: Point, source: str = "") -> list:
+        segs, run = self._layout(center)
+        out = [Polyline([p, q], self.c.bar_thickness, source=source) for p, q in segs]
+        if self.circled:
+            out.append(Circle(center, self.c.circle_radius, source=source, stroke=self.c.bar_thickness))
+        if run is not None:
+            out.append(TextRun(run[0], run[1], self.size, self.digits, self.face, source=source))
+        return out
+
+    def clash_segments(self, center: Point) -> list[tuple[Point, Point, float]]:
+        """(a, b, half width) that cover the sign's ink: the bars; the ring as a disc (a
+        zero-length segment); the digits' ink box as the stadium along its longer side."""
+        segs, run = self._layout(center)
+        hw = self.c.bar_thickness / 2
+        out = [(p, q, hw) for p, q in segs]
+        if self.circled:
+            out.append((center, center, self.c.circle_radius + hw))
+        if run is not None:
+            b = self._digit_ink()
+            x0, y0, x1, y1 = run[0] + b[0], run[1] - b[3], run[0] + b[2], run[1] - b[1]
+            mx, my = (x0 + x1) / 2, (y0 + y1) / 2
+            if x1 - x0 >= y1 - y0:
+                r = (y1 - y0) / 2
+                out.append(((x0 + r, my), (x1 - r, my), r))
+            else:
+                r = (x1 - x0) / 2
+                out.append(((mx, y0 + r), (mx, y1 - r), r))
+        return out
 
 
 def draw_molecule(mol: Molecule, preset: Preset, name: str | None = None, face: FontFace | None = None) -> Group:

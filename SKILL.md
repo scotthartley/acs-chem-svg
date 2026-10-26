@@ -43,6 +43,8 @@ Run every command as `uv run --project <repo> python <repo>/scripts/<script> ...
      labels CH₃; a molfile from `templates/` keeps its layout.
    - Lewis structures (every atom labeled, bonds as dot pairs): `lewis: true`, or
      `lewis: {electrons: formal_charge | oxidation_state}`; see `references/scheme-schema.md`.
+   - Charges: ±2 or more draws "2+"; `charges: {circled: true}` (spec) or `circled_charges` (species)
+     circles ±1 signs; `charge_labels: {1: "+3"}` (species, by atom map) draws a text, display only.
 2. **Validate:** `scripts/validate.py spec.yaml`. Fix the spec until it prints OK (schema,
    RDKit chemistry, abbreviations, electron bookkeeping, overlaps, curved arrows crossing
    bonds or labels, dots on bonds, conditions wider than their arrow).
@@ -133,7 +135,7 @@ steps:
 - An abbreviation whose bond leaves to the right (MeO–, BnO–) is unmeasured: turn the
   structure so the bond comes from the left or below, or don't abbreviate that group.
 - At most 2 stages per arrow.
-- Explicit CH₂/CH labels on internal carbons, charges beyond ±1, carbenes.
+- Explicit CH₂/CH labels on internal carbons, carbenes.
 - Lewis structures: rings, more than 4 neighbors (PCl₅), Lewis species in schemes.
 
 ## Rules

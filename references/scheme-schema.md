@@ -215,6 +215,9 @@ species:
 | `species.<name>.orientation.rotate` | number \| `auto` | Degrees, counter-clockwise on screen, applied to the raw CoordGen layout. SMILES default `auto` (bonds at ±30°, rings with vertical sides, linear molecules horizontal). Molfile default 0. |
 | `species.<name>.orientation.flip_h` / `flip_v` | bool | Mirror. Wedges are re-derived so the stereo stays correct. |
 | `species.<name>.show_carbons` | `none` (default), `terminal`, or a list of atom ids | Explicit labels on terminal carbons (CH₃, H₃C, =CH₂). Internal CH₂/CH raise an error until measured (acs-style.md §6 Open 8). Atom ids are atom-map numbers if set, else 1-based atom indices. A molfile atom alias on a carbon (`A` line: CH3, H3C, …) also shows its label. |
+| `charges.circled` | bool (default false) | Draw every ±1 sign in a ring (⊕ / ⊖). Unmeasured ring size (`charge.circle_radius`). |
+| `species.<name>.circled_charges` | bool | Overrides `charges.circled` for this species. |
+| `species.<name>.charge_labels` | map: atom-map number → text | Draw this charge text instead of the formal charge: one sign before or after optional digits (`+3`, `2+`, `-`; `-` draws the minus bar). Display only: electron bookkeeping keeps the SMILES charge; a neutral atom draws it too (an oxidation state). Never circled. |
 | `species.<name>.lewis` | `true` \| `{electrons: shared \| formal_charge \| oxidation_state}` | Draw a Lewis structure (below). `true` = `shared`. SMILES only, specs without `steps` only; not with `kekule`, `abbreviate`, `show_carbons` or `show_lone_pairs` (the last two are implied). `orientation.rotate` must be a multiple of 90. |
 
 Give exactly one of `smiles` or `molfile`. Without `steps`, several species are placed left to
@@ -258,8 +261,10 @@ species:
   ones and those chosen with `show_carbons` or a molfile alias. The H count goes on the side away from the bonds (H₂N– vs –NH₂);
   a shown CH₃ that would run into another label or bond is set the other way (H₃C), and `validate`
   reports a label that still overlaps.
-- **Charges:** charges of ±1 are drawn as bars (⊕/⊖ geometry from the preset). On a labeled
-  atom they sit upper right, or above if the H is on the right. On an unlabeled atom they go
-  on the bisector of the largest gap.
+- **Charges:** charges of ±1 are drawn as bars (⊕/⊖ geometry from the preset), in a ring with
+  `charges.circled`; ±2 or more as digits then the sign ("2+", "2−", digits at `charge.digit_scale` ×
+  label size). On a labeled atom they sit upper right, or above if the H is on the right. On an
+  unlabeled atom they go on the bisector of the largest gap. A sign beside drawn lone pairs (or a
+  circled / "2+" sign) moves outward until it clears the dots and bonds by 1 pt.
 - **Not yet supported:** condensed labels other than the abbreviations above (CH₃Cl as text),
-  right-justified abbreviations (MeO–), charges of ±2 or more, aromatic circles.
+  right-justified abbreviations (MeO–), aromatic circles.
