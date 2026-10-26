@@ -77,10 +77,12 @@ def test_font_provenance_comment(svg):
     assert re.search(r"<!-- acs-chem-svg: text measured with .+\.(ttc|otf)", svg)
 
 
-def test_bold_and_italic_name_their_face_for_affinity():
-    """Affinity imports bold/italic only from a face name in font-family (user check,
-    2026-10-24); regular text keeps the M1 family list. resvg still renders them (rasterize
-    maps the face names back; scripts/check_rasterizer.py)."""
+def test_bold_and_italic_by_editor():
+    """Default (Inkscape, Chrome): the family list with font-weight / font-style; a face name
+    is no family to them (user check, 2026-10-26). affinity=True: the bare face name, the only
+    form Affinity imports as bold/italic (user checks, 2026-10-24 and 2026-10-26). Regular text
+    keeps the family list either way; resvg renders both (rasterize maps face names back;
+    scripts/check_rasterizer.py)."""
     from acs_chem_svg import richtext
     from acs_chem_svg.preset import load_preset
     from acs_chem_svg.scene import Group
@@ -90,9 +92,15 @@ def test_bold_and_italic_name_their_face_for_affinity():
     runs = (richtext.layout_line("*n*-BuLi", 0, 10, 10, p).runs
             + richtext.layout_line("11", 0, 30, 10, p, style="bold").runs)
     svg, _ = to_svg(Group("t", runs))
-    assert 'font-family="Helvetica Oblique" font-size="10" font-weight="normal" font-style="italic"' in svg
-    assert 'font-family="Helvetica Bold" font-size="10" font-weight="bold"' in svg
-    assert f'font-family="{FONT_FAMILY}" font-size="10" font-weight="normal" fill="#000">-BuLi' in svg
+    assert 'font-family="Helvetica Bold"' not in svg and 'font-family="Helvetica Oblique"' not in svg
+    assert f'font-family="{FONT_FAMILY}" font-size="10" font-weight="normal" font-style="italic"' in svg
+    assert f'font-family="{FONT_FAMILY}" font-size="10" font-weight="bold"' in svg
+    aff, _ = to_svg(Group("t", runs), affinity=True)
+    assert 'font-family="Helvetica Oblique" font-size="10" font-weight="normal" font-style="italic"' in aff
+    assert 'font-family="Helvetica Bold" font-size="10" font-weight="bold"' in aff
+    for out in (svg, aff):
+        assert f'font-family="{FONT_FAMILY}" font-size="10" font-weight="normal" fill="#000">-BuLi' in out
+    assert rasterize(svg, 4) == rasterize(aff, 4)
 
 
 # ---------------------------------------------------------------- arrowheads as markers
@@ -138,7 +146,7 @@ def arrow_case(request):
 
     from acs_chem_svg.layout import render_spec
     root = render_spec(Path(__file__).resolve().parents[1] / "examples" / f"{request.param}.yaml")
-    return root, to_svg(root)[0], to_svg(root, markers=False)[0]
+    return root, to_svg(root)[0], to_svg(root, affinity=True)[0]
 
 
 def _arrow_groups(svg):
@@ -166,7 +174,7 @@ def test_markers_by_default(arrow_case):
         assert all(p.get("marker-end") for p in paths)
 
 
-def test_markers_false_writes_separate_heads(arrow_case):
+def test_affinity_writes_separate_heads(arrow_case):
     root, _, svg = arrow_case
     assert "<defs" not in svg and "<marker" not in svg and "marker-" not in svg
     heads = sum(len(leaf.head_leaves()) for leaf in root.leaves() if hasattr(leaf, "head_leaves"))

@@ -47,7 +47,7 @@ Run every command as `uv run --project <repo> python <repo>/scripts/<script> ...
 3. **Render:** `scripts/render.py spec.yaml --out DIR [--crops]` writes `spec.svg` and
    `spec.png` (4 px/pt; `--px-per-pt 10` for close inspection) and prints the drawing size.
    `--crops` adds 16 px/pt crops of every curved arrow, charged or dotted label, ↔ arrow and
-   bracket corner. `--affinity` writes arrowheads as separate shapes, not SVG markers.
+   bracket corner. `--affinity` writes for Affinity (separate arrowhead shapes, bold/italic face names).
 4. **Inspect** the PNG (and crops): orientation of the first species, label sides, double-bond
    sides, wedges, charges, conditions centered on their arrows, numbers on one line; for
    mechanisms, that each arrow leaves its lone pair or bond and points at its target.

@@ -7,8 +7,14 @@ keep their scene ids, which editors show as layer or object names.
 
 Arrowheads are <marker orient="auto"> in one <defs>, the one implicit transform: the renderer
 places each head on its path's end along the end tangent, so the head follows when the path is
-edited (Inkscape, browsers, resvg). Affinity drops markers on import, so markers=False
-(render.py --affinity) writes each head as a separate filled shape, as the scene places it.
+edited (Inkscape, browsers, resvg).
+
+Bold and italic text: the family list with font-weight / font-style, which Inkscape and Chrome
+need (a face name such as "Helvetica Bold" is no family to them, so they substitute another font).
+
+affinity=True (render.py --affinity) writes for Affinity instead, which needs the opposite on
+both counts: it drops markers on import, so each head is a separate filled shape as the scene
+places it, and it takes bold and italic only from a bare face name in font-family.
 """
 
 from __future__ import annotations
@@ -20,9 +26,11 @@ from .geometry import Point
 from .scene import Circle, Group, Marker, Path, Polygon, Polyline, TextRun
 
 FONT_FAMILY = "Helvetica, 'TeX Gyre Heros', 'Nimbus Sans', Arial, sans-serif"
-# Affinity takes bold and italic only from a face name in font-family (user check, 2026-10-24:
-# family list + font-weight="bold" imported regular; "Helvetica Bold" / "Helvetica Oblique",
-# ChemDraw's italic name, imported correctly). preview.rasterize maps these back for resvg.
+# Affinity takes bold and italic only from a bare face name in font-family (user checks:
+# 2026-10-24, family list + font-weight="bold" imported regular; 2026-10-26, the face name
+# first in the family list also imported regular; "Helvetica Bold" / "Helvetica Oblique",
+# ChemDraw's italic name, alone imported correctly). Inkscape and Chrome can't resolve these
+# (2026-10-26), so only affinity=True writes them. preview.rasterize maps them back for resvg.
 FACE_FAMILIES = {"bold": "Helvetica Bold", "italic": "Helvetica Oblique"}
 PADDING = 2.0  # pt of empty border around the ink; an output choice, not a style value
 MARKER_MARGIN = 0.2  # pt of marker viewport around the head's control points, so its outline isn't clipped
@@ -46,8 +54,8 @@ def _d(segments, dx: float, dy: float, closed: bool) -> str:
     return d + (" Z" if closed else "")
 
 
-def _markers(node, markers: bool) -> str:
-    if not markers:
+def _markers(node, affinity: bool) -> str:
+    if affinity:
         return ""
     return "".join(f' marker-{end}="url(#{safe_id(m.id)})"' for end, m in
                    (("start", node.marker_start), ("end", node.marker_end)) if m is not None)
@@ -58,23 +66,23 @@ def _stroke(width: float, closed: bool) -> str:
             + ('' if closed else ' stroke-linecap="butt"'))
 
 
-def _element(node, dx: float, dy: float, indent: str, markers: bool = True) -> list[str]:
+def _element(node, dx: float, dy: float, indent: str, affinity: bool = False) -> list[str]:
     if isinstance(node, Group):
         out = [f'{indent}<g id="{safe_id(node.id)}">']
         for c in node.children:
-            out += _element(c, dx, dy, indent + "  ", markers)
+            out += _element(c, dx, dy, indent + "  ", affinity)
         return out + [f"{indent}</g>"]
-    heads = [] if markers or not isinstance(node, (Polyline, Path)) else [
-        line for h in node.head_leaves() for line in _element(h, dx, dy, indent, markers)]
+    heads = [] if not affinity or not isinstance(node, (Polyline, Path)) else [
+        line for h in node.head_leaves() for line in _element(h, dx, dy, indent, affinity)]
     if isinstance(node, Polyline):
         d = "M" + _pts(node.points, dx, dy) + (" Z" if node.closed else "")
         return [f'{indent}<path d="{d}" fill="none" stroke="#000" stroke-width="{num(node.width)}" '
-                f'stroke-linecap="{node.cap}" stroke-linejoin="{node.join}"{_markers(node, markers)}/>'] + heads
+                f'stroke-linecap="{node.cap}" stroke-linejoin="{node.join}"{_markers(node, affinity)}/>'] + heads
     if isinstance(node, Path):
         fill = "#000" if node.fill else "none"
         stroke = _stroke(node.stroke, node.closed) if node.stroke else 'stroke="none"'
         return [f'{indent}<path d="{_d(node.segments, dx, dy, node.closed)}" fill="{fill}" {stroke}'
-                f'{_markers(node, markers)}/>'] + heads
+                f'{_markers(node, affinity)}/>'] + heads
     if isinstance(node, Circle):
         x, y = node.center
         return [f'{indent}<circle cx="{num(x + dx)}" cy="{num(y + dy)}" r="{num(node.r)}" fill="#000" stroke="none"/>']
@@ -82,7 +90,7 @@ def _element(node, dx: float, dy: float, indent: str, markers: bool = True) -> l
         return [f'{indent}<path d="M{_pts(node.points, dx, dy)} Z" fill="#000" stroke="none"/>']
     if isinstance(node, TextRun):
         style = ' font-style="italic"' if node.style == "italic" else ""
-        family = FACE_FAMILIES["italic" if node.style == "italic" else node.weight] if (
+        family = FACE_FAMILIES["italic" if node.style == "italic" else node.weight] if affinity and (
             node.style == "italic" or node.weight == "bold") else FONT_FAMILY
         return [f'{indent}<text x="{num(node.x + dx)}" y="{num(node.y + dy)}" font-family="{family}" '
                 f'font-size="{num(node.size)}" font-weight="{node.weight}"{style} fill="#000">{escape(node.text)}</text>']
@@ -124,11 +132,11 @@ def faces_used(root: Group) -> list[str]:
 
 
 def to_svg(root: Group, padding: float = PADDING, size: tuple[float, float] | None = None,
-           offset: Point | None = None, markers: bool = True) -> tuple[str, Point]:
+           offset: Point | None = None, affinity: bool = False) -> tuple[str, Point]:
     """Serialize `root`. By default the drawing is moved so its ink box sits `padding`
     from the top-left, and the canvas fits it. Pass `size` and `offset` to place it on a
-    fixed canvas instead (the compare script uses the ChemDraw page). `markers`: arrowheads
-    as <marker>s (default); False writes each as a separate shape after its path (Affinity).
+    fixed canvas instead (the compare script uses the ChemDraw page). `affinity`: write for
+    Affinity (heads as separate shapes after their paths, bold/italic as bare face names).
     Returns the SVG text and the (dx, dy) that was added to every scene coordinate."""
     box = root.bbox() or (0.0, 0.0, 0.0, 0.0)
     if offset is None:
@@ -145,12 +153,12 @@ def to_svg(root: Group, padding: float = PADDING, size: tuple[float, float] | No
     faces = faces_used(root)
     if faces:
         lines.append(f"  <!-- acs-chem-svg: text measured with {'; '.join(faces)} -->")
-    used = markers_used(root) if markers else []
+    used = [] if affinity else markers_used(root)
     if used:
         lines.append("  <defs>")
         for m in used:
             lines += _marker_def(m, "    ")
         lines.append("  </defs>")
-    lines += _element(root, dx, dy, "  ", markers)
+    lines += _element(root, dx, dy, "  ", affinity)
     lines.append("</svg>")
     return "\n".join(lines) + "\n", (dx, dy)

@@ -100,7 +100,7 @@ def render_reference(name: str, preset_name: str | None = None) -> Rendered:
         groups.append(mech_dots(ref, preset))
     # templates hold ChemDraw's SVG-frame coordinates (measure_refs atoms), so no offset
     svg, (dx, dy) = to_svg(Group(f"compare-{name}", groups), size=ref.svg_size, offset=(0.0, 0.0),
-                           markers=False)  # load_rendered reads head paths, not <defs>
+                           affinity=True)  # load_rendered reads head paths, not <defs>
     pair_ids = {frozenset((b.a, b.b)): b.id for b in ref.bonds}
     atoms, bonds = {}, []
     for mol, d in zip(mols, drawers):
@@ -231,7 +231,7 @@ def spec_doc(spec_path: Path, ref: mr.Doc) -> tuple[mr.Doc, str]:
     """Render an M2 spec with our layout and load it as a Doc (atoms from the placed molecules,
     arrows from the layout), so measure_refs._scheme measures it like the reference."""
     lay = build_scheme(load_spec(spec_path), spec_path.parent, spec_path.stem)
-    svg, (dx, dy) = to_svg(lay.root, markers=False)
+    svg, (dx, dy) = to_svg(lay.root, affinity=True)  # head paths, as above
     atoms, bonds = {}, []
     for name, pl in lay.species.items():
         d = Drawer(pl.mol, lay.preset)

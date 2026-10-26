@@ -283,8 +283,24 @@ removed renders pixel-identical to the approved `m4_nitration_x1.0`. Inbox triag
   modes, `auto` and `auto-start-reverse`). Inkscape → copy → paste into Affinity brings the heads
   over, but as loose shapes that no longer follow. resvg draws markers like the separate shapes
   (gallery: ≤ 0.26 alpha, no pixel past 0.3 at 4 px/pt).
-- **`render.py --affinity`** (`to_svg(markers=False)`) writes each head as a separate shape after
+- **`render.py --affinity`** (`to_svg(affinity=True)`) writes each head as a separate shape after
   its path: byte-identical to the pre-marker output, so the approved gallery PNGs match it
   exactly. compare.py uses it too, since `measure_refs.load_rendered` parses the head paths.
 - The resonance start head is a turned-around shape with `orient="auto"` (SVG 1.1), not
   `auto-start-reverse` (SVG 2).
+
+## 2026-10-26 (bold and italic: face names only for Affinity)
+
+- **Face names broke bold and italic in Inkscape and Chrome.** `font-family="Helvetica Bold"`
+  (written since 2026-10-24 for Affinity) is no family to Inkscape or Chrome: Inkscape drew a
+  wide substitute sans, Chrome drew Times (user report; reproduced with Inkscape's CLI export and
+  headless Chrome). Safari and Affinity resolve it; resvg never saw it (`rasterize` maps it
+  back), so no test or PNG review caught it.
+- **No single encoding serves both.** Probe (one row per encoding): the face name first in the
+  family list plus `font-weight` / `font-style` renders correctly in Inkscape and Chrome, but
+  Affinity imports it as regular (user check). PostScript names (`Helvetica-Bold`) fail in
+  Inkscape. So the default writes the family list with the attributes, and `--affinity` keeps the
+  bare face names, alongside its separate arrowhead shapes.
+- Editor checks of a new encoding need all three: Inkscape, Chrome and Affinity. Inkscape and
+  Chrome can be checked here (`inkscape f.svg --export-type=png`; headless Chrome needs to run
+  outside the sandbox); Affinity needs the user.

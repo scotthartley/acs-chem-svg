@@ -13,7 +13,7 @@ Resonance arrows (acs-style.md §4.1; resonance_x*): the same head at both ends,
 from shaft_end_from_tip after one tip to shaft_end_from_tip before the other.
 
 Heads are scene.Markers on the shaft (written as SVG <marker>s, or as separate shapes with
-svg_writer.to_svg(markers=False)); Polyline.head_leaves() gives them in scheme coordinates.
+svg_writer.to_svg(affinity=True)); Polyline.head_leaves() gives them in scheme coordinates.
 """
 
 from __future__ import annotations

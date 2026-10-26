@@ -393,12 +393,15 @@ Rules (M4; unmeasured, user decisions 2026-10-25, flagged at review):
     Bold and for Heros Regular and Bold (tolerance 0.1 pt). M2 adds Helvetica Oblique and Heros
     Italic (worst 0.012 pt), and Oblique through the default font list: `font-style="italic"` with
     our family list picks Helvetica Oblique, not Heros Italic.
-  - **Face names in font-family** (all output, not only `--affinity`). Affinity imports bold
-    and italic only from the family name (user check, 2026-10-24: `Helvetica Bold` and
-    `Helvetica Oblique` work; a family list with `font-weight="bold"` / `font-style="italic"`
-    imports as regular). ChemDraw writes
-    `Helvetica Oblique` too. resvg matches family names only (the TTC family is `Helvetica`), so
-    `preview.rasterize` maps the two face names to the family list; the attributes pick the face.
+  - **Bold and italic encoding depends on the editor.** Affinity imports bold and italic only
+    from a bare face name in font-family (user checks: 2026-10-24, `Helvetica Bold` and
+    `Helvetica Oblique` work, a family list with `font-weight="bold"` / `font-style="italic"`
+    imports as regular; 2026-10-26, the face name first in the family list also imports as
+    regular). ChemDraw writes `Helvetica Oblique` too. Inkscape and Chrome can't resolve a face
+    name and substitute another font (2026-10-26; Safari resolves it). So the default output
+    writes the family list with the attributes, and `--affinity` writes the bare face name.
+    resvg matches family names only (the TTC family is `Helvetica`), so `preview.rasterize` maps
+    the two face names to the family list; the attributes pick the face. Both render alike.
   - **Negative control:** with no fonts loaded, nothing is drawn, so resvg never substitutes a
     font silently. PASS.
   - cairosvg is not usable (libcairo is not installed), and it isn't needed.
@@ -422,8 +425,8 @@ Rules (M4; unmeasured, user decisions 2026-10-25, flagged at review):
 - **§4.3 Affinity import:** confirmed by the user (2026-10-24, M1 SVGs at all three presets).
   Text imports as editable Helvetica at the same position, using `x`/`y` baselines with no
   `dominant-baseline`. The `species-…` groups appear as named layers, bonds are editable
-  strokes, and nothing moves. These checks apply to `--affinity` output (and to Inkscape output
-  pasted into Affinity): Affinity drops `<marker>` arrowheads on import (2026-10-26, lessons.md).
+  strokes, and nothing moves. These checks apply to `--affinity` output: Affinity drops `<marker>`
+  arrowheads on import and needs bare face names for bold and italic (2026-10-26, lessons.md).
 
 ### Resolved by stereo_x*, clearance_x*, double_bonds_2 (2026-10-24)
 - **Hash count and spacing** (§1.2): measured on 27 hashes.

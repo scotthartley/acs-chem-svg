@@ -24,7 +24,7 @@ Items marked **[VERIFY]** are assumptions that have not been confirmed and must 
 2. **Our renderer owns ACS style.** No external program does the drawing, so the renderer must implement ACS conventions exactly (bond offsets, label clearance, wedge shapes), measured in pt.
 3. **Look before delivering.** Every render produces a PNG, and Claude inspects it, including zoomed crops of dense regions (arrowheads, labels, lone pairs).
 4. **Numbers before pictures.** Structural, electron-bookkeeping, and geometric checks run first, so visual inspection is spent on aesthetics rather than on catching errors a script can find.
-5. **Editable output.** Clean, flat, grouped SVG with real text (Helvetica by default) that opens sensibly in Inkscape (Affinity: render with `--affinity`, which writes arrowheads as separate shapes).
+5. **Editable output.** Clean, flat, grouped SVG with real text (Helvetica by default) that opens sensibly in Inkscape (Affinity: render with `--affinity`, which writes arrowheads as separate shapes and bold/italic as face names).
 6. **Curated memory.** Use sessions log problems; development sessions turn them into fixes, tests, or lessons (§9).
 
 ---
@@ -177,6 +177,9 @@ Label layout and clearance require real glyph metrics.
   the one implicit transform. The renderer places each head on its path's end along the end
   tangent, so a head follows when the curve is edited (Inkscape, browsers). Affinity drops markers
   on import, so `render.py --affinity` writes each head as a separate filled shape instead.
+- Bold and italic text: the font family list with `font-weight` / `font-style`. `--affinity` writes
+  a bare face name in `font-family` (`Helvetica Bold`, `Helvetica Oblique`) instead, the only form
+  Affinity imports as bold or italic; Inkscape and Chrome can't resolve a face name.
 - Strokes: `stroke-width` explicit on every element, butt caps unless a convention requires round.
 - Groups with meaningful `id`s, e.g. `species-benzene`, `species-benzene-bonds`, `species-benzene-labels`, `arrows-step-1`, `conditions-step-1`, `numbers`. These appear as layer or object names in the editor.
 - Black on transparent background; no white rectangle.
