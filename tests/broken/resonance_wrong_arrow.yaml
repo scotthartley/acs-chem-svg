@@ -1,0 +1,9 @@
+# expect: step 1 (allyl_a -> allyl_b): the arrows give [CH2+:1][CH+:2][CH2-:3], but the next contributor allyl_b is
+preset: acs1996
+species:
+  allyl_a: {smiles: "[CH2+:1][CH:2]=[CH2:3]"}
+  allyl_b: {smiles: "[CH2:1]=[CH:2][CH2+:3]"}
+steps:
+  - resonance: [allyl_a, allyl_b]
+    arrows:
+      - [{from: "bond(2=3)", to: "atom(3)"}]

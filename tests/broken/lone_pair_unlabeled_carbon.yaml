@@ -1,0 +1,12 @@
+# expect: add show_carbons: [1] to cyanide
+preset: acs1996
+species:
+  cyanide: {smiles: "[C-:1]#[N:2]"}
+  acetone: {smiles: "[CH3:3][C:4](=[O:5])[CH3:6]"}
+  alkoxide: {smiles: "[N:2]#[C:1][C:4]([CH3:3])([O-:5])[CH3:6]"}
+steps:
+  - from: [cyanide, acetone]
+    to: alkoxide
+    arrows:
+      - {from: "lp(1)", to: "between(1,4)"}
+      - {from: "bond(4=5)", to: "atom(5)"}

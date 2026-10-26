@@ -1,0 +1,7 @@
+# scheme_multi_x1.0 row 3 (a two-stage arrow) rebuilt from its ChemDraw templates.
+preset: acs1996
+species:
+  iodobenzene: {molfile: templates/m2/scheme_multi_x1.0__12.mol}
+  benzene: {molfile: templates/m2/scheme_multi_x1.0__13.mol}
+steps:
+  - {from: iodobenzene, to: benzene, stages: ["*n*-BuLi, THF, −78 °C", "H3O+"]}

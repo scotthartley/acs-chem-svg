@@ -1,0 +1,13 @@
+# scheme_multi_x1.0 row 1 rebuilt by our layout from its ChemDraw templates (templates/m2/).
+preset: acs1996
+species:
+  ester:    {molfile: templates/m2/scheme_multi_x1.0__1.mol}
+  bnbr:     {molfile: templates/m2/scheme_multi_x1.0__2.mol}
+  ether:    {molfile: templates/m2/scheme_multi_x1.0__3.mol}
+  alcohol:  {molfile: templates/m2/scheme_multi_x1.0__4.mol}
+  aldehyde: {molfile: templates/m2/scheme_multi_x1.0__5.mol}
+steps:
+  - {from: [ester, bnbr], to: ether, above: K2CO3, below: "acetone, reflux"}
+  - {to: alcohol, above: LiAlH4, below: "THF, 0 °C"}
+  - {to: aldehyde, above: PCC, below: CH2Cl2}
+numbers: {ester: 1, bnbr: 2, ether: 3, alcohol: 4, aldehyde: 5}

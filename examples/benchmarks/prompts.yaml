@@ -1,0 +1,30 @@
+# M5 benchmark prompts (design.md §10): one-sentence requests for a use session, each with a
+# reference spec that is known to render well (gallery-approved). See examples/benchmarks/README.md.
+- id: nitration
+  prompt: "Draw the full arrow-pushing mechanism for the nitration of benzene with HNO3 and H2SO4: formation of the nitronium ion, attack by benzene, the resonance structures of the sigma complex, and deprotonation to nitrobenzene."
+  preset: acs1996
+  reference: [examples/m4_nitration_x1.0.yaml]
+  acceptance: true
+- id: sn2
+  prompt: "Draw the SN2 mechanism for hydroxide reacting with bromomethane, with curved arrows."
+  preset: acs1996
+  reference: [examples/m3_sn2_x1.0.yaml]
+- id: e2
+  prompt: "Draw the E2 mechanism for hydroxide with bromoethane giving ethene, with curved arrows."
+  preset: acs1996
+  reference: [examples/m3_e2_x1.0.yaml]
+- id: carbonyl_addition
+  prompt: "Draw the mechanism for cyanohydrin formation from acetone and cyanide, including protonation of the alkoxide by water."
+  preset: acs1996
+  reference: [examples/m3_carbonyl_addition_x1.0.yaml]
+- id: radical_bromination
+  prompt: "Draw the radical bromination of isobutane with Br2 and light: initiation and both propagation steps, with fishhook arrows."
+  preset: acs1996
+  reference:
+    - examples/m3_radical_initiation_x1.0.yaml
+    - examples/m3_radical_propagation_x1.0.yaml
+    - examples/m3_radical_propagation_2_x1.0.yaml
+- id: synthesis
+  prompt: "Draw a three-step synthesis scheme: methyl 4-hydroxybenzoate is benzylated with BnBr and K2CO3 in acetone, reduced with LiAlH4 in THF, and oxidized with PCC to the aldehyde; number the compounds."
+  preset: acs1996
+  reference: [examples/m2_sequence_x1.0.yaml]

@@ -1,0 +1,10 @@
+# scheme_multi_x1.0 row 2 (two lines above and below) rebuilt from its ChemDraw templates.
+preset: acs1996
+species:
+  bromopyridine: {molfile: templates/m2/scheme_multi_x1.0__10.mol}
+  phenylpyridine: {molfile: templates/m2/scheme_multi_x1.0__11.mol}
+steps:
+  - from: bromopyridine
+    to: phenylpyridine
+    above: ["PhB(OH)2", "Pd(PPh3)4"]
+    below: ["1,4-dioxane/H2O (4:1)", "90 °C, 12 h"]

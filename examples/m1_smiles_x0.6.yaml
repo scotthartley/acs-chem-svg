@@ -1,0 +1,16 @@
+# M1 set from SMILES with RDKit (CoordGen) layouts, rendered at preset acs1996_x0.6.
+preset: acs1996_x0.6
+species:
+  benzene: {smiles: "c1ccccc1"}
+  aspirin: {smiles: "CC(=O)Oc1ccccc1C(=O)O"}
+  alanine: {smiles: "C[C@@H](N)C(=O)O"}
+  nitronium: {smiles: "O=[N+]=O"}
+  acetic_acid: {smiles: "CC(=O)O"}
+  propyne: {smiles: "CC#C"}
+  methylammonium: {smiles: "C[NH3+]"}
+  acetate: {smiles: "CC(=O)[O-]"}
+  E_2_butene: {smiles: "C/C=C/C"}
+  Z_2_butene: {smiles: "C/C=C\\C"}
+  methylenecyclohexane: {smiles: "C=C1CCCCC1"}
+  acetaldehyde: {smiles: "CC=O"}
+  ethanolamine: {smiles: "NCCO"}

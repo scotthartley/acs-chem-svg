@@ -1,0 +1,19 @@
+# Approved renders
+
+Each PNG is 4 px/pt with a transparent background, rendered with system Helvetica.
+`tests/test_gallery.py` re-renders every case and fails on pixel changes. Replace a file only
+after the user approves the new image: `uv run python scripts/gallery.py --update`.
+
+| Images | Approved | Notes |
+|---|---|---|
+| m1_set_x1.0, m1_set_x0.8, m1_set_x0.6, double_bonds_x1.0, labels_x1.0 | 2026-10-24 (M1) | Templates drawn on ChemDraw's page; side-by-sides reviewed against ChemDraw 26.1. Charge signs scale with the label size (a deliberate departure from ChemDraw). |
+| m1_smiles_x1.0, m1_smiles_x0.8, m1_smiles_x0.6 | 2026-10-24 (M1) | `examples/m1_smiles_x*.yaml`, RDKit CoordGen layouts. |
+| m1_smiles_x1.0, m1_smiles_x0.8, m1_smiles_x0.6 | 2026-10-24 (M1 follow-up) | Re-approved after the stereo_x*/clearance_x*/double_bonds_2 rules: (E)-2-butene second line on the v < 0 side; acetaldehyde O centered between the C=O lines; sub-pixel label-end shifts from the band clip model. The reference-layout renders were unchanged. |
+| scheme_basic_x1.0, scheme_basic_x0.8, scheme_basic_x0.6, scheme_multi_x1.0, scheme_multi_x0.8, scheme_multi_x0.6 | 2026-10-24 (M2) | Templates (`templates/m2/`, OMe/OBn as abbreviations) drawn on ChemDraw's page, with our arrows and captions at ChemDraw's tail/head and first-glyph positions; side-by-sides reviewed against ChemDraw 26.1. M1 cases unchanged. |
+| m2_sequence_x1.0, m2_sequence_x0.8, m2_sequence_x0.6 | 2026-10-24 (M2) | M2 acceptance: 3-step sequence from SMILES with our layout and MCS alignment. Bold numbers and italic runs verified in Affinity (face names in font-family). |
+| m2_scheme_basic_x*, m2_scheme_multi_x*, m2_suzuki_x1.0, m2_stages_x1.0 | 2026-10-24 (M2) | The reference schemes rebuilt from their templates by our own layout (placement values are medians, acs-style.md §3.3). |
+| labels_x1.0, m1_set_x*, m1_smiles_x*, m2_sequence_x*, m2_scheme_basic_x*, m2_scheme_multi_x*, m2_suzuki_x1.0, m2_stages_x1.0 | 2026-10-24 (placement defaults) | Round placement defaults (0.5 pt grid; preset `placement:` list): scheme gaps, conditions offsets, number gap, charge offsets; structures and '+' centered on the arrow axis. Side-by-sides with the previous approved renders reviewed; shifts < 0.5 pt. |
+| mech_basic_x1.0, mech_basic_x0.8, mech_basic_x0.6, m3_sn2_x*, m3_e2_x1.0, m3_carbonyl_addition_x1.0, m3_radical_initiation_x1.0, m3_radical_propagation_x1.0, m3_radical_propagation_2_x1.0 | 2026-10-24 (M3) | M3 acceptance after three user reviews: mech_basic templates with our curved arrows on ChemDraw's CurvePoints (the user's updated refs add C–Br → Br); our own mechanism layouts. Lone pairs stay in their usual places; heads keep head_gap from the target label and its dots and point into the label; fishhooks forming a bond meet past the plus sign. Existing cases unchanged. |
+| resonance_x1.0, resonance_x0.8, resonance_x0.6, m4_nitration_x*, m4_resonance_x*, m4_wrap_x* | 2026-10-25 (M4) | M4 acceptance after one user review: the full nitration mechanism in two sequences (rows wrap at 504 pt; a mechanism step's arrow stays with its reactants; the base HSO₄⁻ above the deprotonation arrow); the σ-complex bracket and scheme_wrap rebuilt by our layout; resonance templates with our ↔ arrows and brackets on ChemDraw's. |
+| m3_carbonyl_addition_x1.0, m3_sn2_x0.8, m2_sequence_x* | 2026-10-25 (M4 review) | Water added above step 2's arrow (added reactants in mechanism steps); ×0.8 lone_pair.gap 1.5; sub-pixel to one-pixel alignment shifts in m2_sequence (chem.stable_core). |
+| nitration_accepted | 2026-10-25 (M5) | M5 acceptance: the spec a use session wrote from the one-sentence nitration prompt, approved without edits (`examples/benchmarks/nitration_accepted.yaml`). Same pixels as m4_nitration_x1.0. M5's code changes left every earlier case byte-identical. |

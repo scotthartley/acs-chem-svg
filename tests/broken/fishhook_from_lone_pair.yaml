@@ -1,0 +1,13 @@
+# expect: a fishhook moves one electron, so it cannot start at a lone pair
+preset: acs1996
+species:
+  hydroxide: {smiles: "[H][O-:1]"}
+  mebr:      {smiles: "[CH3:2][Br:3]", show_carbons: terminal}
+  methanol:  {smiles: "[OH:1][CH3:2]", show_carbons: terminal}
+  bromide:   {smiles: "[Br-:3]"}
+steps:
+  - from: [hydroxide, mebr]
+    to: [methanol, bromide]
+    arrows:
+      - {type: fishhook, from: "lp(1)", to: "between(1,2)"}
+      - {from: "bond(2-3)", to: "atom(3)"}

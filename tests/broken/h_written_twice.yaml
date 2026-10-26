@@ -1,0 +1,12 @@
+# expect: species sigma: Explicit valence for atom # 1 C, 5, is greater than permitted: atom C with map number 11 has too many bonds; it has an H atom attached ([H:17]) and also writes H in its bracket: drop the bracket H
+preset: acs1996
+species:
+  benzene: {smiles: "[CH:11]1=[CH:12][CH:13]=[CH:14][CH:15]=[CH:16]1"}
+  nitronium: {smiles: "[O:1]=[N+:2]=[O:3]"}
+  sigma: {smiles: "[H:17][CH:11]1([N+:2](=[O:3])[O-:1])[CH+:12][CH:13]=[CH:14][CH:15]=[CH:16]1"}
+steps:
+  - from: [benzene, nitronium]
+    to: sigma
+    arrows:
+      - {from: "bond(11=12)", to: "between(11,2)"}
+      - {from: "bond(2=1)", to: "atom(1)"}

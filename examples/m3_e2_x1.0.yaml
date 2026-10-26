@@ -1,0 +1,15 @@
+# M3: E2, hydroxide + bromoethane -> water + ethene + bromide (the anti H written as an atom)
+preset: acs1996
+species:
+  hydroxide: {smiles: "[H][O-:1]"}
+  etbr:      {smiles: "[H:4][CH2:3][CH2:2][Br:5]"}
+  water:     {smiles: "[H:4][O:1][H]"}
+  ethene:    {smiles: "[CH2:3]=[CH2:2]"}
+  bromide:   {smiles: "[Br-:5]"}
+steps:
+  - from: [hydroxide, etbr]
+    to: [water, ethene, bromide]
+    arrows:
+      - {from: "lp(1)", to: "between(1,4)"}
+      - {from: "bond(3-4)", to: "between(2,3)"}
+      - {from: "bond(2-5)", to: "atom(5)"}

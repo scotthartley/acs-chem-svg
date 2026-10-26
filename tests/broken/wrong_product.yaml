@@ -1,0 +1,13 @@
+# expect: the arrows give [Br-:3].[OH:1][CH3:2], but the products are [Br:3].[OH:1][CH3:2]
+preset: acs1996
+species:
+  hydroxide: {smiles: "[H][O-:1]"}
+  mebr:      {smiles: "[CH3:2][Br:3]", show_carbons: terminal}
+  methanol:  {smiles: "[OH:1][CH3:2]", show_carbons: terminal}
+  bromine:   {smiles: "[Br:3]"}
+steps:
+  - from: [hydroxide, mebr]
+    to: [methanol, bromine]
+    arrows:
+      - {from: "lp(1)", to: "between(1,2)"}
+      - {from: "bond(2-3)", to: "atom(3)"}

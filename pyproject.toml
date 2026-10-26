@@ -1,0 +1,33 @@
+[project]
+name = "acs-chem-svg"
+version = "0.1.0"
+description = "ACS-style chemical structures, schemes, and mechanisms as SVG (Claude Code skill)"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+    { name = "Scott Hartley", email = "scott.hartley@miamioh.edu" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "fonttools>=4.67.0",
+    "lxml>=6.1.3",
+    "pillow>=13.0.0",
+    "pydantic>=2.14.1",
+    "pypdfium2>=5.14.0",
+    "pyyaml>=6.0.3",
+    "rdkit>=2026.9.1",
+    "resvg-py>=0.5.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.11.25,<0.12.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]  # collect only tests/ (a stray symlink to the repo made collection recurse)

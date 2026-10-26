@@ -1,0 +1,171 @@
+# ACS Document 1996 with scaled Document Settings, x0.8. All lengths in pt.
+# Every value is measured from reference_renders/chemdraw/ by scripts/measure_refs.py;
+# see references/acs-style.md for method, ranges, and open items. The `placement:` keys are
+# round defaults chosen from those measurements (user decision 2026-10-24).
+name: acs1996_x0.8
+scale: 0.8
+font_family: Helvetica              # m1_set_x1.0.cdxml fonttable; SVG <text> font-family
+
+# Not multiplied by k in the scaled presets (proved by the x0.8 / x0.6 references).
+exempt:
+  - lengths.line_width              # 0.60 in m1_set_x0.8/x0.6 (bond polygons) and CDXML LineWidth
+  - lengths.hash_line_width         # 0.60 in m1_set_x0.8/x0.6 (hash polygons)
+  - charge.bar_thickness            # 0.50 in m1_set_x0.8/x0.6
+  - arrow.shaft_width               # 0.60 in scheme_basic_x0.8/x0.6
+  - arrow.head_length               # 6.00 / 5.98 in scheme_basic_x0.8/x0.6
+  - arrow.head_half_width           # 1.575 / 1.569 in scheme_basic_x0.8/x0.6
+  - arrow.head_inset                # 5.25 / 5.23 in scheme_basic_x0.8/x0.6
+  - arrow.shaft_end_from_tip        # 5.20 / 5.18 in scheme_basic_x0.8/x0.6
+  - arrow.head_outline              # 0.05 hairline in all scheme_basic files
+  - text.line_pitch_extra           # 10.05 / 8.05 / 6.05 baseline pitch = size + 0.05
+  - curved_arrow.stroke_width       # 0.60 in mech_basic_x0.8/x0.6
+  - curved_arrow.head_length        # 4.800 / 4.781 in mech_basic_x0.8/x0.6
+  - curved_arrow.head_half_width    # 1.500 / 1.494
+  - curved_arrow.head_inset         # 4.050 / 4.034
+  - curved_arrow.fishhook_barb      # 1.739 / 1.734
+  - curved_arrow.fishhook_offset    # 0.240 / 0.241 in mech_basic_x0.8/x0.6
+  - bracket.stroke_width            # 0.60 in resonance_x0.8/x0.6
+# Measured at every scale but not proportional to k. (ChemDraw's charge bars, 3.935 / 2.733 /
+# 1.798, shrink faster than k too; by user decision 2026-10-24 we scale them with k.)
+nonlinear:
+  - lone_pair.dot_radius            # 0.833 / 0.533 / 0.533 (mech_basic_x*): copied exactly (user decision 2026-10-24)
+  - lone_pair.dot_spacing           # 3.75 / 2.40 / 2.40
+  - lone_pair.gap                   # placement default, each preset from its own 2.14 / 2.29 / 1.06
+  - charge.unlabeled_distance       # placement default, each preset from its own 3.84 / 3.24 / 2.87 (resonance_x*)
+# Fitted or chosen, not measured per preset: kept at the x1.0 value.
+assumed_exempt:
+  - scheme.wrap_width              # 504 pt (7 in, ACS double column) at every preset: user decision 2026-10-25, not k-scaled
+  - lengths.label_outline_offset_x  # fitted over x1.0/x0.8/x0.6 together as one fixed-pt shift
+  - lengths.label_outline_offset_y
+# Auto- or hand-placed by ChemDraw and context-dependent; starting defaults, not k-scaled.
+approx:
+  - text.line_pitch_sub_upper       # fitted from one pitch per preset (acs-style.md §3, Open 9)
+  - text.line_pitch_sub_lower
+
+# Hand-placed in the references: round user-chosen defaults on a 0.5 pt grid, each preset
+# rounded from its own measured value (kept in the comment). Not k-scaled exactly.
+placement:
+  - charge.unlabeled_distance
+  - charge.labeled_offset_x
+  - charge.labeled_offset_y
+  - charge.above_label
+  - scheme.arrow_min_length
+  - scheme.conditions_pad
+  - scheme.multistep_indent
+  - scheme.conditions_above_baseline
+  - scheme.conditions_below_baseline
+  - scheme.center_above_axis
+  - scheme.arrow_gap
+  - scheme.plus_gap
+  - scheme.number_gap
+  - lone_pair.gap
+  - radical.distance
+  - curved_arrow.tail_gap
+  - curved_arrow.bond_tail_gap
+  - curved_arrow.head_gap
+  - curved_arrow.curvature          # dimensionless (control offset / chord), the same at every preset
+  - curved_arrow.loop_curvature
+  - resonance.arrow_length
+  - resonance.arrow_gap
+  - bracket.gap_x
+  - bracket.gap_above
+  - bracket.gap_below
+  - scheme.row_gap
+
+lengths:
+  bond_length: 11.52                # m1_set_x0.8: CDXML atom distances, median 11.520 (n=32)
+  line_width: 0.60                  # m1_set_x0.8: bond polygon width, median 0.600 (n=44); exempt
+  bond_spacing: 2.074               # m1_set_x0.8: ring double bonds, median 2.074 (n=6)
+  ring_inner_inset: 1.198           # m1_set_x0.8: inner-line inset per end, median (n=12); = s*tan30
+  bold_width: 1.6                   # m1_set_x0.8.cdxml BoldWidth
+  wedge_wide_end: 2.4               # m1_set_x0.8: wedge polygon width at drawn end (to H label)
+  hash_line_width: 0.60             # m1_set_x0.8: hash polygon thickness; exempt
+  hash_spacing: 2.0                 # m1_set_x0.8.cdxml HashSpacing; drawn pitch 3.98 (rule OPEN)
+  margin_width: 1.28                # m1_set_x0.8.cdxml MarginWidth; clip rule in acs-style.md §2.1
+  label_outline_offset_x: -0.02      # measure_refs.py --fit-clip: glyph outline shift for clipping, all references (n=399)
+  label_outline_offset_y: 0.03       # measure_refs.py --fit-clip
+
+ratios:                             # dimensionless; identical in every preset
+  bond_spacing_fraction: 0.18       # all files: CDXML BondSpacing=18; measured 2.592/14.40
+  ring_inner_inset_tan: 0.5774      # tan 30deg; inset/spacing measured 1.497/2.592
+  wedge_end_per_bold: 1.5           # m1_set_x*: 3.0/2.0, 2.4/1.6, 1.802/1.2
+  label_clearance_per_margin: 1.0075 # measure_refs.py --fit-clip: gap beyond the glyph's reach along the bond / margin (n=399; 396 within 0.1 pt, worst of those 0.092, rms 0.055)
+  label_band_per_size: 0.195        # measure_refs.py --fit-clip: only outline within +-0.195 x label size of the bond axis counts
+  label_baseline_per_size: 0.3585   # all files: baseline - atom y = 3.586 at 10 pt (cap height/2)
+  subscript_scale: 0.75             # all files: 7.5 pt digits under 10 pt labels
+  subscript_drop_per_size: 0.23     # all files: 2.30 at 10 pt
+  superscript_scale: 0.75           # scheme_multi_x*: '+' of H3O+ at 0.75 x size
+  superscript_raise_per_size: 0.3586 # scheme_multi_x*: baseline raised 3.586 / 2.869 / 2.152
+  arrow_back_control_per_half_width: 0.4375  # scheme_*: every arrowhead's back-edge cubic control sits at (notch, 0.4375 x corner offset)
+
+angles:
+  chain_angle: 120                  # m1_set_x1.0.cdxml ChainAngle; double_bonds_x1.0 hexane zigzag
+
+text:
+  label_size: 8                     # m1_set_x0.8 SVG font-size
+  caption_size: 8                   # scheme_basic_x0.8 conditions / numbers
+  number_weight: bold               # scheme_basic_x0.8 compound numbers font-weight="bold"
+  line_pitch_extra: 0.05            # scheme_basic_x0.8: two-line conditions pitch 8.05
+  line_pitch_sub_upper: 0.575       # approx: pitch adds this when the upper line has a subscript; scheme_multi_x0.8: 1,4-dioxane/H2O (4:1) -> 90 °C, 12 h pitch 8.625
+  line_pitch_sub_lower: 0.15        # approx: ... and this when the lower line has one; scheme_multi_x0.8: PhB(OH)2 -> Pd(PPh3)4 pitch 8.775, minus the line above
+
+charge:
+  bar_length: 3.148                 # user decision 2026-10-24: proportional, x1.0 measured 3.935 x 0.8 (ChemDraw m1_set_x0.8 draws 2.733)
+  bar_thickness: 0.50               # m1_set_x0.8; exempt
+  unlabeled_distance: 3.0           # placement default (user decision 2026-10-24); measured resonance_x0.8 3.24 (at 0 / 180 / -90 deg, not the x1.0 bisectors; x1.0 3.84 x k = 3.07)
+  labeled_offset_x: 1.5             # placement default (user decision 2026-10-24); x1.0 mean 1.77 x k = 1.42; ChemDraw m1_set_x0.8 N+ was (+2.05, -1.45) for its smaller sign
+  labeled_offset_y: -1.5            # placement default (user decision 2026-10-24); x1.0 mean -1.75 x k = -1.40
+  above_label: 6.0                  # placement default (user decision 2026-10-24); H on the right (NH3+); unmeasured at x0.8 (labels_x1.0 7.43 x k = 5.94)
+
+arrow:                              # reaction / resonance arrows
+  shaft_width: 0.60                 # scheme_basic_x0.8; exempt
+  head_length: 6.0                  # scheme_basic_x0.8: 5.996; exempt
+  head_half_width: 1.58             # scheme_basic_x0.8: mean 1.575; exempt
+  head_inset: 5.25                  # scheme_basic_x0.8: 5.246; exempt
+  shaft_end_from_tip: 5.21          # scheme_basic_x0.8: 5.196; exempt
+  head_outline: 0.05                # scheme_basic_x0.8: hairline stroke over the fill; exempt
+
+curved_arrow:                       # mech_basic_x0.8 (measure_refs.py --mech); exempt
+  stroke_width: 0.60                # mech_basic_x0.8: stroked cubic
+  head_length: 4.81                 # mech_basic_x0.8: 4.800, 4-vertex head polygon
+  head_half_width: 1.50             # mech_basic_x0.8: 1.500
+  head_inset: 4.06                  # mech_basic_x0.8: 4.050; the stroke ends at the notch
+  fishhook_barb: 1.755              # mech_basic_x0.8: 1.739; 3-vertex half head
+  fishhook_offset: 0.25             # mech_basic_x0.8: 0.240 (0.231-0.250); the stroke ends this far off the half head's axis, toward the barb
+  tail_gap: 1.5                    # placement default (user decision 2026-10-24); lone-pair / radical tail: beyond the dots' outer edge, outward; measured 1.367
+  bond_tail_gap: 2.0               # placement default (user decision 2026-10-24); bond tail: off the bond axis at its midpoint; measured 1.70 / 2.25, mean 1.98
+  head_gap: 1.5                    # placement default (user decision 2026-10-24); tip -> target element ink box (unlabeled atom: its center; bond: its axis); measured 1.309; fishhooks: Cl 1.01, unlabeled C 1.58
+  curvature: 0.5                    # placement default (user decision 2026-10-24); control offset / chord, arc shape; measured 0.531 (2e arrow, all presets)
+  loop_curvature: 1.3               # placement default (user decision 2026-10-24); chords shorter than a bond: loop shape; measured 1.307-1.312 (fishhooks, all presets)
+
+lone_pair:                          # mech_basic_x0.8; copied exactly, not k-scaled (nonlinear)
+  dot_radius: 0.533                 # mech_basic_x0.8: circle paths, n=22 (lone pairs and radicals)
+  dot_spacing: 2.40                # mech_basic_x0.8: center to center, n=10 pairs
+  gap: 1.5                          # placement default (user decision 2026-10-25: 2.5 read as too far); dot edge -> element ink box; measured median 2.285 (n=10, 1.65-2.51); not k-scaled: ChemDraw's x0.8 dots are the x0.6 size
+
+radical:
+  distance: 2.5                     # placement default (user decision 2026-10-24); dot center from an unlabeled atom; measured 2.480 (tert-butyl C, -89 deg); Cl radical: gap to ink box 1.36
+
+bracket:                            # resonance_x0.8
+  stroke_width: 0.60                # resonance_x0.8: stroked segments; exempt
+  lip_length: 3.2                   # resonance_x0.8: 3.212 (x1.0 4.007 x k = 3.206)
+  gap_x: 4.5                        # placement default (user decision 2026-10-25); content ink -> bracket stroke center, x; measured resonance_x0.8 4.628 (n=2, 4.60-4.66) (measure_refs.py --resonance)
+  gap_above: 1.5                    # placement default (user decision 2026-10-25); bracket top (stroke center) above the content ink; measured resonance_x0.8 1.687
+  gap_below: 2.0                    # placement default (user decision 2026-10-25); bracket bottom below the content ink; measured resonance_x0.8 1.808
+
+resonance:                          # resonance_x0.8 (measure_refs.py --resonance); round defaults, see `placement`
+  arrow_length: 23.0                # placement default (user decision 2026-10-25); double-headed arrow tip to tip; measured 23.04 (= 2 bond lengths)
+  arrow_gap: 6.0                    # placement default (user decision 2026-10-25); contributor ink (incl. charges) <-> arrow tip; measured 6.112 (n=4, 5.68-6.15)
+
+scheme:                             # hand-placed in the references (measure_refs.py --scheme); round defaults, see `placement`
+  arrow_min_length: 31.5            # placement default (user decision 2026-10-24); measured scheme_multi_x0.8 shortest arrow (PCC / CH2Cl2) 31.6
+  conditions_pad: 2.0               # placement default (user decision 2026-10-24); x1.0 2.327 x k = 1.86; the scaled references overhang (median 1.505, min -0.085) because ChemDraw scales text about its anchor
+  multistep_indent: 2.5             # placement default (user decision 2026-10-24); measured scheme_multi_x0.8 2.550 / 2.556
+  conditions_above_baseline: 4.5    # placement default (user decision 2026-10-24); measured scheme_*_x0.8 median 4.361 (n=6, 3.11-5.75)
+  conditions_below_baseline: 9.5    # placement default (user decision 2026-10-24); measured scheme_*_x0.8 median 9.312 (n=6, 9.09-10.09)
+  center_above_axis: 0.0            # placement default (user decision 2026-10-24); centered on the axis; measured 0.20 = ChemDraw's arrow BoundingBox center
+  arrow_gap: 10.5                   # placement default (user decision 2026-10-24); measured scheme_*_x0.8 median 10.471 (n=12, 8.15-17.62)
+  plus_gap: 13.0                    # placement default (user decision 2026-10-24); measured scheme_*_x0.8 median 12.776 (n=4)
+  number_gap: 5.5                   # placement default (user decision 2026-10-24); measured scheme_*_x0.8 median 5.314 (n=11, 5.11-5.43)
+  row_gap: 28.0                     # placement default (user decision 2026-10-25); row ink bottom (incl. numbers) -> next row ink top (incl. conditions); measured scheme_wrap_x0.8 27.80 (measure_refs.py --wrap)
+  wrap_width: 504.0                 # user decision 2026-10-25 (7 in, ACS double column); rows break between steps to stay within it; layout.width overrides

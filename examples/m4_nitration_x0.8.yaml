@@ -1,0 +1,44 @@
+# M4 acceptance: nitration of benzene. Row A: nitronium formation; row B: attack, the
+# sigma-complex resonance bracket, and deprotonation by bisulfate on the last contributor.
+preset: acs1996_x0.8
+species:
+  nitric:       {smiles: "[O:1]=[N+:2]([O-:3])[OH:4]", orientation: {flip_h: true}}
+  sulfuric:     {smiles: "[O:5]=[S:6](=[O:7])([OH:8])[O:9][H:10]"}
+  nitric_h:     {smiles: "[O:1]=[N+:2]([O-:3])[OH+:4][H:10]"}
+  bisulfate:    {smiles: "[O:5]=[S:6](=[O:7])([OH:8])[O-:9]"}
+  nitronium:    {smiles: "[O:1]=[N+:2]=[O:3]", align: false}   # linear, not bent like nitric_h
+  water:        {smiles: "[H:10][OH:4]"}
+  benzene:      {smiles: "[CH:11]1=[CH:12][CH:13]=[CH:14][CH:15]=[CH:16]1", orientation: {rotate: 180}}
+  nitronium_2:  {smiles: "[O:1]=[N+:2]=[O:3]"}
+  sigma_a:      {smiles: "[H:17][C:11]1([N+:2](=[O:3])[O-:1])[CH+:12][CH:13]=[CH:14][CH:15]=[CH:16]1"}
+  sigma_b:      {smiles: "[H:17][C:11]1([N+:2](=[O:3])[O-:1])[CH:12]=[CH:13][CH+:14][CH:15]=[CH:16]1"}
+  sigma_c:      {smiles: "[H:17][C:11]1([N+:2](=[O:3])[O-:1])[CH:12]=[CH:13][CH:14]=[CH:15][CH+:16]1"}
+  bisulfate_2:  {smiles: "[O:5]=[S:6](=[O:7])([OH:8])[O-:9]"}
+  nitrobenzene: {smiles: "[O-:1][N+:2](=[O:3])[C:11]1=[CH:16][CH:15]=[CH:14][CH:13]=[CH:12]1"}
+  sulfuric_2:   {smiles: "[O:5]=[S:6](=[O:7])([OH:8])[O:9][H:17]"}
+steps:
+  - from: [nitric, sulfuric]
+    to: [nitric_h, bisulfate]
+    arrows:
+      - {from: "lp(4)", to: "between(4,10)"}
+      - {from: "bond(9-10)", to: "atom(9)"}
+  - from: nitric_h
+    to: [nitronium, water]
+    arrows:
+      - {from: "lp(3)", to: "between(2,3)"}
+      - {from: "bond(2-4)", to: "atom(4)"}
+  - new_row: true
+    from: [benzene, nitronium_2]
+    to: sigma_a
+    arrows:
+      - {from: "bond(11=12)", to: "between(11,2)"}
+      - {from: "bond(2=1)", to: "atom(1)"}
+  - resonance: [sigma_a, sigma_b, sigma_c]
+    arrows:
+      - [{from: "bond(13=14)", to: "between(12,13)"}]
+      - [{from: "bond(15=16)", to: "between(14,15)"}]
+  - from: [sigma_c, bisulfate_2]
+    to: [nitrobenzene, sulfuric_2]
+    arrows:
+      - {from: "lp(9)", to: "between(9,17)"}
+      - {from: "bond(11-17)", to: "between(11,16)"}

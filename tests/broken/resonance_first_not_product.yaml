@@ -1,0 +1,9 @@
+# expect: the first contributor 'allyl_b' must be the previous step's only product
+preset: acs1996
+species:
+  propene:  {smiles: "[CH3:1][CH:2]=[CH2:3]"}
+  allyl_a:  {smiles: "[CH2+:1][CH:2]=[CH2:3]"}
+  allyl_b:  {smiles: "[CH2:1]=[CH:2][CH2+:3]"}
+steps:
+  - {from: propene, to: allyl_a}
+  - resonance: [allyl_b, allyl_a]

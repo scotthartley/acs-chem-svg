@@ -1,0 +1,14 @@
+# M3: radical bromination, propagation 2: the tert-butyl radical takes Br from Br2
+preset: acs1996
+species:
+  tbu:   {smiles: "[CH3:2][C:3]([CH3:4])[CH3:5]"}
+  br2:   {smiles: "[Br:7][Br:8]"}
+  tbubr: {smiles: "[CH3:2][C:3]([CH3:4])([CH3:5])[Br:7]"}
+  br:    {smiles: "[Br:8]", show_lone_pairs: [8]}
+steps:
+  - from: [tbu, br2]
+    to: [tbubr, br]
+    arrows:
+      - {type: fishhook, from: "electron(3)", to: "between(3,7)"}
+      - {type: fishhook, from: "bond(7-8)", to: "between(3,7)"}
+      - {type: fishhook, from: "bond(7-8)", to: "atom(8)"}

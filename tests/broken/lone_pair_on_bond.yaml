@@ -1,0 +1,8 @@
+# expect: lone pair on atom 1 of sulfurane overlaps a bond
+# Tetramethylsulfurane: four bonds take every side of the S, so its lone pair lands on one.
+preset: acs1996
+species:
+  sulfurane: {smiles: "C[S:1](C)(C)C", show_lone_pairs: [1]}
+  sulfide:   {smiles: "C[S:1]C"}
+steps:
+  - {from: sulfurane, to: sulfide}

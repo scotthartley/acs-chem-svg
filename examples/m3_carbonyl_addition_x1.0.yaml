@@ -1,0 +1,20 @@
+# M3: carbonyl addition: cyanide adds to acetone, then water protonates the alkoxide
+preset: acs1996
+species:
+  cyanide:     {smiles: "[C-:1]#[N:2]", show_carbons: terminal, orientation: {flip_h: true}}
+  acetone:     {smiles: "[CH3:3][C:4](=[O:5])[CH3:6]"}
+  alkoxide:    {smiles: "[N:2]#[C:1][C:4]([CH3:3])([O-:5])[CH3:6]"}
+  water:       {smiles: "[H:7][O:8][H]", orientation: {rotate: 180}}
+  cyanohydrin: {smiles: "[N:2]#[C:1][C:4]([CH3:3])([O:5][H:7])[CH3:6]"}
+  hydroxide:   {smiles: "[O-:8][H]"}
+steps:
+  - from: [cyanide, acetone]
+    to: alkoxide
+    arrows:
+      - {from: "lp(1)", to: "between(1,4)"}
+      - {from: "bond(4=5)", to: "atom(5)"}
+  - from: [alkoxide, water]
+    to: [cyanohydrin, hydroxide]
+    arrows:
+      - {from: "lp(5)", to: "between(5,7)"}
+      - {from: "bond(7-8)", to: "atom(8)"}

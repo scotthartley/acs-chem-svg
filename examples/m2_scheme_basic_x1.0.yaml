@@ -1,0 +1,9 @@
+# scheme_basic_x1.0 rebuilt by our layout from its ChemDraw templates (templates/m2/).
+preset: acs1996
+species:
+  phenol: {molfile: templates/m2/scheme_basic_x1.0__2.mol}
+  etI:    {molfile: templates/m2/scheme_basic_x1.0__3.mol}
+  ether:  {molfile: templates/m2/scheme_basic_x1.0__4.mol}
+steps:
+  - {from: [phenol, etI], to: ether, above: K2CO3, below: ["Acetone, reflux", "65%"]}
+numbers: {phenol: 1, etI: 2, ether: 3}

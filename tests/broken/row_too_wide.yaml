@@ -1,0 +1,10 @@
+# expect: pt wide, more than layout.width 150 pt
+preset: acs1996
+layout: {width: 150}
+species:
+  sigma_a: {smiles: "[H:7][C:1]1([N+:8](=[O:9])[O-:10])[CH:2]=[CH:3][CH:4]=[CH:5][CH+:6]1", abbreviate: [NO2],
+            orientation: {rotate: 240, flip_h: true}}
+  sigma_b: {smiles: "[H:7][C:1]1([N+:8](=[O:9])[O-:10])[CH:2]=[CH:3][CH+:4][CH:5]=[CH:6]1", abbreviate: [NO2]}
+  sigma_c: {smiles: "[H:7][C:1]1([N+:8](=[O:9])[O-:10])[CH+:2][CH:3]=[CH:4][CH:5]=[CH:6]1", abbreviate: [NO2]}
+steps:
+  - resonance: [sigma_a, sigma_b, sigma_c]

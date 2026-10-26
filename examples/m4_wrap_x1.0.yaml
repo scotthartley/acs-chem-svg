@@ -1,0 +1,20 @@
+# scheme_wrap_x1.0 rebuilt by our layout from its ChemDraw templates (templates/m2/): 1 + 2 -> 3 -> 4,
+# then a continuation row -> 5 -> 6 -> 7. layout.width is set so the row breaks where the
+# reference does (the default, 504 pt, would fit 5 on the first row).
+preset: acs1996
+layout: {width: 400}
+species:
+  ester:    {molfile: templates/m2/scheme_wrap_x1.0__8.mol}
+  bnbr:     {molfile: templates/m2/scheme_wrap_x1.0__9.mol}
+  ether:    {molfile: templates/m2/scheme_wrap_x1.0__10.mol}
+  alcohol:  {molfile: templates/m2/scheme_wrap_x1.0__11.mol}
+  aldehyde: {molfile: templates/m2/scheme_wrap_x1.0__6.mol}
+  enoate:   {molfile: templates/m2/scheme_wrap_x1.0__3.mol}
+  ester_h2: {molfile: templates/m2/scheme_wrap_x1.0__1.mol}
+steps:
+  - {from: [ester, bnbr], to: ether, above: K2CO3, below: "acetone, reflux"}
+  - {to: alcohol, above: LiAlH4, below: "THF, 0 °C"}
+  - {to: aldehyde, above: PCC, below: CH2Cl2}
+  - {to: enoate, above: Ph3P=CHCO2Me, below: CH2Cl2}
+  - {to: ester_h2, above: "H2, Pd/C", below: EtOAc}
+numbers: {ester: 1, bnbr: 2, ether: 3, alcohol: 4, aldehyde: 5, enoate: 6, ester_h2: 7}

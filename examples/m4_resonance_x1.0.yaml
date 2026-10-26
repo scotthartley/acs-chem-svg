@@ -1,0 +1,11 @@
+# resonance_x1.0 (the sigma complex of benzene + NO2+) rebuilt by our layout from SMILES: three
+# contributors in square brackets, joined by double-headed arrows. Compare:
+#   uv run python scripts/compare.py resonance_x1.0 --spec examples/m4_resonance_x1.0.yaml
+preset: acs1996
+species:
+  sigma_a: {smiles: "[H:7][C:1]1([N+:8](=[O:9])[O-:10])[CH:2]=[CH:3][CH:4]=[CH:5][CH+:6]1", abbreviate: [NO2],
+            orientation: {rotate: 240, flip_h: true}}
+  sigma_b: {smiles: "[H:7][C:1]1([N+:8](=[O:9])[O-:10])[CH:2]=[CH:3][CH+:4][CH:5]=[CH:6]1", abbreviate: [NO2]}
+  sigma_c: {smiles: "[H:7][C:1]1([N+:8](=[O:9])[O-:10])[CH+:2][CH:3]=[CH:4][CH:5]=[CH:6]1", abbreviate: [NO2]}
+steps:
+  - resonance: [sigma_a, sigma_b, sigma_c]

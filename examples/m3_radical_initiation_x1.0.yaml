@@ -1,0 +1,13 @@
+# M3: radical bromination, initiation: Br-Br homolysis (two fishhooks)
+preset: acs1996
+species:
+  br2:  {smiles: "[Br:1][Br:2]"}
+  br_a: {smiles: "[Br:1]", show_lone_pairs: [1]}
+  br_b: {smiles: "[Br:2]", show_lone_pairs: [2]}
+steps:
+  - from: br2
+    to: [br_a, br_b]
+    above: "*hν*"
+    arrows:
+      - {type: fishhook, from: "bond(1-2)", to: "atom(1)"}
+      - {type: fishhook, from: "bond(1-2)", to: "atom(2)"}

@@ -1,0 +1,14 @@
+# M2 acceptance: 3-step sequence (scheme_multi_x0.8 row 1), SMILES with RDKit layouts.
+# Products take the orientation of the species they are drawn from (MCS alignment).
+preset: acs1996_x0.8
+species:
+  ester:    {smiles: "COC(=O)c1ccc(O)cc1", abbreviate: [OMe], orientation: {rotate: 120}}
+  bnbr:     {smiles: "BrCc1ccccc1", orientation: {rotate: 0}}
+  ether:    {smiles: "COC(=O)c1ccc(OCc2ccccc2)cc1", abbreviate: [OMe, OBn]}
+  alcohol:  {smiles: "OCc1ccc(OCc2ccccc2)cc1", abbreviate: [OBn]}
+  aldehyde: {smiles: "O=Cc1ccc(OCc2ccccc2)cc1", abbreviate: [OBn]}
+steps:
+  - {from: [ester, bnbr], to: ether, above: K2CO3, below: "acetone, reflux"}
+  - {to: alcohol, above: LiAlH4, below: "THF, 0 °C"}
+  - {to: aldehyde, above: PCC, below: CH2Cl2}
+numbers: {ester: 1, bnbr: 2, ether: 3, alcohol: 4, aldehyde: 5}
