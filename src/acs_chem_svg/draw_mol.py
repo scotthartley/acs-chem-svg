@@ -14,7 +14,7 @@ import math
 from dataclasses import dataclass, field
 
 from . import richtext
-from .chem import Bond, Molecule
+from .chem import ELECTRONEGATIVITY, Bond, Molecule
 from .fontmetrics import FontFace, load_face
 from .geometry import (Point, add, angle_deg, dot, length, mul, perp, ray_box_exit, seg_point_dist, segment_box_dist,
                        segment_distance, sub, unit)
@@ -240,13 +240,16 @@ CHARGE_DOT_EXTRA_PT = 2.0  # unmeasured: ... up to this much beyond unlabeled_di
 class DotSet:
     """A lone pair (two dots) or a radical (one dot) on atom `atom`: `center` is the pair
     midpoint or the dot, `direction` points out from the atom, `side` names it (top / right /
-    bottom / left; the nearest one on unlabeled atoms)."""
+    bottom / left; the nearest one on unlabeled atoms). Lewis structures add a bond's shared
+    pairs ("shared": `atom` is the bond's a end, `bond` its index) and the electrons of a bond
+    assigned to one atom ("assigned": `atom` owns them)."""
     atom: int
-    kind: str  # "pair" | "radical"
+    kind: str  # "pair" | "radical" | "shared" | "assigned"
     center: Point
     direction: Point
     side: str
     dots: list[Point]
+    bond: int | None = None
 
 
 def _boxes_overlap(a, b) -> bool:
@@ -265,12 +268,16 @@ class Drawer:
         self.face = face or load_face("Regular")
         self.labels = {i: layout_label(mol, i, preset, self.face)
                        for i in range(len(mol.atoms)) if is_labeled(mol, i)}
-        self.flip_crowded_labels()
-        self.center_terminal_labels()
+        if mol.lewis is None:
+            self.flip_crowded_labels()
+            self.center_terminal_labels()
+        else:  # Lewis structure: every atom labeled, every lone pair drawn
+            show_lone_pairs = range(len(mol.atoms))
         self.show_lone_pairs = set(show_lone_pairs or ())  # atom indices whose lone pairs are drawn
         # atom index -> {"pair" | "radical": direction toward its arrow's target}: that set faces it
         self.tails = tails or {}
         self._dots: dict[int, list[DotSet]] | None = None
+        self._bond_dots: list[DotSet] | None = None
 
     def label_hits(self, i: int, label: Label) -> bool:
         """Does atom i's label overlap another atom's label, or a bond not on atom i (its
@@ -743,6 +750,7 @@ class Drawer:
         a, lab = self.mol.atoms[i], self.labels[i]
         lp = self.preset.lone_pair
         blocked = [unit(sub(self.mol.atoms[j].p, a.p)) for j, _ in self.mol.neighbors(i)]
+        blocked += self.lewis_facing(i)
         if lab.num_h:
             blocked.append(SIDES[lab.h_side])
             if a.charge and lab.h_side == "right":
@@ -789,6 +797,81 @@ class Drawer:
                 dots = ([add(mid, mul(along, lp.dot_spacing / 2)), add(mid, mul(along, -lp.dot_spacing / 2))]
                         if kind == "pair" else [mid])
                 out.append(DotSet(i, kind, mid, d, k, dots))
+        return out
+
+    def lewis_facing(self, i: int) -> list[Point]:
+        """Lewis structures: directions to atoms one bond length away that are not bonded to
+        atom i (chem.lewis_layout keeps these few). A lone pair between them would read as a
+        bond, so that side stays free."""
+        if self.mol.lewis is None:
+            return []
+        a, step = self.mol.atoms[i], self.preset.lewis.bond_length
+        bonded = {j for j, _ in self.mol.neighbors(i)} | {i}
+        return [unit(sub(o.p, a.p)) for o in self.mol.atoms
+                if o.idx not in bonded and abs(math.dist(o.p, a.p) - step) < 1e-6]
+
+    # ---------------------------------------------------------------- Lewis bond electrons
+
+    def lewis_dot_sets(self) -> list[DotSet]:
+        """Each bond's electrons in a Lewis structure (mol.lewis), in bond order."""
+        if self.mol.lewis is None:
+            return []
+        if self._bond_dots is None:
+            self._bond_dots = [ds for b in self.mol.bonds for ds in self.bond_dots(b)]
+        return self._bond_dots
+
+    def bond_gap(self, b: Bond) -> tuple[Frame, float, float]:
+        """(frame, u0, u1): the gap between the two element ink boxes along bond b."""
+        fr = self.frame(b)
+
+        def proj(i):
+            x0, y0, x1, y1 = self.labels[i].elem_ink_box()
+            return [dot(sub(c, fr.o), fr.u) for c in ((x0, y0), (x1, y0), (x0, y1), (x1, y1))]
+        return fr, max(proj(b.a)), min(proj(b.b))
+
+    def bond_dots(self, b: Bond) -> list[DotSet]:
+        """A Lewis bond's electrons (unmeasured placement, user decision 2026-10-26), on the
+        bond axis between the two element ink boxes (gap g):
+        - shared: one column per bond order, dot_spacing apart along the bond and centered in
+          g; each column is two dots dot_spacing apart across the bond, like a lone pair.
+        - formal_charge: each atom gets `order` electrons; oxidation_state: the more
+          electronegative atom (chem.ELECTRONEGATIVITY) gets all 2·order, equal atoms split.
+          Assigned electrons are packed from the owner's ink box outward: the first column
+          lone_pair.gap from the box, then every dot_spacing; a pair is two dots across the
+          bond, an odd last electron one dot on the axis. Two electrons look like a lone pair."""
+        lp, mode = self.preset.lone_pair, self.mol.lewis
+        fr, u0, u1 = self.bond_gap(b)
+        h = lp.dot_spacing / 2
+        if mode == "shared":
+            mid = (u0 + u1) / 2
+            us = [mid + (k - (b.order - 1) / 2) * lp.dot_spacing for k in range(b.order)]
+            dots = [fr.at(u, v) for u in us for v in (h, -h)]
+            return [DotSet(b.a, "shared", fr.at(mid, 0), fr.n, _side_name(fr.n), dots, b.idx)]
+        counts = {b.a: b.order, b.b: b.order}
+        if mode == "oxidation_state":
+            en = {}
+            for i in (b.a, b.b):
+                el = self.mol.atoms[i].element
+                if el not in ELECTRONEGATIVITY:
+                    raise ValueError(f"lewis oxidation_state: no electronegativity for {el} (atom {self.mol.atoms[i].id}); "
+                                     f"known: {', '.join(ELECTRONEGATIVITY)}")
+                en[i] = ELECTRONEGATIVITY[el]
+            if en[b.a] != en[b.b]:
+                hi = max((b.a, b.b), key=en.get)
+                counts = {hi: 2 * b.order, b.other(hi): 0}
+        out = []
+        for i, n in counts.items():
+            if not n:
+                continue
+            sgn, edge = (1, u0) if i == b.a else (-1, u1)
+            dots, k = [], 0
+            while n > 0:
+                u = edge + sgn * (lp.gap + lp.dot_radius + k * lp.dot_spacing)
+                dots += [fr.at(u, h), fr.at(u, -h)] if n >= 2 else [fr.at(u, 0)]
+                n, k = n - 2, k + 1
+            d = mul(fr.u, sgn)
+            out.append(DotSet(i, "assigned", fr.at(edge + sgn * (lp.gap + lp.dot_radius), 0), d, _side_name(d),
+                              dots, b.idx))
         return out
 
     def _clear_of_bonds(self, i: int, mid: Point, along: Point, box: tuple) -> Point:
@@ -855,7 +938,7 @@ class Drawer:
 
     def draw(self, name: str) -> Group:
         lw = self.preset.lengths.line_width
-        geoms = {b.idx: self.bond_geometry(b) for b in self.mol.bonds}
+        geoms = {} if self.mol.lewis else {b.idx: self.bond_geometry(b) for b in self.mol.bonds}
         bonds = Group(f"species-{name}-bonds")
         for line, closed, bis in self.chains(geoms):
             src = "bond:" + ",".join(self.mol.bonds[bi].id for bi in bis)
@@ -877,6 +960,11 @@ class Drawer:
         dots = [Group(f"species-{name}-{kind}", [Circle(p, r, source=f"atom:{self.mol.atoms[ds.atom].id}")
                                                  for ds in sets if ds.kind == k for p in ds.dots])
                 for k, kind in (("pair", "lone-pairs"), ("radical", "radicals"))]
+        lewis = self.lewis_dot_sets()
+        dots += [Group(f"species-{name}-{kind}", [Circle(p, r, source=src(ds)) for ds in lewis if ds.kind == k
+                                                  for p in ds.dots])
+                 for k, kind, src in (("shared", "bonding-pairs", lambda ds: f"bond:{self.mol.bonds[ds.bond].id}"),
+                                      ("assigned", "bond-electrons", lambda ds: f"atom:{self.mol.atoms[ds.atom].id}"))]
         return Group(f"species-{name}", [g for g in (bonds, labels, charges, *dots) if g.children])
 
 

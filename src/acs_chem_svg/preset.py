@@ -104,6 +104,10 @@ class Radical(_Section):
     distance: float
 
 
+class Lewis(_Section):
+    bond_length: float
+
+
 class Bracket(_Section):
     stroke_width: float
     lip_length: float
@@ -149,6 +153,7 @@ class Preset(_Section):
     curved_arrow: CurvedArrow
     lone_pair: LonePair
     radical: Radical
+    lewis: Lewis
     bracket: Bracket
     resonance: Resonance
     scheme: Scheme

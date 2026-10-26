@@ -19,6 +19,12 @@ segments), and these must hold:
   runs between the two dots of a pair;
 - dots are not drawn on an unlabeled atom with at most one bond (a bare line end, like ⁻:C≡N
   drawn without its C): show_carbons labels it.
+
+Lewis structures (check_lewis, M1):
+- a shared pair's dots keep at least 2 × lone_pair.gap from both element ink boxes, so they
+  read as farther out than lone pairs (a wide `labels:` symbol such as R' can break this);
+- an atom's assigned bond electrons stay on its half of the gap between the ink boxes;
+- dots of different sets (lone pairs, radicals, bond electrons) are at least dot_spacing apart.
 """
 
 from __future__ import annotations
@@ -26,6 +32,7 @@ from __future__ import annotations
 import math
 
 from .chem import Molecule
+from .draw_mol import Drawer
 from .geometry import point_box_dist, seg_point_dist, segment_box_dist, segment_distance, union_box
 from .layout import SchemeLayout
 from .mechanism import clashes, species_parts
@@ -91,6 +98,42 @@ def check_labels(name: str, group: Group, mol: Molecule) -> list[str]:
         for a, b, hw, bsrc in pt.bonds:
             if own.isdisjoint(bsrc.split(":", 1)[-1].split(",")) and segment_box_dist(a, b, box) < hw - LABEL_TOL:
                 problems.append(f"species-{name}: {src} label overlaps {bsrc}")
+    return list(dict.fromkeys(problems))
+
+
+def check_lewis(name: str, d: Drawer) -> list[str]:
+    """Problems with a Lewis structure's dots (module docstring); empty for other species."""
+    if d.mol.lewis is None:
+        return []
+    lp = d.preset.lone_pair
+    problems = []
+    bond_sets = d.lewis_dot_sets()
+    for ds in bond_sets:
+        b = d.mol.bonds[ds.bond]
+        fr, u0, u1 = d.bond_gap(b)
+        ids = f"{d.mol.atoms[b.a].id}-{d.mol.atoms[b.b].id}"
+        for p in ds.dots:
+            u = (p[0] - fr.o[0]) * fr.u[0] + (p[1] - fr.o[1]) * fr.u[1]
+            if ds.kind == "shared":
+                near = min(u - u0, u1 - u) - lp.dot_radius
+                if near < 2 * lp.gap - LABEL_TOL:
+                    problems.append(f"species-{name}: a shared pair of bond {ids} is {near:.2f} pt from a label "
+                                    f"(at least {2 * lp.gap:.2f}, 2 × lone_pair.gap, so it reads as a bond)")
+                    break
+            else:
+                mid = (u0 + u1) / 2
+                past = (u + lp.dot_radius - mid) if ds.atom == b.a else (mid - (u - lp.dot_radius))
+                if past > LABEL_TOL:
+                    problems.append(f"species-{name}: the electrons of bond {ids} assigned to atom "
+                                    f"{d.mol.atoms[ds.atom].id} cross the middle of the bond by {past:.2f} pt")
+                    break
+    sets = [ds for i in sorted(d.dot_sets()) for ds in d.dot_sets()[i]] + bond_sets
+    for k, s1 in enumerate(sets):
+        for s2 in sets[k + 1:]:
+            gap = min(math.dist(p, q) for p in s1.dots for q in s2.dots)
+            if gap < lp.dot_spacing - LABEL_TOL:
+                problems.append(f"species-{name}: dots of atom {d.mol.atoms[s1.atom].id} ({s1.kind}) and atom "
+                                f"{d.mol.atoms[s2.atom].id} ({s2.kind}) are {gap:.2f} pt apart (at least {lp.dot_spacing:.2f})")
     return list(dict.fromkeys(problems))
 
 

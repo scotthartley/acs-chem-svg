@@ -347,3 +347,17 @@ removed renders pixel-identical to the approved `m4_nitration_x1.0`. Inbox triag
   treats unmapped H as implicit, so no spec needed changes. `m3_e2_x1.0` gained two C–H bonds,
   and `tests/broken/arrow_crosses_bond.yaml` needed `orientation: {rotate: -60}` on etbr to keep
   its arrow crossing the chain.
+
+## 2026-10-26 (inbox: Lewis structure of CCl₄)
+
+- **A user asked for CCl₄ with shared electrons as dots and no bond lines.** Bonds were always
+  lines and internal carbons couldn't be labeled. `lewis:` on a species now draws a Lewis
+  structure on a square lattice: every atom labeled, bonds as 1–3 shared-pair columns, or as
+  electrons assigned per `formal_charge` / `oxidation_state` (references/scheme-schema.md).
+- **"No non-bonded atoms one lattice step apart" can't be a hard rule.** A CH₃ on a three-way
+  center (acetic acid, isopropanol) always puts one of its H's next to another branch. The
+  layout minimizes such pairs, and the facing sides get no lone pairs, so nothing sits where
+  a shared pair would. Four branches with H's (neopentane) don't fit at all and raise an error.
+- **`no:` in YAML is `false`.** A species named `no` (nitric oxide) fails with a baffling
+  "Input should be a valid string". Use another name (`nitric_oxide`).
+

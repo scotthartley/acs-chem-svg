@@ -122,12 +122,19 @@ class SchemeLayout:
         return b[2] - b[0]
 
 
+def m1_drawers(spec: Spec, base_dir: Path) -> list[Drawer]:
+    """M1: one Drawer per species, in spec order."""
+    preset = load_preset(spec.preset)
+    return [Drawer(mol, preset, show_lone_pairs={a.idx for a in mol.atoms if a.map in sp.show_lone_pairs})
+            for sp, mol in zip(spec.species.values(), molecules(spec, base_dir))]
+
+
 def m1_row(spec: Spec, base_dir: Path, name: str) -> Group:
     """M1: species side by side, centered vertically, plus_gap between ink boxes."""
     preset = load_preset(spec.preset)
     groups, x = [], 0.0
-    for sp, mol in zip(spec.species.values(), molecules(spec, base_dir)):
-        g = Drawer(mol, preset, show_lone_pairs={a.idx for a in mol.atoms if a.map in sp.show_lone_pairs}).draw(mol.name)
+    for d in m1_drawers(spec, base_dir):
+        g = d.draw(d.mol.name)
         x0, y0, x1, y1 = g.bbox()
         g.translate(x - x0, -(y0 + y1) / 2)
         x += (x1 - x0) + preset.scheme.plus_gap

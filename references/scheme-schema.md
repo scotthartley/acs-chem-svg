@@ -215,9 +215,42 @@ species:
 | `species.<name>.orientation.rotate` | number \| `auto` | Degrees, counter-clockwise on screen, applied to the raw CoordGen layout. SMILES default `auto` (bonds at ±30°, rings with vertical sides, linear molecules horizontal). Molfile default 0. |
 | `species.<name>.orientation.flip_h` / `flip_v` | bool | Mirror. Wedges are re-derived so the stereo stays correct. |
 | `species.<name>.show_carbons` | `none` (default), `terminal`, or a list of atom ids | Explicit labels on terminal carbons (CH₃, H₃C, =CH₂). Internal CH₂/CH raise an error until measured (acs-style.md §6 Open 8). Atom ids are atom-map numbers if set, else 1-based atom indices. A molfile atom alias on a carbon (`A` line: CH3, H3C, …) also shows its label. |
+| `species.<name>.lewis` | `true` \| `{electrons: shared \| formal_charge \| oxidation_state}` | Draw a Lewis structure (below). `true` = `shared`. SMILES only, specs without `steps` only; not with `kekule`, `abbreviate`, `show_carbons` or `show_lone_pairs` (the last two are implied). `orientation.rotate` must be a multiple of 90. |
 
 Give exactly one of `smiles` or `molfile`. Without `steps`, several species are placed left to
 right with `scheme.plus_gap` between their ink boxes.
+
+### Lewis structures (`lewis`)
+
+```yaml
+species:
+  ccl4:     {smiles: "ClC(Cl)(Cl)Cl", lewis: true}
+  co2:      {smiles: "O=C=O", lewis: {electrons: formal_charge}}
+  methanol: {smiles: "CO", lewis: {electrons: oxidation_state}}
+```
+
+- **Atoms:** every H becomes an atom and every atom is labeled with its bare element symbol
+  (C included); every lone pair and radical is drawn. Charges come from the SMILES (±1 only).
+- **Layout:** a square lattice, every bond `lewis.bond_length` long whatever its order. The
+  root is the heavy-atom tree center; its heavy neighbors go right, left, up, down. Each other
+  atom continues its largest heavy branch straight and puts the others up, then down; H atoms
+  fill what is left (CH₃OH: H–C–O–H with C's H's above and below; H₂O and CO₂ linear; CCl₄ a
+  cross). The search keeps non-bonded atoms off neighboring lattice points where it can; where
+  it can't (acetic acid's CH₃ beside C=O), the sides facing each other get no lone pairs.
+- **Bonds as electrons**, between the two element ink boxes:
+  - `shared`: one column per bond order (O : : C, N : : : N), each column two dots across the
+    bond, centered in the gap and at least 2 × `lone_pair.gap` from each label, so a shared
+    pair sits visibly farther out than a lone pair.
+  - `formal_charge`: each atom gets `order` electrons; `oxidation_state`: the more
+    electronegative atom (Pauling, `chem.ELECTRONEGATIVITY`) gets all of them, equal atoms
+    split. Assigned electrons pack outward from the owner's label like lone pairs (a pair, then
+    one dot on the axis if odd). The labels don't move between the three modes.
+- **Limits (errors):** rings; atoms with more than 4 neighbors (PCl₅); trees that don't fit
+  on the lattice (neopentane); salts written as one SMILES; Lewis species in schemes.
+  `validate` reports a triple bond assigned to one atom in `oxidation_state` (its 3 columns
+  cross the middle of the bond) and wide `labels:` symbols that crowd the shared pairs.
+- **SVG groups:** `species-<name>-labels`, `-lone-pairs`, `-radicals`, `-charges`, plus
+  `-bonding-pairs` (shared) and `-bond-electrons` (assigned). There is no `-bonds` group.
 
 ## Drawn conventions (automatic)
 

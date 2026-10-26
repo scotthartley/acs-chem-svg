@@ -4,6 +4,7 @@ Cases:
 - <reference>.png: our drawing of each ChemDraw reference's templates, on ChemDraw's page
   (scheme references also with our arrows and captions at ChemDraw's positions).
 - m1_smiles_x<k>.png: examples/m1_smiles_x<k>.yaml (RDKit layouts).
+- m1_lewis_x<k>.png, m1_lewis_assigned_x1.0.png: examples/m1_lewis_*.yaml (Lewis structures).
 - m2_*.png: examples/m2_*.yaml schemes with our own layout (m2_sequence_x<k>: the M2 acceptance).
 - mech_basic_x<k>.png: the mechanism references' templates with our curved arrows on ChemDraw's
   CurvePoints and our dots at its centers.
@@ -42,6 +43,8 @@ REFERENCES = ["m1_set_x1.0", "m1_set_x0.8", "m1_set_x0.6", "double_bonds_x1.0", 
               "mech_basic_x1.0", "mech_basic_x0.8", "mech_basic_x0.6",
               "resonance_x1.0", "resonance_x0.8", "resonance_x0.6"]
 SPECS = ["examples/m1_smiles_x1.0.yaml", "examples/m1_smiles_x0.8.yaml", "examples/m1_smiles_x0.6.yaml",
+         "examples/m1_lewis_x1.0.yaml", "examples/m1_lewis_x0.8.yaml", "examples/m1_lewis_x0.6.yaml",
+         "examples/m1_lewis_assigned_x1.0.yaml",
          "examples/m2_sequence_x1.0.yaml", "examples/m2_sequence_x0.8.yaml", "examples/m2_sequence_x0.6.yaml",
          "examples/m2_scheme_basic_x1.0.yaml", "examples/m2_scheme_basic_x0.8.yaml", "examples/m2_scheme_basic_x0.6.yaml",
          "examples/m2_scheme_multi_x1.0.yaml", "examples/m2_scheme_multi_x0.8.yaml", "examples/m2_scheme_multi_x0.6.yaml",

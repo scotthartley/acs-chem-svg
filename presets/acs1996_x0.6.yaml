@@ -31,6 +31,7 @@ nonlinear:
   - lone_pair.dot_radius            # 0.833 / 0.533 / 0.533 (mech_basic_x*): copied exactly (user decision 2026-10-24)
   - lone_pair.dot_spacing           # 3.75 / 2.40 / 2.40
   - lone_pair.gap                   # placement default, each preset from its own 2.14 / 2.29 / 1.06
+  - lewis.bond_length               # placement default, each preset from its own lone_pair values (nonlinear)
   - charge.unlabeled_distance       # placement default, each preset from its own 3.84 / 3.24 / 2.87 (resonance_x*)
 # Fitted or chosen, not measured per preset: kept at the x1.0 value.
 assumed_exempt:
@@ -71,6 +72,7 @@ placement:
   - bracket.gap_above
   - bracket.gap_below
   - scheme.row_gap
+  - lewis.bond_length
 
 lengths:
   bond_length: 8.64                 # m1_set_x0.6: CDXML atom distances, median 8.640 (n=32)
@@ -145,6 +147,12 @@ lone_pair:                          # mech_basic_x0.6; copied exactly, not k-sca
 
 radical:
   distance: 2.0                     # placement default (user decision 2026-10-24); dot center from an unlabeled atom; measured 1.802 (tert-butyl C, -88 deg); Cl radical: gap to ink box 1.28
+
+lewis:                              # Lewis structures (user decision 2026-10-26); no ChemDraw reference: unmeasured
+  bond_length: 15.5                 # placement default, unmeasured (user decision 2026-10-26); atom center to center at every bond order: the
+                                    # smallest 0.5 pt value where 3 shared-pair columns (dot_spacing apart) fit between two labels with the
+                                    # inner dot edges >= 2 x lone_pair.gap from each element ink box, for the widest case (first letter centered
+                                    # on both atoms, fontmetrics): Br-Br 15.35, Cl-Cl 14.86 (tests/test_lewis.py rederives it)
 
 bracket:                            # resonance_x0.6
   stroke_width: 0.60                # resonance_x0.6: stroked segments; exempt

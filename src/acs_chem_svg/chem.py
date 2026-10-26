@@ -18,10 +18,13 @@ The output is a plain `Molecule` in pt, y down, so drawing never touches RDKit.
   attachment atom's position (RDKit rdAbbreviations). A molfile alias that names one does the same.
 - Alignment (M2): a scheme product takes the coordinates of the atoms it shares with the
   species it is drawn from (atom maps, else the MCS), and only the rest is laid out.
+- Lewis structures (`lewis`): every H becomes an atom and every atom is labeled; lewis_layout
+  places the (acyclic) tree on a square lattice at the preset's lewis.bond_length.
 """
 
 from __future__ import annotations
 
+import itertools
 import math
 import re
 import statistics
@@ -50,6 +53,15 @@ ABBREVIATIONS = {
     "TIPS": "*[Si](C(C)C)(C(C)C)C(C)C",
 }
 MCS_TIMEOUT = 2  # s
+# Pauling electronegativities (CRC Handbook of Chemistry and Physics, "Electronegativity of the
+# Elements"): chemistry constants for Lewis oxidation-state views, not style numbers.
+ELECTRONEGATIVITY = {
+    "H": 2.20, "Li": 0.98, "Be": 1.57, "B": 2.04, "C": 2.55, "N": 3.04, "O": 3.44, "F": 3.98,
+    "Na": 0.93, "Mg": 1.31, "Si": 1.90, "P": 2.19, "S": 2.58, "Cl": 3.16, "K": 0.82, "Ca": 1.00,
+    "Br": 2.96, "Rb": 0.82, "Sr": 0.95, "I": 2.66, "Cs": 0.79, "Ba": 0.89,
+}
+LEWIS_MODES = ("shared", "formal_charge", "oxidation_state")
+LEWIS_SEARCH_LIMIT = 20000  # lewis_layout: placements tried before settling for the best found
 ALIGN_TOL = 1e-4  # A; matched atoms must hold their reference position this closely
 
 
@@ -96,6 +108,7 @@ class Molecule:
     atoms: list[Atom]
     bonds: list[Bond]
     rings: list[list[int]] = field(default_factory=list)  # SSSR, atom indices in ring order
+    lewis: str | None = None  # Lewis structure: "shared" | "formal_charge" | "oxidation_state" (draw_mol)
 
     def neighbors(self, i: int) -> list[tuple[int, Bond]]:
         return [(b.other(i), b) for b in self.bonds if i in (b.a, b.b)]
@@ -434,7 +447,20 @@ def _orient_molfile(mol: Chem.Mol, rotate_deg, flip_h: bool, flip_v: bool) -> No
 
 def from_smiles(smiles: str, name: str, bond_length: float, kekule: list[str] | None = None,
                 rotate_deg: float | str | None = "auto", flip_h: bool = False, flip_v: bool = False,
-                abbreviate: list[str] | None = None) -> Molecule:
+                abbreviate: list[str] | None = None, lewis: str | None = None) -> Molecule:
+    """`lewis` (a LEWIS_MODES value): a Lewis structure with every H an atom and every atom
+    labeled, laid out by lewis_layout with `bond_length` as the lattice step (lewis.bond_length)."""
+    if lewis is not None:
+        mol = Chem.AddHs(parse_smiles(smiles))
+        Chem.RemoveStereochemistry(mol)
+        lewis_layout(mol, bond_length, name)
+        orient(mol, 0.0 if rotate_deg in (None, "auto") else rotate_deg, flip_h, flip_v)  # a multiple of 90
+        _set_coords(mol, [(round(x, 6) + 0.0, round(y, 6) + 0.0) for x, y in _coords(mol)])
+        m = to_molecule(mol, name, bond_length, scale=1.0)
+        for a in m.atoms:
+            a.show_label = True
+        m.lewis = lewis
+        return m
     mol = condense(parse_smiles(smiles, kekule), abbreviate, name)
     layout_2d(mol)
     orient(mol, rotate_deg, flip_h, flip_v)
@@ -448,6 +474,127 @@ def from_molfile(path_or_text: str | Path, name: str, bond_length: float, kekule
     mol = condense(parse_molfile(text, kekule), abbreviate, name)
     _orient_molfile(mol, rotate_deg, flip_h, flip_v)
     return to_molecule(mol, name, bond_length)
+
+
+# --------------------------------------------------------------------------- Lewis layout
+
+_RIGHT, _LEFT, _UP, _DOWN = (1, 0), (-1, 0), (0, -1), (0, 1)  # lattice steps, y down
+
+
+def _atom_name(a: Chem.Atom) -> str:
+    return f"{a.GetSymbol()} (map {a.GetAtomMapNum()})" if a.GetAtomMapNum() else \
+        f"{a.GetSymbol()} (atom {a.GetIdx() + 1} in the SMILES)"
+
+
+def lewis_layout(mol: Chem.Mol, bond_length: float, name: str = "") -> None:
+    """Lewis structure layout (user decision 2026-10-26): every bond on a square lattice at
+    `bond_length`, whatever its order. Acyclic molecules with at most 4 neighbors per atom.
+
+    - Root: the heavy-atom tree center (least eccentricity; ties: more neighbors, then lower
+      index). Its heavy neighbors go right, left, up, down; H atoms fill what is left.
+    - Each other atom: its largest heavy branch continues straight, the others go up then down
+      (right then left on a vertical bond); H atoms fill the remaining directions, straight first.
+    - Two atoms never share a lattice point. Non-bonded atoms one step apart would look bonded:
+      the search (preferred orders first, every order of an atom's heavy branches) keeps the
+      placement with the fewest such pairs; draw_mol keeps their facing sides free of lone pairs.
+      A methyl next to a three-way center (acetic acid) cannot avoid one.
+    Writes the conformer (pt, SVG frame flipped as _set_coords expects)."""
+    where = f"lewis {name}: " if name else "lewis: "
+    if mol.GetRingInfo().NumRings():
+        a = next(a for a in mol.GetAtoms() if a.IsInRing())
+        raise ValueError(f"{where}rings are not supported (atom {_atom_name(a)} is in a ring); "
+                         "Lewis structures are drawn for acyclic molecules only")
+    for a in mol.GetAtoms():
+        if a.GetDegree() > 4:
+            raise ValueError(f"{where}atom {_atom_name(a)} has {a.GetDegree()} neighbors; a Lewis structure "
+                             "places at most 4 (one per side)")
+    n = mol.GetNumAtoms()
+    nbrs = [[x.GetIdx() for x in a.GetNeighbors()] for a in mol.GetAtoms()]
+    heavy = {a.GetIdx() for a in mol.GetAtoms() if a.GetAtomicNum() != 1} or set(range(n))
+
+    def ecc(i: int) -> int:
+        dist, todo = {i: 0}, [i]
+        while todo:
+            j = todo.pop(0)
+            for k in nbrs[j]:
+                if k in heavy and k not in dist:
+                    dist[k] = dist[j] + 1
+                    todo.append(k)
+        return max(dist.values())
+    root = min(sorted(heavy), key=lambda i: (ecc(i), -len(nbrs[i])))
+
+    parent, order, todo = {root: None}, [], [root]
+    while todo:  # breadth-first; atoms not reached are in other fragments
+        i = todo.pop(0)
+        order.append(i)
+        for k in nbrs[i]:
+            if k not in parent:
+                parent[k] = i
+                todo.append(k)
+    if len(order) != n:
+        raise ValueError(f"{where}draw each molecule of a salt or mixture as its own species")
+
+    def size(i: int) -> tuple[int, int]:  # (heavy atoms, all atoms) in the branch from i
+        out, stack = [0, 0], [i]
+        while stack:
+            j = stack.pop()
+            out[0] += j in heavy
+            out[1] += 1
+            stack += [k for k in nbrs[j] if parent.get(k) == j]
+        return out[0], out[1]
+    kids = {i: sorted((k for k in nbrs[i] if parent[k] == i), key=lambda k: (k not in heavy, [-x for x in size(k)], k))
+            for i in order}
+
+    def options(i: int, into: tuple[int, int] | None):
+        """Each way to give atom i's children directions: heavy children over every ordering
+        (preferred first), H children in the remaining directions in order."""
+        dirs = [_RIGHT, _LEFT, _UP, _DOWN] if into is None else \
+            [into] + ([_UP, _DOWN] if into[1] == 0 else [_RIGHT, _LEFT])
+        hv = [k for k in kids[i] if k in heavy]
+        hs = [k for k in kids[i] if k not in heavy]
+        for perm in itertools.permutations(dirs, len(hv)):
+            rest = [d for d in dirs if d not in perm]
+            yield list(zip(hv, perm)) + list(zip(hs, rest))
+
+    pos: dict[int, tuple[int, int]] = {root: (0, 0)}
+    occupied = {(0, 0): root}
+    best: list = [None, None]  # (cost, positions)
+    tried = [0]
+
+    def search(k: int, cost: int) -> None:
+        if best[0] is not None and (cost >= best[0] or best[0] == 0):
+            return
+        if k == len(order):
+            best[0], best[1] = cost, dict(pos)
+            return
+        tried[0] += 1
+        if tried[0] > LEWIS_SEARCH_LIMIT and best[0] is not None:
+            return
+        i = order[k]
+        pi = pos[i]
+        into = None if parent[i] is None else tuple(a - b for a, b in zip(pi, pos[parent[i]]))
+        for opt in options(i, into):
+            new = {c: (pi[0] + d[0], pi[1] + d[1]) for c, d in opt}
+            if any(p in occupied for p in new.values()):
+                continue
+            added = 0
+            for c, p in new.items():
+                for d in (_RIGHT, _LEFT, _UP, _DOWN):
+                    j = occupied.get((p[0] + d[0], p[1] + d[1]))
+                    if j is not None and j != i:
+                        added += 1
+            for c, p in new.items():
+                pos[c], occupied[p] = p, c
+            search(k + 1, cost + added)
+            for c, p in new.items():
+                del pos[c], occupied[p]
+    search(0, 0)
+    if best[1] is None:
+        raise ValueError(f"{where}no square-lattice layout keeps every atom on its own point (too many branches "
+                         "around one center, as in neopentane); draw it with bond lines instead")
+    if mol.GetNumConformers() == 0:
+        mol.AddConformer(Chem.Conformer(n), assignId=True)
+    _set_coords(mol, [(best[1][i][0] * bond_length, best[1][i][1] * bond_length) for i in range(n)])
 
 
 # --------------------------------------------------------------------------- scheme alignment (M2)

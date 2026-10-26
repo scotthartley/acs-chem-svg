@@ -1,0 +1,9 @@
+# M1 Lewis structures with each bond's electrons assigned to its atoms: formal_charge splits each
+# pair, oxidation_state gives it to the more electronegative atom. co2_shared is there to compare.
+preset: acs1996
+species:
+  co2_shared: {smiles: "O=C=O", lewis: true}
+  co2: {smiles: "O=C=O", lewis: {electrons: formal_charge}}
+  hcn: {smiles: "C#N", lewis: {electrons: formal_charge}}
+  methanol: {smiles: "CO", lewis: {electrons: oxidation_state}}
+  water: {smiles: "O", lewis: {electrons: oxidation_state}}

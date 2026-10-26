@@ -493,6 +493,11 @@ Rules (M4; unmeasured, user decisions 2026-10-25, flagged at review):
     reference with a mechanism inside a bracket (curved arrows on contributors) would settle
     the bracket and gap rules.
 
+17. **Lewis structures** (§12): there is no ChemDraw Lewis reference. The lattice layout,
+    `lewis.bond_length` and the shared/assigned dot positions are unmeasured user decisions
+    (2026-10-26). A ChemDraw Lewis reference (CCl₄, CH₃OH, CO₂, HCN at three presets) would let
+    them be measured.
+
 ## 7. Design-brief (docs/design.md) discrepancies (references win)
 
 1. **Bond drawing.** design.md §3.3 says "stroked line, butt caps". ChemDraw draws filled polygons
@@ -585,3 +590,15 @@ Module `src/acs_chem_svg/draw_mol.py` unless noted.
 | Curved arrows avoid reaction and ↔ arrows; a bond target may take its far side (ring bonds) | §4.2 | `layout._arrow_parts`, `mechanism.Planner.build(far=…)` |
 | Checks: ↔ arrows and bracket segments join the overlap checks; the step after a bracket may cross it | design.md §6.4 | `geometry_checks.elements`, `check_mechanism` |
 
+## 12. Implemented as (Lewis)
+
+All unmeasured (Open 17): user decisions 2026-10-26, round defaults on the 0.5 pt grid.
+
+| Rule | Value | Implementation |
+|---|---|---|
+| Layout: square lattice, one bond length at every order, tree center as root, largest branch straight, H last; non-bonded lattice neighbors avoided where possible | — | `chem.lewis_layout` |
+| `lewis.bond_length` (atom center to center) | 26.5 / 19.5 / 15.5: the smallest 0.5 pt value where 3 columns fit between two Cl or Br labels (first letter centered on both) with the inner dot edges ≥ 2 × `lone_pair.gap` from each element ink box (Br 26.31 / 19.18 / 15.35, Cl 25.50 / 18.53 / 14.86) | `presets/*.yaml` (`placement`, `nonlinear`); `tests/test_lewis.py` rederives it |
+| Shared pairs: `order` columns `dot_spacing` apart along the bond, centered in the gap between the ink boxes; each column two dots `dot_spacing` apart across it | lone_pair values | `draw_mol.Drawer.bond_dots` |
+| Assigned electrons (`formal_charge`, `oxidation_state`): columns from the owner's ink box, the first `lone_pair.gap` out, then every `dot_spacing`; an odd last electron on the axis | lone_pair values | `draw_mol.Drawer.bond_dots`; Pauling values in `chem.ELECTRONEGATIVITY` |
+| Lone pairs: every atom; sides facing a bond or a non-bonded lattice neighbor stay free | §4.2 rules | `draw_mol.Drawer.label_dots`, `lewis_facing` |
+| Checks: shared dots ≥ 2 × gap from labels; assigned dots on the owner's half; dot sets ≥ `dot_spacing` apart | — | `geometry_checks.check_lewis` |

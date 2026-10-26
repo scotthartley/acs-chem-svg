@@ -1,0 +1,5 @@
+# expect: has 5 neighbors
+# A Lewis structure places at most 4 neighbors (one per side); PCl5 has 5.
+preset: acs1996
+species:
+  pcl5: {smiles: "ClP(Cl)(Cl)(Cl)Cl", lewis: true}

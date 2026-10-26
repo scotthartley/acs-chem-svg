@@ -54,6 +54,12 @@ atom-map number; the electron bookkeeping keeps the stand-in (Cl for a radical X
       xrad: {smiles: "[Cl:9]"}
       hx:   {smiles: "[H:7][Cl:9]"}
     labels: {9: X}                       # drawn X, HX
+
+Lewis structures (M1 only): every atom labeled, bonds on a square lattice drawn as electrons.
+
+    species:
+      ccl4: {smiles: "ClC(Cl)(Cl)Cl", lewis: true}                  # = {electrons: shared}
+      co2:  {smiles: "O=C=O", lewis: {electrons: formal_charge}}     # or oxidation_state
 """
 
 from __future__ import annotations
@@ -166,6 +172,13 @@ class Orientation(BaseModel):
     flip_v: bool = False
 
 
+class LewisOptions(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    # shared: each bond as 1-3 shared pairs; formal_charge: each bond's electrons split between its
+    # atoms; oxidation_state: all to the more electronegative atom (references/scheme-schema.md)
+    electrons: Literal["shared", "formal_charge", "oxidation_state"] = "shared"
+
+
 class Species(BaseModel):
     model_config = ConfigDict(extra="forbid")
     smiles: str | None = None
@@ -179,12 +192,37 @@ class Species(BaseModel):
     align: bool = True  # take the orientation of the species it is drawn from (steps); false = own layout
     align_to: str | None = None  # align to this species instead
     show_lone_pairs: list[int] = Field(default_factory=list)  # atom-map numbers whose lone pairs are drawn (M3)
+    lewis: bool | LewisOptions | None = None  # Lewis structure (M1 only): true = {electrons: shared}
 
     @model_validator(mode="after")
     def _one_source(self):
         if (self.smiles is None) == (self.molfile is None):
             raise ValueError("give exactly one of smiles or molfile")
         return self
+
+    @model_validator(mode="after")
+    def _lewis(self):
+        if self.lewis is True:
+            self.lewis = LewisOptions()
+        elif self.lewis is False:
+            self.lewis = None
+        if self.lewis is None:
+            return self
+        clash = [k for k, on in (("molfile", self.molfile is not None), ("kekule", bool(self.kekule)),
+                                 ("abbreviate", bool(self.abbreviate)), ("show_carbons", self.show_carbons != "none"),
+                                 ("show_lone_pairs", bool(self.show_lone_pairs))) if on]
+        if clash:
+            implied = " (a Lewis structure already labels every atom and draws every lone pair)" \
+                if {"show_carbons", "show_lone_pairs"} & set(clash) else ""
+            raise ValueError(f"lewis can't be combined with {', '.join(clash)}{implied}")
+        rot = self.orientation.rotate if self.orientation else None
+        if rot == "auto" or (rot is not None and float(rot) % 90):
+            raise ValueError(f"lewis: orientation.rotate must be a multiple of 90 (got {rot!r}); flips are allowed")
+        return self
+
+    @property
+    def lewis_mode(self) -> str | None:
+        return self.lewis.electrons if isinstance(self.lewis, LewisOptions) else None
 
     @field_validator("kekule")
     @classmethod
@@ -361,6 +399,9 @@ class Spec(BaseModel):
                 ("align_to", sp.align_to) for sp in self.species.values() if sp.align_to]:
             if n not in names:
                 raise ValueError(f"{key}: unknown species {n!r}")
+        lewis = [n for n, sp in self.species.items() if sp.lewis_mode]
+        if self.steps and lewis:
+            raise ValueError(f"lewis species are M1-only for now (a spec without steps): {', '.join(lewis)}")
         if not self.steps:
             if self.numbers:
                 raise ValueError("numbers need steps (a scheme)")
@@ -518,10 +559,19 @@ def relabel(spec: Spec, mol: chem.Molecule) -> chem.Molecule:
 
 def molecules(spec: Spec, base_dir: Path) -> list[chem.Molecule]:
     """M1: every species laid out on its own."""
-    bl = load_preset(spec.preset).lengths.bond_length
+    preset = load_preset(spec.preset)
+    bl = preset.lengths.bond_length
     out = []
     for name, sp in spec.species.items():
         o = sp.orientation or Orientation()
+        if sp.lewis_mode:
+            try:
+                mol = chem.from_smiles(sp.smiles, name, preset.lewis.bond_length, rotate_deg=o.rotate,
+                                       flip_h=o.flip_h, flip_v=o.flip_v, lewis=sp.lewis_mode)
+            except ValueError as e:
+                raise ValueError(f"species {name}: {e}") from None
+            out.append(relabel(spec, mol))
+            continue
         if sp.smiles is not None:
             rot = "auto" if o.rotate is None else o.rotate
             mol = chem.from_smiles(sp.smiles, name, bl, sp.kekule, rot, o.flip_h, o.flip_v, sp.abbreviate)

@@ -1,0 +1,14 @@
+# M1 Lewis structures, shared pairs (lewis: true): every atom labeled, bonds as shared pairs.
+preset: acs1996
+species:
+  ccl4: {smiles: "ClC(Cl)(Cl)Cl", lewis: true}
+  methanol: {smiles: "CO", lewis: true}
+  co2: {smiles: "O=C=O", lewis: true}
+  hcn: {smiles: "C#N", lewis: true}
+  n2: {smiles: "N#N", lewis: true}
+  ammonium: {smiles: "[NH4+]", lewis: true}
+  cyanide: {smiles: "[C-]#N", lewis: true}
+  nitric_oxide: {smiles: "[N]=O", lewis: true}
+  acetic_acid: {smiles: "CC(=O)O", lewis: true, orientation: {flip_h: true}}
+  hydronium: {smiles: "[OH3+]", lewis: true}
+  nitrate: {smiles: "[O-][N+](=O)[O-]", lewis: true}

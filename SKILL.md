@@ -41,6 +41,8 @@ Run every command as `uv run --project <repo> python <repo>/scripts/<script> ...
    - Without `steps`, the species are drawn side by side (single structures).
    - `kekule: ["1=2", ...]` (atom maps) chooses the Kekulé form; `show_carbons: terminal`
      labels CH₃; a molfile from `templates/` keeps its layout.
+   - Lewis structures (every atom labeled, bonds as dot pairs): `lewis: true`, or
+     `lewis: {electrons: formal_charge | oxidation_state}`; see `references/scheme-schema.md`.
 2. **Validate:** `scripts/validate.py spec.yaml`. Fix the spec until it prints OK (schema,
    RDKit chemistry, abbreviations, electron bookkeeping, overlaps, curved arrows crossing
    bonds or labels, dots on bonds, conditions wider than their arrow).
@@ -132,6 +134,7 @@ steps:
   structure so the bond comes from the left or below, or don't abbreviate that group.
 - At most 2 stages per arrow.
 - Explicit CH₂/CH labels on internal carbons, charges beyond ±1, carbenes.
+- Lewis structures: rings, more than 4 neighbors (PCl₅), Lewis species in schemes.
 
 ## Rules
 

@@ -1,0 +1,5 @@
+# expect: rings are not supported
+# Lewis structures are laid out on a square lattice for acyclic molecules only.
+preset: acs1996
+species:
+  cyclopropane: {smiles: "C1CC1", lewis: true}
