@@ -22,10 +22,14 @@ and `.png` files:
 
 - **Structures** from SMILES: rings, double and triple bonds, wedges and hashes, heteroatom
   labels with H counts and charges, abbreviations (OMe, OBn, CO₂Me, NO₂, Ph, …).
+- **Lewis structures** of small acyclic molecules: every atom labeled, all lone pairs drawn,
+  and bonds as shared dot pairs, or as electrons assigned to atoms by formal charge or
+  oxidation state.
 - **Schemes:** reaction arrows with conditions above and below (true subscripts and
   superscripts, italics), two-stage arrows, plus signs, bold compound numbers, products
   aligned to their reactants, rows wrapped to a page width.
-- **Mechanisms:** two-electron and fishhook curved arrows, lone pairs, radicals, charges, and
+- **Mechanisms:** two-electron and fishhook curved arrows, lone pairs, radicals, charges
+  (plain or circled ⊕/⊖, multiple charges such as 2+, display texts such as +3), and
   resonance structures in brackets joined by ↔.
 - **Three sizes:** the ACS 1996 preset at 100 %, 80 % and 60 %. Bond lengths, line widths,
   double-bond spacing and label clearance are measured from ChemDraw exports and match them
@@ -107,8 +111,10 @@ When something goes wrong, Claude appends a note to `issues/inbox.md` in the rep
 
 ## Limits
 
-- Not yet supported: explicit CH₂/CH labels on internal carbons, charges beyond ±1,
-  carbenes, more than two stages on one arrow, catalytic cycles.
+- Not yet supported: explicit CH₂/CH labels on internal carbons, carbenes, more than
+  two stages on one arrow, catalytic cycles.
+- Lewis structures: no rings, no atoms with more than four neighbors (PCl₅), and not inside
+  schemes yet.
 - An abbreviation whose bond leaves to the right (MeO–, BnO–) isn't measured yet; Claude turns
   the structure or writes the group out.
 - Curved-arrow placement is automatic with a few semantic overrides (bow side, curvature);
