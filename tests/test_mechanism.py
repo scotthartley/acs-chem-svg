@@ -9,10 +9,10 @@ from validate import validate
 
 from acs_chem_svg import chem
 from acs_chem_svg.draw_mol import Drawer
-from acs_chem_svg.geometry import add, angle_deg, dot, length, mul, point_box_dist, sub, unit
+from acs_chem_svg.geometry import add, angle_deg, dot, length, mul, perp, point_box_dist, sub, unit
 from acs_chem_svg.geometry_checks import check_mechanism
 from acs_chem_svg.layout import build_scheme
-from acs_chem_svg.mechanism import FARTHER, aims
+from acs_chem_svg.mechanism import ARC_HANDLES, FARTHER, MISS_DEG, aims, miss, species_parts
 from acs_chem_svg.preset import load_preset
 from acs_chem_svg.scene import Circle
 from acs_chem_svg.spec import Spec, load_spec
@@ -136,6 +136,92 @@ def test_bond_to_atom_arrow_lands_on_the_atom():
     assert a.target_atom == ("acetone", next(x.idx for x in lay.species["acetone"].mol.atoms if x.map == 5))
     assert aims(a, P.lone_pair.dot_radius)
     assert length(sub(a.p3, a.p0)) > P.curved_arrow.head_length
+
+
+def test_short_bond_to_atom_arrow_points_at_the_o():
+    # water's O-H -> O (inbox 2026-10-26, item 1): the head points at the O's center, not its lower pair
+    lay = scheme("m3_carbonyl_addition_x1.0")
+    a = next(x for x in lay.curved if x.step == 2 and x.spec.from_ == "bond(7-8)")
+    assert miss(a) <= MISS_DEG and aims(a, P.lone_pair.dot_radius)
+
+
+def _map_point(lay, sp, m):
+    p = lay.species[sp]
+    return add(next(x.p for x in p.mol.atoms if x.map == m), p.offset)
+
+
+@pytest.mark.parametrize("stem,step,index,sp", [
+    ("m4_nitration_x1.0", 4, 0, "sigma_a"), ("m4_nitration_x1.0", 4, 1, "sigma_b"),  # sigma complex (item 4)
+])
+def test_hooks_leave_and_land_square(stem, step, index, sp):
+    # a bond -> adjacent bond arrow leaves its bond along the normal and lands across the target bond
+    lay = scheme(stem)
+    a = next(x for x in lay.curved if x.step == step and x.index == index)
+    s1, s2 = (_map_point(lay, sp, m) for m in a.spec.source.atoms)
+    _, t1, t2 = a.target
+    for tangent, (p, q) in ((sub(a.c1, a.p0), (s1, s2)), (sub(a.p3, a.c2), (t1, t2))):
+        assert abs(dot(unit(tangent), perp(unit(sub(q, p))))) >= math.cos(math.radians(20)), a.group.id
+
+
+@pytest.mark.parametrize("stem,step,index", [("m3_e2_x1.0", 1, 1), ("m4_nitration_x1.0", 5, 1)])
+def test_ch_hook_goes_through_the_forming_pi_bond_and_back(stem, step, index):
+    # C-H -> C-C (user choice 2026-10-26, option D): no room inside the H-C-C angle, so the
+    # arrow passes through the target bond, curls back, and its head points at the bond from the
+    # far side, turned toward the shared atom; that crossing isn't a clash. Ring C=C -> C-C
+    # arrows keep the near side
+    lay = scheme(stem)
+    a = next(x for x in lay.curved if x.step == step and x.index == index)
+    _, t1, t2 = a.target
+    n = perp(unit(sub(t2, t1)))
+    n = n if dot(sub(a.p0, t1), n) > 0 else mul(n, -1)  # toward the tail's side
+    assert dot(sub(a.tip, t1), n) < 0  # the tip is on the far side
+    head = unit(sub(a.p3, a.c2))
+    assert dot(head, n) > 0  # pointing back at the bond
+    (shared,) = set(a.spec.source.atoms) & set(a.spec.target.atoms)
+    c = t1 if a.spec.target.atoms[0] == shared else t2  # a.target holds the target atoms in spec order
+    mid = mul(add(t1, t2), 0.5)
+    assert dot(head, unit(sub(c, mid))) > 0  # turned toward the shared atom
+    assert 10 <= angle_deg(head, n) <= 50
+    assert a.crosses and check_mechanism(lay) == []
+    ring = next(x for x in scheme("m4_nitration_x1.0").curved if x.step == 4 and x.index == 0)
+    assert not ring.crosses
+
+
+def test_bond_tail_at_the_drawn_bond_midpoint():
+    # H-C -> C (radical propagation, item 3): the H label shortens the drawn bond; the tail sits
+    # beside the middle of what is drawn, and the loop stays compact
+    lay = scheme("m3_radical_propagation_x1.0")
+    a = next(x for x in lay.curved if x.spec.to == "atom(3)")
+    h, c = _map_point(lay, "isobutane", 6), _map_point(lay, "isobutane", 3)
+    u = unit(sub(c, h))
+    drawn = [dot(sub(q, h), u) for p, q2, _, _ in species_parts(lay.species["isobutane"].group).bonds
+             if abs(dot(unit(sub(q2, p)), u)) > 0.999 and abs(dot(sub(p, h), perp(u))) < 0.1 for q in (p, q2)]
+    assert dot(sub(a.p0, h), u) == pytest.approx((min(drawn) + max(drawn)) / 2, abs=1.0)
+    b = a.group.bbox()
+    assert max(b[2] - b[0], b[3] - b[1]) < 0.75 * P.lengths.bond_length
+
+
+@pytest.mark.parametrize("h", [0.5, 0.531])
+def test_arc_curvature_rises_evenly(h):
+    # item 5: ChemDraw's arc dips mid-way and spikes at the head; ours never drops more than 5%
+    # below its running maximum, and the head end is no sharper than 1.5x the middle
+    c1 = (ARC_HANDLES[0][0], ARC_HANDLES[0][1] * h)
+    c2 = (ARC_HANDLES[1][0], ARC_HANDLES[1][1] * h)
+
+    def kappa(t):
+        s = 1 - t
+        d1 = [3 * (s * s * c1[i] + 2 * s * t * (c2[i] - c1[i]) + t * t * ((1, 0)[i] - c2[i])) for i in (0, 1)]
+        d2 = [6 * (s * (c2[i] - 2 * c1[i]) + t * ((1, 0)[i] - 2 * c2[i] + c1[i])) for i in (0, 1)]
+        return abs(d1[0] * d2[1] - d1[1] * d2[0]) / math.hypot(*d1) ** 3
+    ks = [kappa(k / 200) for k in range(201)]
+    top = 0.0
+    for k in ks:
+        top = max(top, k)
+        assert k >= 0.95 * top
+    assert ks[-1] <= 1.5 * ks[100]
+    if h == 0.531:  # ChemDraw's tangent angles, kept
+        assert angle_deg(c1, (1, 0)) == pytest.approx(63.8, abs=0.5)
+        assert angle_deg(sub((1, 0), c2), (1, 0)) == pytest.approx(72.8, abs=0.5)
 
 
 @pytest.mark.parametrize("stem", M3)

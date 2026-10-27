@@ -13,7 +13,8 @@ Hand-placed (§4.2, round placement defaults):
   - lp(n): tail_gap beyond the outer edge of the chosen pair, outward. The pair is the one
     facing the bow side and the target, or `tail_side`.
   - electron(n): the same, from the radical dot.
-  - bond(a-b): bond_tail_gap off the bond axis at its midpoint, on the bow side, or that far
+  - bond(a-b): bond_tail_gap off the bond axis at the drawn bond's midpoint (bond_mid: a label
+    shortens it), on the bow side, or that far
     beyond the bond's second line when it lies on that side (inside a ring double bond). Two
     arrows from one bond prefer opposite sides; on the same side (counted like two flips), the
     second tail moves bond_tail_gap along the bond toward its target.
@@ -21,7 +22,8 @@ Hand-placed (§4.2, round placement defaults):
   - atom(n): the target is n's element ink box, or n's center when unlabeled. The tip keeps
     head_gap from the box and from n's dots, at the nearest point (clear_along), so it stops
     above a lone pair rather than between its dots; the planner also tries tips FARTHER out.
-  - between(a,b), already bonded: head_gap off the bond axis at its midpoint, on the tail's side.
+  - between(a,b), already bonded: head_gap off the bond axis at its drawn midpoint, on the
+    tail's side (or the far side: a ring bond next to the tail's bond).
   - between(a,b), not bonded: for a two-electron arrow, the atom that is not part of the
     source (lp(1) -> between(1,2) points at 2). For a fishhook, and with neither or both, the
     midpoint of a and b, where the bond forms; when a plus sign sits there, head_gap past its
@@ -31,17 +33,29 @@ Hand-placed (§4.2, round placement defaults):
   keeps whichever clashes least with bonds, labels, dots, charges and the step's earlier arrows
   (ties keep the default). `bow: left|right` (relative to the tail -> head direction) and
   `tail_side` override.
-- Shape, in the chord frame (tail -> stroke end, along u and offset n on the bow side; ratios
-  of the chord, from mech_basic_x*). A chord shorter than one bond is a loop
-  (loop_curvature); longer ones are arcs (curvature). `curvature` overrides h.
-  - arc: c1 = (0.26, h), c2 = (0.92, 0.48 h): leaves gently and lands steeply, like
-    ChemDraw's 2e⁻ arrow;
+- Shape. An arrow onto a bond next to its source (a bond sharing one atom; lp(n) onto a
+  bond on n) is a hook. Others use the chord frame (tail -> stroke end, along u and offset n on
+  the bow side; ratios of the chord). There, a chord shorter than one bond is a loop
+  (loop_curvature) and longer ones are arcs (curvature). `curvature` overrides h, and makes a
+  hook an arc or loop.
+  - arc: c1 = (0.258, 0.987 h), c2 = (0.874, 0.770 h): leaves gently and lands steeply, at
+    ChemDraw's 2e⁻ tangent angles, with its handle lengths refit so the curvature runs evenly
+    to the head (user decision 2026-10-26);
   - loop: c1 = (1.19, h), c2 = (1.45, 0.59 h): ChemDraw's fishhooks, which curl back onto
-    the atom.
-  When the default clashes, the planner also tries h × 0.75 and × 0.5 (SOFTER), and tips
-  FARTHER out. A head that doesn't aim (aims: into a labeled target's ink box past its dots,
-  else within MISS_DEG of the center) counts as a clash. The tip, stroke end and controls
-  are solved together (solve_end), since the end tangent decides where the tip stops.
+    the atom (also every bond -> own-atom arrow, 2e⁻ or fishhook);
+  - hook: leaves along the source bond's normal on the bow side (lp: the pair's direction),
+    lands along the target bond's normal (HOOK_SCAN tries ±10°, ±20°); both handles the
+    circular arc's for that turn, at least HOOK_REACH bond lengths (hook_controls). When the
+    tail lies inside the angle between the two bonds (cramped: C-H -> C-C), the hook passes
+    through the target bond and curls back onto it from the far side, its head turned
+    CROSS_TILT toward the shared atom, handles at least CROSS_REACH bond lengths; that
+    crossing isn't a clash (MechArrow.crosses).
+  When the default clashes, the planner also tries h (a hook: its handles) × 0.75 and × 0.5
+  (SOFTER), and tips FARTHER out. A head that doesn't aim (aims: into a labeled target's ink
+  box past its dots and within MISS_LABEL_DEG of its center, else within MISS_DEG of the
+  center) costs half a clash plus its miss / 360: less than a clash, and the closest miss first. For an arc or loop
+  onto an atom the tip, stroke end and controls are solved together (solve_end), since the end
+  tangent decides where the tip stops.
 """
 
 from __future__ import annotations
@@ -50,22 +64,30 @@ import itertools
 import math
 from dataclasses import dataclass, field
 
-from .geometry import (Point, add, dot, length, mul, perp, point_box_dist, ray_box_exit, seg_point_dist,
-                       segment_box_dist, segment_distance, sub, unit)
+from .geometry import (Point, add, angle_deg, dot, length, mul, perp, point_box_dist, ray_box_exit, rotate,
+                       seg_point_dist, segment_box_dist, segment_distance, sub, unit)
 from .preset import Preset
 from .draw_mol import DotSet
 from .scene import Circle, Group, Marker, Path, Polygon, Polyline, TextRun
 from .spec import ArrowOverride, CurvedArrow
 
-ARC_HANDLES = ((0.26, 1.0), (0.92, 0.48))  # mech_basic_x*: (0.261, 0.531) and (0.921, 0.256) / 0.531
+# Arc handles: user decision 2026-10-26, smoothed. ChemDraw's tangent angles kept (63.8° and 72.8° off the
+# chord at h 0.531), handle lengths refit so curvature runs evenly to the head instead of dipping mid-arc and
+# spiking at it. mech_basic_x*: (0.261, 0.531) and (0.921, 0.256) / 0.531, i.e. ((0.26, 1.0), (0.92, 0.48)).
+ARC_HANDLES = ((0.258, 0.987), (0.874, 0.770))
 LOOP_HANDLES = ((1.19, 1.0), (1.45, 0.59))  # mech_basic_x*: (1.194, 1.311) and (1.446, 0.769) / 1.311
 ITERATIONS = 12
 SCAN = 360  # approach directions tried for an atom target (solve_end)
 ROOTS = 3  # solve_end roots the planner tries per bow and tail set
 FARTHER = (0.0, 1.5, 3.0)  # tip distances beyond head_gap the planner tries, so a head can clear the target's dots
 MISS_DEG = 10.0  # a head pointing farther than this off an unlabeled target's center counts as a clash
+MISS_LABEL_DEG = 20.0  # the same for a labeled target's ink-box center (its head must also enter the box)
 SOFTER = (1.0, 0.75, 0.5)  # curvature multipliers the planner tries (flatter loops and arcs), in rank order
 SAMPLES = 48  # Bézier segments for geometric checks
+HOOK_SCAN = (0.0, 10.0, -10.0, 20.0, -20.0)  # a hook onto a bond: landing directions, degrees off the bond's normal, in rank order
+HOOK_REACH = 0.35  # a hook's handles are at least this × bond_length, so a short hook still stands off its bond
+CROSS_REACH = 0.9  # a cramped hook's handles (through the bond and back): at least this × bond_length
+CROSS_TILT = 30.0  # degrees its head turns from the target bond's normal toward the shared atom (user choice 2026-10-26, option D)
 
 
 def bezier(p0: Point, c1: Point, c2: Point, p3: Point, t: float) -> Point:
@@ -135,6 +157,7 @@ class MechArrow:
     target_atom: tuple | None = None  # (species, atom index) the head lands on, for atom targets
     target_dots: list = field(default_factory=list)  # that atom's dot centers
     bow: str = ""  # the side chosen, "left" | "right" of tail -> head (as overrides.arrows write it)
+    crosses: tuple = ()  # (a, b): the target bond a cramped hook passes through (not a clash)
 
     @property
     def tip(self) -> Point:
@@ -150,6 +173,7 @@ class MechArrow:
         self.p0, self.c1, self.c2, self.p3 = mv(self.p0), mv(self.c1), mv(self.c2), mv(self.p3)
         self.head = [mv(p) for p in self.head]
         self.target_dots = [mv(p) for p in self.target_dots]
+        self.crosses = tuple(mv(p) for p in self.crosses)
         if self.target and self.target[0] == "box":
             b = self.target[1]
             self.target = ("box", (b[0] + dx, b[1] + dy, b[2] + dx, b[3] + dy))
@@ -216,9 +240,17 @@ def clashes(arrow: "MechArrow", parts: dict[str, Parts], others: list["MechArrow
             return False
         return any(_box_gap(sb, box) < limit and segment_distance(a, b, c, d) < limit for a, b, sb in segs)
 
+    def crossed(c, d) -> bool:  # a line of the bond the arrow passes through (forming a π bond)
+        if not arrow.crosses or length(sub(d, c)) < 1e-9:
+            return False
+        a, b = arrow.crosses
+        u, L = unit(sub(b, a)), length(sub(b, a))
+        return abs(dot(unit(sub(d, c)), u)) > 0.999 and abs(dot(sub(c, a), perp(u))) < 0.3 * L \
+            and all(-0.01 <= dot(sub(q, a), u) <= L + 0.01 for q in (c, d))
+
     out = []
     for sp, pt in parts.items():
-        hit = next((src for c, d, hw, src in pt.bonds if near(c, d, hw + sw / 2)), None)
+        hit = next((src for c, d, hw, src in pt.bonds if not crossed(c, d) and near(c, d, hw + sw / 2)), None)
         if hit:
             out.append(f"crosses a bond of {sp} ({hit})")
         for box, text, _ in pt.labels:
@@ -274,16 +306,33 @@ class Planner:
         """Rough source and target points, to choose the bow and the lone pair."""
         src = arr.source
         if src.kind == "bond":
-            a, b = (self.ref(m, src.text) for m in src.atoms)
-            s0 = mul(add(a.p, b.p), 0.5)
+            for m in src.atoms:
+                self.ref(m, src.text)
+            s0 = self.bond_mid(*src.atoms)
         else:
             r = self.ref(src.atoms[0], src.text)
             rad = [d for d in r.dots if d.kind == "radical"]
             s0 = rad[0].center if src.kind == "electron" and rad else r.p
         kind, data = self.target(arr)
         if kind == "bond":
-            return s0, mul(add(data[0].p, data[1].p), 0.5)
+            return s0, self.bond_mid(*arr.target.atoms)
         return s0, data.p
+
+    def bond_mid(self, m1: int, m2: int) -> Point:
+        """The midpoint of the drawn bond m1-m2: of its lines near the axis, which a label at
+        either end shortens; the atoms' midpoint when no line lies there."""
+        a, b = self.atoms[m1], self.atoms[m2]
+        L, u = length(sub(b.p, a.p)), unit(sub(b.p, a.p))
+        lo, hi = math.inf, -math.inf
+        for c, d, _, _ in self.parts.get(a.species, Parts()).bonds:
+            if length(sub(d, c)) < 1e-9 or abs(dot(unit(sub(d, c)), u)) < 0.999 \
+                    or abs(dot(sub(c, a.p), perp(u))) > 0.3 * L:  # not this bond's lines (a ring's far side)
+                continue
+            s, t = sorted((dot(sub(c, a.p), u), dot(sub(d, a.p), u)))
+            s, t = max(s, 0.0), min(t, L)
+            if t > s:
+                lo, hi = min(lo, s), max(hi, t)
+        return add(a.p, mul(u, (lo + hi) / 2)) if lo < hi else mul(add(a.p, b.p), 0.5)
 
     def target(self, arr: CurvedArrow):
         dst, src = arr.target, arr.source
@@ -300,6 +349,30 @@ class Planner:
         gap = self.preset.curved_arrow.head_gap
         box = next((bx for bx in self.pluses if point_box_dist(mid, bx) < gap), None)
         return "atom", AtomRef(a.species, -1, mid, box, [])
+
+    def hook(self, arr: CurvedArrow, o: ArrowOverride) -> bool:
+        """Whether the arrow is a hook: onto a bond next to its source (a bond sharing one
+        atom with it; for lp(n), a bond on n). Others are arcs or loops, by chord length; so is
+        a hook with a `curvature` override."""
+        if o.curvature is not None or self.target(arr)[0] != "bond":
+            return False
+        shared = set(arr.source.atoms) & set(arr.target.atoms)
+        return (arr.source.kind == "bond" and len(shared) == 1) or (arr.source.kind == "lp" and bool(shared))
+
+    def cramped(self, arr: CurvedArrow, tail: Point) -> bool:
+        """Whether a hook from a bond starts inside the angle between its bond and the target
+        bond (C-H -> C-C, forming a π bond): no room to land on the near side, so it passes
+        through the target bond and curls back onto it (user choice 2026-10-26)."""
+        if arr.source.kind != "bond":
+            return False
+        (s,) = set(arr.source.atoms) & set(arr.target.atoms)
+        c = self.atoms[s].p
+        ua, ub = (unit(sub(self.atoms[next(m for m in e.atoms if m != s)].p, c)) for e in (arr.source, arr.target))
+        w = sub(tail, c)
+
+        def cross(x, y):
+            return x[0] * y[1] - x[1] * y[0]
+        return cross(ua, w) * cross(ua, ub) > 0 and cross(ub, w) * cross(ub, ua) > 0
 
     def default_bow(self, arr: CurvedArrow, s0: Point, p: Point) -> Point:
         u = unit(sub(p, s0))
@@ -352,21 +425,27 @@ class Planner:
         if not bows:
             return None
         best, r = None, self.preset.lone_pair.dot_radius
-        sides = (0, 1) if self.target(arr)[0] == "bond" else (0,)  # a bond target: its tail's side, else the far one
+        picks = len(HOOK_SCAN) if self.hook(arr, o) else ROOTS
         for rank_b, bow in enumerate(bows):
+            sides = (0,)  # a bond target: its tail's side, else the far one; a cramped hook first crosses it
+            if self.target(arr)[0] == "bond":
+                sides = (0, 1, 2) if self.hook(arr, o) and src.kind == "bond" \
+                    and self.cramped(arr, add(s0, self.bond_normal(src, bow))) \
+                    else (0, 1)
             ranked = sorted(sets, key=lambda d: 0.0 if d is None else
                             -(dot(d.direction, bow) + 0.5 * dot(d.direction, u0)))
             for rank_s, ds in enumerate(ranked):
                 for rank_f, soft in enumerate(SOFTER if o.curvature is None else (1.0,)):
                     for rank_x, extra in enumerate(FARTHER):
-                        for pick, far in itertools.product(range(ROOTS), sides):
+                        for pick, far in itertools.product(range(picks), sides):
                             cand = self.build(step, index, arr, o, name, bow, ds, s0, p_anchor, pick, soft, extra, far,
                                               same)
                             if cand is None:
                                 if far == sides[-1]:
                                     break
                                 continue
-                            score = (len(clashes(cand, self.parts, self.done, self.preset)) + (not aims(cand, r)),
+                            off = 0.0 if aims(cand, r) else 0.5 + miss(cand) / 360.0  # under a clash; the closer miss first
+                            score = (len(clashes(cand, self.parts, self.done, self.preset)) + off,
                                      flip + 2 * (same and not o.bow), rank_b + rank_s + rank_f + rank_x + pick + far)
                             if best is None or score < best[0]:
                                 best = (score, cand, bow, ds)
@@ -392,10 +471,12 @@ class Planner:
         a, b = (self.atoms[m] for m in sorted(arr.target.atoms))
         return frozenset(arr.target.atoms), perp(unit(sub(b.p, a.p)))
 
-    def bond_normal(self, src) -> Point:
-        """Unit normal of a source bond, oriented the same way for every arrow from it."""
+    def bond_normal(self, src, bow: Point | None = None) -> Point:
+        """Unit normal of a source bond, oriented the same way for every arrow from it (or
+        toward `bow`)."""
         lo, hi = sorted(src.atoms)
-        return perp(unit(sub(self.atoms[hi].p, self.atoms[lo].p)))
+        n = perp(unit(sub(self.atoms[hi].p, self.atoms[lo].p)))
+        return n if bow is None or dot(n, bow) >= 0 else mul(n, -1)
 
     def bond_tail(self, src, s0: Point, bow: Point, p_anchor: Point, same: bool) -> Point:
         """A bond tail: bond_tail_gap off the axis on the bow side, or that far beyond the bond's
@@ -420,10 +501,13 @@ class Planner:
 
     def build(self, step, index, arr, o, name, bow, ds, s0, p_anchor, pick=0, soft=1.0,
               extra=0.0, far=0, same=False) -> MechArrow | None:
-        """The arrow for one bow, tail set and solve_end root (`pick`), its curvature times
-        `soft` and its tip `extra` beyond head_gap; None past the last root. A bond target's
-        tip goes on the tail's side of the bond, or with `far` the other side (a ring bond next
-        to the tail's bond, where the tail's side is inside the ring)."""
+        """The arrow for one bow, tail set and solve_end root (`pick`; a hook: its ranked
+        landing direction), its curvature times `soft` and its tip `extra` beyond head_gap;
+        None past the last root. A bond target's tip goes on the tail's side of the bond, or
+        with `far` the other side (a ring bond next to the tail's bond, where the tail's side
+        is inside the ring). A cramped hook (C-H -> C-C) takes far 0 as passing through the
+        bond and curling back onto it from the far side, then 1 and 2 as the tail's side and the
+        other."""
         P = self.preset
         ca, r = P.curved_arrow, P.lone_pair.dot_radius
         src = arr.source
@@ -432,11 +516,14 @@ class Planner:
         else:
             tail = add(ds.center, mul(ds.direction, r + ca.tail_gap))
         tkind, tdata = self.target(arr)
+        cross = False
         if tkind == "bond":
             a, b = tdata
-            m = mul(add(a.p, b.p), 0.5)
+            m = self.bond_mid(*arr.target.atoms)
             nb = perp(unit(sub(b.p, a.p)))
-            nb = nb if (dot(nb, sub(tail, m)) >= 0) != bool(far) else mul(nb, -1)
+            if self.hook(arr, o) and self.cramped(arr, tail):  # 0: through and back, 1: the tail's side, 2: the far side
+                cross, far = far == 0, far == 2
+            nb = nb if (dot(nb, sub(tail, m)) >= 0) != (bool(far) or cross) else mul(nb, -1)
             fixed_tip, target = add(m, mul(nb, ca.head_gap)), ("bond", a.p, b.p)
         elif tdata.idx == -1 and tdata.box:  # a plus sign where fishhooks meet: just past it, on the bow side
             fixed_tip, (_, nm) = None, self.meeting(arr)
@@ -458,6 +545,26 @@ class Planner:
             c = ((box[0] + box[2]) / 2, (box[1] + box[3]) / 2) if box else target[1]
             return add(c, mul(t, -clear_along(c, mul(t, -1), box, dots, r, ca.head_gap + extra)))
 
+        c1 = c2 = None
+        if self.hook(arr, o):  # leave the source square (bond normal on the bow side, or the pair's direction), land square on the bond
+            if pick >= len(HOOK_SCAN):
+                return None
+            if src.kind == "bond":
+                lo, hi = sorted(src.atoms)
+                nb = perp(unit(sub(self.atoms[hi].p, self.atoms[lo].p)))
+                t0 = nb if dot(nb, bow) >= 0 else mul(nb, -1)
+            else:
+                t0 = ds.direction
+            d = unit(sub(m, fixed_tip))  # back at the bond
+            if cross:  # from the far side, turned toward the shared atom, so the loop opens away from it
+                (shared,) = set(src.atoms) & set(arr.target.atoms)
+                toward = unit(sub(self.atoms[shared].p, m))
+                d = max((rotate(d, CROSS_TILT), rotate(d, -CROSS_TILT)), key=lambda v: dot(v, toward))
+            d = rotate(d, HOOK_SCAN[pick])
+            end = sub(fixed_tip, mul(d, ca.head_inset))
+            reach = CROSS_REACH if cross else HOOK_REACH
+            c1, c2 = hook_controls(tail, t0, end, d, soft, reach * P.lengths.bond_length)
+
         def controls(end: Point) -> tuple[Point, Point]:
             ch = sub(end, tail)
             L, u = length(ch), unit(ch)
@@ -465,7 +572,7 @@ class Planner:
             return (add(tail, add(mul(u, L * handles[0][0]), mul(n, L * h * handles[0][1]))),
                     add(tail, add(mul(u, L * handles[1][0]), mul(n, L * h * handles[1][1]))))
 
-        if fixed_tip is not None:
+        if c1 is None and fixed_tip is not None:
             end = fixed_tip
             for _ in range(ITERATIONS):
                 c1, c2 = controls(end)
@@ -475,17 +582,34 @@ class Planner:
                 end = new_end
                 if done:
                     break
-        else:
+        elif c1 is None:
             ends = solve_end(tail, controls, tip_for, target, ca, dots, r)
             if pick >= len(ends):
                 return None
             end = ends[pick]
-        if pick and fixed_tip is not None:
-            return None
-        c1, c2 = controls(end)
+        if c1 is None:
+            if pick and fixed_tip is not None:
+                return None
+            c1, c2 = controls(end)
         g = curved_arrow(tail, c1, c2, end, arr.type, P, name)
         hit = (tdata.species, tdata.idx) if tkind == "atom" and tdata.idx >= 0 else None
-        return MechArrow(step, index, arr, tail, c1, c2, end, g, g.children[0].head_leaves()[0].points, src.kind, target, hit, dots)
+        out = MechArrow(step, index, arr, tail, c1, c2, end, g, g.children[0].head_leaves()[0].points, src.kind, target,
+                        hit, dots)
+        if tkind == "bond" and cross:
+            out.crosses = (tdata[0].p, tdata[1].p)
+        return out
+
+
+def hook_controls(tail: Point, t0: Point, end: Point, t1: Point, soft: float = 1.0,
+                  reach: float = 0.0) -> tuple[Point, Point]:
+    """Controls of a hook: it leaves `tail` along unit t0 and reaches `end` along unit t1,
+    both handles the circular arc's for the turn θ between them (4/3 tan(θ/4) R, with R from
+    the chord: chord · 2/3 tan(θ/4) / sin(θ/2), chord / 3 when straight), at least `reach`,
+    times `soft`."""
+    th = math.radians(angle_deg(t0, t1))
+    L = length(sub(end, tail))
+    k = soft * max(reach, L * (1 / 3 if th < 1e-6 else 2 / 3 * math.tan(th / 4) / math.sin(th / 2)))
+    return add(tail, mul(t0, k)), sub(end, mul(t1, k))
 
 
 def clear_along(c: Point, d: Point, box: tuple | None, dots: list[Point], r: float, gap: float) -> float:
@@ -523,12 +647,12 @@ def miss(arrow: MechArrow) -> float:
 
 
 def aims(arrow: MechArrow, r: float) -> bool:
-    """Whether the head points at its target: for a labeled atom, its line from the tip meets
-    the element ink box without passing through one of the atom's dots (r their radius);
-    otherwise within MISS_DEG of the target's center."""
+    """Whether the head points at its target: for a labeled atom, within MISS_LABEL_DEG of the
+    element ink box's center, its line from the tip meeting the box without passing through one
+    of the atom's dots (r their radius); otherwise within MISS_DEG of the target's center."""
     if arrow.target[0] != "box":
         return miss(arrow) <= MISS_DEG
-    return _aims(arrow.tip, unit(sub(arrow.tip, arrow.p3)), arrow.target[1], arrow.target_dots, r)
+    return miss(arrow) <= MISS_LABEL_DEG and _aims(arrow.tip, unit(sub(arrow.tip, arrow.p3)), arrow.target[1], arrow.target_dots, r)
 
 
 def _aims(tip: Point, t: Point, box: tuple, dots: list[Point], r: float) -> bool:

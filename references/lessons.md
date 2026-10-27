@@ -361,3 +361,38 @@ removed renders pixel-identical to the approved `m4_nitration_x1.0`. Inbox triag
 - **`no:` in YAML is `false`.** A species named `no` (nitric oxide) fails with a baffling
   "Input should be a valid string". Use another name (`nitric_oxide`).
 
+
+## 2026-10-26 (curved arrows: hooks, aim, smoother arc)
+
+- **Chord length alone is the wrong switch between shapes; adjacency is.** Arrows onto a bond
+  next to their source (E2's C–H → C–C, a sigma complex's C=C → C–C⁺) were loops only because
+  their chords are short, so they curled. They are now hooks built from end tangents: leave
+  along the source bond's normal, land along the target bond's normal, circular-arc handles.
+- **A C–H → C–C hook has no room on its own side: it goes through the forming π bond and
+  back (user choice 2026-10-26).** The tail and the near side of the target sit in the same
+  ~110° angle between the bonds, so the head squeezed in beside the tail. A head that merely
+  crossed the bond was rejected. Six options were rendered side by side (`build/arrow_review/
+  cramped_options.png`, same framing for each). Chosen: through the bond, a large curl
+  (handles ≥ 0.9 bond lengths), the head pointing back at the bond turned 30° toward the
+  shared atom. Define such a turn geometrically (toward the shared atom), not as a screen
+  rotation, or a mirrored drawing gets the other option. Ring C=C → C–C hooks start outside
+  the ring and keep the near side. Keep both plain sides as fallbacks: phenoxy's C=C → C–O
+  needs one, because the radical's fishhook meets it there.
+- **Show options with fixed framing.** Crops centered on each arrow's own box made six
+  variants look alike; centering every crop on the target bond at one scale made them
+  comparable.
+- **Bond → own-atom arrows stay loops.** A hook was tried (end tangents chosen, 36 landing
+  directions, the shortest clean stroke first). It failed: between a bond's midpoint and its
+  own atom there is barely room for the 4.8 pt head. On H–C → C the tip and tail share one
+  90° gap between bonds, so the head lay across its own tail. On Br–Br and C=O the clean
+  candidates swung wide around the dots. ChemDraw's loop (out and back) fits. What the loops
+  needed was the tail at the *drawn* bond's midpoint (a label shortens it) and a stricter aim.
+- **"Enters the ink box" is too loose an aim.** Water's O–H → O head clipped the O's box 28°
+  off its center and read as pointing at the lower pair; a clean candidate with a 0° miss
+  existed at curvature × 0.5 but ranked lower. Labeled targets now also need ≤ 20° from the
+  box center. A miss costs 0.5 + miss/360 of a clash. With a flat penalty, ties went by rank
+  (nitration ×0.6 jumped from 22° to 48°). With 1 + miss/180, an aiming head that crossed a
+  charge beat a clean miss, and validation failed. A miss must cost less than a clash.
+- **ChemDraw's arc can't be smoothed to strictly rising curvature with its tangent angles
+  kept.** No handle pair does it. Refitting only the handle lengths gives an almost flat
+  profile (2% wobble) and removes the head spike. The arc comes out 16% taller per chord.
