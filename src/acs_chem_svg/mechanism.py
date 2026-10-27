@@ -49,7 +49,11 @@ Hand-placed (§4.2, round placement defaults):
     tail lies inside the angle between the two bonds (cramped: C-H -> C-C), the hook passes
     through the target bond and curls back onto it from the far side, its head turned
     CROSS_TILT toward the shared atom, handles at least CROSS_REACH bond lengths; that
-    crossing isn't a clash (MechArrow.crosses).
+    crossing isn't a clash (MechArrow.crosses). A hook between two bonds of one ring
+    (ring_center) bows into the ring: leaving one bond's inward normal and landing across the
+    next is a 120° turn, drawn as a circular arc (no HOOK_REACH minimum), with both ends slid
+    RING_SLIDE bond lengths along their bonds away from the shared atom, so a small preset's
+    head still leaves a stroke showing (user decision 2026-10-27).
   When the default clashes, the planner also tries h (a hook: its handles) × 0.75 and × 0.5
   (SOFTER), and tips FARTHER out. A head that doesn't aim (aims: into a labeled target's ink
   box past its dots and within MISS_LABEL_DEG of its center, else within MISS_DEG of the
@@ -87,6 +91,8 @@ SAMPLES = 48  # Bézier segments for geometric checks
 HOOK_SCAN = (0.0, 10.0, -10.0, 20.0, -20.0)  # a hook onto a bond: landing directions, degrees off the bond's normal, in rank order
 HOOK_REACH = 0.35  # a hook's handles are at least this × bond_length, so a short hook still stands off its bond
 CROSS_REACH = 0.9  # a cramped hook's handles (through the bond and back): at least this × bond_length
+RING_SLIDE = 0.25  # a ring hook's ends move this × bond_length along their bonds, away from the shared atom (user choice 2026-10-27)
+RING_SIZE = 8  # ring_center looks for rings of at most this many atoms
 CROSS_TILT = 30.0  # degrees its head turns from the target bond's normal toward the shared atom (user choice 2026-10-26, option D)
 
 
@@ -359,11 +365,58 @@ class Planner:
         shared = set(arr.source.atoms) & set(arr.target.atoms)
         return (arr.source.kind == "bond" and len(shared) == 1) or (arr.source.kind == "lp" and bool(shared))
 
+    def ring_center(self, arr: CurvedArrow) -> Point | None:
+        """For an arrow from a bond onto an adjacent bond: the centroid of the smallest ring
+        through both (a path from the source's far atom to the target's that avoids the shared
+        atom, RING_SIZE atoms at most); None when they share no ring."""
+        src, dst = arr.source, arr.target
+        if src.kind != "bond" or dst.kind == "atom" or frozenset(dst.atoms) not in self.bonds:
+            return None
+        shared = set(src.atoms) & set(dst.atoms)
+        if len(shared) != 1:
+            return None
+        (s,) = shared
+        a, b = (next(m for m in e.atoms if m != s) for e in (src, dst))
+        adj: dict[int, list[int]] = {}
+        for e in self.bonds:
+            x, y = tuple(e)
+            adj.setdefault(x, []).append(y)
+            adj.setdefault(y, []).append(x)
+        prev, frontier = {a: a}, [a]
+        while frontier and b not in prev:
+            nxt = []
+            for x in frontier:
+                for y in adj.get(x, []):
+                    if y != s and y not in prev:
+                        prev[y] = x
+                        nxt.append(y)
+            frontier = nxt
+        if b not in prev:
+            return None
+        ring, x = [s, b], b
+        while x != a:
+            x = prev[x]
+            ring.append(x)
+        if len(ring) > RING_SIZE:
+            return None
+        ps = [self.atoms[m].p for m in ring]
+        return (sum(x for x, _ in ps) / len(ps), sum(y for _, y in ps) / len(ps))
+
+    def ring_inside(self, arr: CurvedArrow, tail: Point) -> bool:
+        """Whether `tail` lies on the ring-center side of a ring hook's source bond."""
+        c = self.ring_center(arr)
+        if c is None:
+            return False
+        a, b = (self.atoms[m].p for m in arr.source.atoms)
+        n, mid = perp(unit(sub(b, a))), mul(add(a, b), 0.5)
+        return dot(n, sub(tail, mid)) * dot(n, sub(c, mid)) > 0
+
     def cramped(self, arr: CurvedArrow, tail: Point) -> bool:
         """Whether a hook from a bond starts inside the angle between its bond and the target
         bond (C-H -> C-C, forming a π bond): no room to land on the near side, so it passes
-        through the target bond and curls back onto it (user choice 2026-10-26)."""
-        if arr.source.kind != "bond":
+        through the target bond and curls back onto it (user choice 2026-10-26). Not inside a
+        ring: there the near side is the ring's interior (ring_center)."""
+        if arr.source.kind != "bond" or self.ring_inside(arr, tail):
             return False
         (s,) = set(arr.source.atoms) & set(arr.target.atoms)
         c = self.atoms[s].p
@@ -374,9 +427,12 @@ class Planner:
             return x[0] * y[1] - x[1] * y[0]
         return cross(ua, w) * cross(ua, ub) > 0 and cross(ub, w) * cross(ub, ua) > 0
 
-    def default_bow(self, arr: CurvedArrow, s0: Point, p: Point) -> Point:
+    def default_bow(self, arr: CurvedArrow, o: ArrowOverride, s0: Point, p: Point) -> Point:
         u = unit(sub(p, s0))
         right = perp(u)  # y-down: perp() is the right-hand side of the travel direction
+        ring = self.ring_center(arr) if self.hook(arr, o) else None
+        if ring is not None:  # a ring hook: into the ring
+            return right if dot(right, sub(ring, mul(add(s0, p), 0.5))) > 0 else mul(right, -1)
         species = {self.atoms[m].species for e in (arr.source, arr.target) for m in e.atoms if m in self.atoms}
         cs = [self.centroids[s] for s in species]
         c = (sum(x for x, _ in cs) / len(cs), sum(y for _, y in cs) / len(cs))
@@ -396,7 +452,7 @@ class Planner:
             right = perp(u0)
             bows = [right if o.bow == "right" else mul(right, -1)]
         else:
-            b0 = self.default_bow(arr, s0, p_anchor)
+            b0 = self.default_bow(arr, o, s0, p_anchor)
             bows = [mul(b0, -1)] if flip else [b0]
         key = frozenset(src.atoms) if src.kind == "bond" else None
         same = False  # a second arrow from this bond on the first one's side (its tail slides along the bond)
@@ -511,6 +567,14 @@ class Planner:
         P = self.preset
         ca, r = P.curved_arrow, P.lone_pair.dot_radius
         src = arr.source
+        ring = self.hook(arr, o) and self.ring_inside(arr, add(s0, bow))
+        slide = (0.0, 0.0)  # a ring hook: the tip's anchor moves this along its bond
+        if ring:  # both ends slide away from the shared atom
+            (shared,) = set(src.atoms) & set(arr.target.atoms)
+            c = self.atoms[shared].p
+            k = RING_SLIDE * P.lengths.bond_length
+            fa, fb = (self.atoms[next(m for m in e.atoms if m != shared)].p for e in (src, arr.target))
+            s0, slide = add(s0, mul(unit(sub(fa, c)), k)), mul(unit(sub(fb, c)), k)
         if src.kind == "bond":
             tail = self.bond_tail(src, s0, bow, p_anchor, same)
         else:
@@ -519,7 +583,7 @@ class Planner:
         cross = False
         if tkind == "bond":
             a, b = tdata
-            m = self.bond_mid(*arr.target.atoms)
+            m = add(self.bond_mid(*arr.target.atoms), slide)
             nb = perp(unit(sub(b.p, a.p)))
             if self.hook(arr, o) and self.cramped(arr, tail):  # 0: through and back, 1: the tail's side, 2: the far side
                 cross, far = far == 0, far == 2
@@ -562,7 +626,7 @@ class Planner:
                 d = max((rotate(d, CROSS_TILT), rotate(d, -CROSS_TILT)), key=lambda v: dot(v, toward))
             d = rotate(d, HOOK_SCAN[pick])
             end = sub(fixed_tip, mul(d, ca.head_inset))
-            reach = CROSS_REACH if cross else HOOK_REACH
+            reach = CROSS_REACH if cross else 0.0 if ring else HOOK_REACH
             c1, c2 = hook_controls(tail, t0, end, d, soft, reach * P.lengths.bond_length)
 
         def controls(end: Point) -> tuple[Point, Point]:

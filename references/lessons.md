@@ -375,8 +375,8 @@ removed renders pixel-identical to the approved `m4_nitration_x1.0`. Inbox triag
   cramped_options.png`, same framing for each). Chosen: through the bond, a large curl
   (handles ≥ 0.9 bond lengths), the head pointing back at the bond turned 30° toward the
   shared atom. Define such a turn geometrically (toward the shared atom), not as a screen
-  rotation, or a mirrored drawing gets the other option. Ring C=C → C–C hooks start outside
-  the ring and keep the near side. Keep both plain sides as fallbacks: phenoxy's C=C → C–O
+  rotation, or a mirrored drawing gets the other option. Ring C=C → C–C hooks keep the near
+  side (since 2026-10-27, inside the ring: see below). Keep both plain sides as fallbacks: phenoxy's C=C → C–O
   needs one, because the radical's fishhook meets it there.
 - **Show options with fixed framing.** Crops centered on each arrow's own box made six
   variants look alike; centering every crop on the target bond at one scale made them
@@ -396,3 +396,15 @@ removed renders pixel-identical to the approved `m4_nitration_x1.0`. Inbox triag
 - **ChemDraw's arc can't be smoothed to strictly rising curvature with its tangent angles
   kept.** No handle pair does it. Refitting only the handle lengths gives an almost flat
   profile (2% wobble) and removes the head spike. The arc comes out 16% taller per chord.
+
+## 2026-10-27 (curved arrows: ring hooks inside the ring)
+
+- **A hook between two bonds of one ring goes inside the ring (user decision 2026-10-27).**
+  Leaving a ring bond along its normal and landing across the next bond is a 120° turn
+  (adjacent hexagon edge normals differ by 60°). Bowed away from the centroid, the turn
+  wrapped the wrong way round the outside of the vertex, so the σ-complex arrows came out
+  squat. Inside, a circular arc fits exactly. The HOOK_REACH minimum (0.35 bond) made the
+  handles 1.7× a circle's on that short chord and the arc pointed, so ring hooks use pure
+  circular handles. The head doesn't scale (4.8 pt at every preset), so at ×0.6 it hid most of
+  a 3.8 pt chord: sliding both ends 0.25 bond away from the shared atom gives the stroke room,
+  and looks better at ×1.0 too.

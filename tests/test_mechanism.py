@@ -187,6 +187,30 @@ def test_ch_hook_goes_through_the_forming_pi_bond_and_back(stem, step, index):
     assert not ring.crosses
 
 
+@pytest.mark.parametrize("stem", ["m4_nitration_x1.0", "m4_nitration_x0.6"])
+@pytest.mark.parametrize("index", [0, 1])
+def test_ring_hook_inside_the_ring(stem, index):
+    # ring C=C -> adjacent ring bond (user decision 2026-10-27): inside the ring as a circular
+    # 120° arc, both ends slid toward the bonds' far atoms; outside it wrapped round the vertex
+    lay = scheme(stem)
+    a = next(x for x in lay.curved if x.step == 4 and x.index == index)
+    sp = lay.species[("sigma_a", "sigma_b")[index]]
+    (r,) = sp.mol.rings
+    ring = [add(sp.mol.atoms[i].p, sp.offset) for i in r]
+    c = mul((sum(p[0] for p in ring), sum(p[1] for p in ring)), 1 / len(ring))
+    _, t1, t2 = a.target
+    s1, s2 = (add(next(x.p for x in sp.mol.atoms if x.map == m), sp.offset) for m in a.spec.source.atoms)
+    for end, (p, q) in ((a.p0, (s1, s2)), (a.tip, (t1, t2))):
+        assert length(sub(end, c)) < length(sub(mul(add(p, q), 0.5), c))
+    t0, t3 = unit(sub(a.c1, a.p0)), unit(sub(a.p3, a.c2))
+    assert angle_deg(t0, t3) == pytest.approx(120, abs=25)
+    th, L = math.radians(angle_deg(t0, t3)), length(sub(a.p3, a.p0))
+    circ = L * 2 / 3 * math.tan(th / 4) / math.sin(th / 2)
+    for h in (length(sub(a.c1, a.p0)), length(sub(a.p3, a.c2))):
+        assert h == pytest.approx(circ, rel=0.1)
+    assert not a.crosses and check_mechanism(lay) == []
+
+
 def test_bond_tail_at_the_drawn_bond_midpoint():
     # H-C -> C (radical propagation, item 3): the H label shortens the drawn bond; the tail sits
     # beside the middle of what is drawn, and the loop stays compact
