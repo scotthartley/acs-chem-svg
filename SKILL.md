@@ -132,8 +132,6 @@ steps:
 
 ## Known limits (raise errors rather than guess)
 
-- An abbreviation whose bond leaves to the right (MeO–, BnO–) is unmeasured: turn the
-  structure so the bond comes from the left or below, or don't abbreviate that group.
 - At most 2 stages per arrow.
 - Explicit CH₂/CH labels on internal carbons, carbenes.
 - Lewis structures: rings, more than 4 neighbors (PCl₅), Lewis species in schemes.

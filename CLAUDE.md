@@ -53,7 +53,8 @@ they disagree, `acs-style.md` (the ChemDraw references) wins.
 - `uv run python scripts/measure_refs.py --mech` prints the mechanism parameters per preset (acs-style.md §4).
 - `uv run python scripts/measure_refs.py --wrap` prints the multi-row scheme parameters per preset (acs-style.md §3.4).
 - `uv run python scripts/measure_refs.py --resonance` prints the resonance arrow and bracket parameters per preset (acs-style.md §4.3).
-- `uv run python scripts/cdxml_to_molfile.py` regenerates `templates/m1/` … `templates/m4/` from the reference CDXMLs.
+- `uv run python scripts/measure_refs.py --abbrev` prints the abbreviation label parameters per preset, both forms (acs-style.md §3.5).
+- `uv run python scripts/cdxml_to_molfile.py` regenerates `templates/m1/` … `templates/m4/` and `templates/abbrev/` from the reference CDXMLs.
 - `uv run python scripts/readme_images.py` re-renders the README's example images (`docs/images/`).
 - `uv run python scripts/compare.py <ref>...` renders a reference's templates and prints ours vs
   ChemDraw, plus side-by-side PNGs in `build/compare/`. Scheme references also get our arrows and captions;

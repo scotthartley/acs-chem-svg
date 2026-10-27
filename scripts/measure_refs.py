@@ -17,6 +17,7 @@ Usage:
     uv run python scripts/measure_refs.py --mech          # mechanism parameters per preset (§4)
     uv run python scripts/measure_refs.py --resonance     # resonance arrows and brackets per preset (§4.3)
     uv run python scripts/measure_refs.py --wrap          # multi-row scheme parameters per preset (§3.4)
+    uv run python scripts/measure_refs.py --abbrev        # abbreviation labels per preset (§3.5)
 """
 
 from __future__ import annotations
@@ -40,7 +41,7 @@ from acs_chem_svg.geometry import (  # shared with the renderer
 
 REPO = Path(__file__).resolve().parents[1]
 REF_DIR = REPO / "reference_renders" / "chemdraw"
-ELEMENTS = {1: "H", 6: "C", 7: "N", 8: "O", 9: "F", 15: "P", 16: "S", 17: "Cl", 35: "Br", 53: "I"}
+ELEMENTS = {1: "H", 6: "C", 7: "N", 8: "O", 9: "F", 14: "Si", 15: "P", 16: "S", 17: "Cl", 35: "Br", 53: "I"}
 
 
 def stats(values):
@@ -65,6 +66,7 @@ class Atom:
     frag: str = ""
     nickname: bool = False
     radicals: int = 0  # CDXML Radical="Doublet"
+    justification: str = ""  # CDXML LabelJustification of the node's <t> (Left / Right; nicknames: MeO is Right)
 
 
 @dataclass
@@ -347,7 +349,8 @@ def load_cdxml(doc: Doc, path: Path, off):
             doc.atoms[n.get("id")] = Atom(
                 n.get("id"), _xy(n.get("p"), off), el, label,
                 int(n.get("Charge", "0")), int(n.get("NumHydrogens")) if n.get("NumHydrogens") else None,
-                fid, nick, 1 if n.get("Radical") == "Doublet" else 0)
+                fid, nick, 1 if n.get("Radical") == "Doublet" else 0,
+                t.get("LabelJustification", "") if t is not None else "")
         for b in frag.findall("b"):
             order = b.get("Order", "1")
             doc.bonds.append(Bond(b.get("id"), b.get("B"), b.get("E"),
@@ -535,10 +538,15 @@ def label_glyphs(doc: Doc, atom: Atom):
     """(element glyphs, whole-label glyphs) for a labeled atom. The element
     symbol is the matching glyph run closest to the atom; the whole label is
     the chain of glyphs set contiguously with it (origin of each = previous
-    origin + advance), which picks up H, subscripts, and left-side H2N forms."""
+    origin + advance), which picks up H, subscripts, and left-side H2N forms.
+    A nickname's anchor is found by position, since ChemDraw displays a right-justified one
+    reversed (CDXML OMe, drawn MeO: abbrev_x*): the glyph whose advance center is on the atom
+    starts or ends the chain, and draw_mol.anchor_symbol picks the anchor glyphs from that end."""
     if not atom.label:
         return [], []
-    sym = atom.element if not atom.nickname else atom.label[:1]
+    if atom.nickname:
+        return _nickname_glyphs(doc, atom)
+    sym = atom.element
     best = None
     for i, g in enumerate(doc.glyphs):
         if not g.box or g.ch != sym[0]:
@@ -552,7 +560,12 @@ def label_glyphs(doc: Doc, atom: Atom):
         return [], []
     i = best[1]
     elem = doc.glyphs[i:i + len(sym)]
-    whole = list(elem)
+    return elem, [g for g in _glyph_chain(doc, elem) if g.box]
+
+
+def _glyph_chain(doc: Doc, seed: list) -> list:
+    """`seed` extended both ways by glyphs set contiguously with it on (about) its baseline."""
+    whole = list(seed)
     tol = 0.05
     changed = True
     while changed:
@@ -569,6 +582,26 @@ def label_glyphs(doc: Doc, atom: Atom):
                 whole.insert(0, g)
                 changed = True
                 break
+    return whole
+
+
+def _nickname_glyphs(doc: Doc, atom: Atom):
+    from acs_chem_svg.draw_mol import anchor_symbol
+
+    best = None
+    for g in doc.glyphs:
+        if not g.box:
+            continue
+        d = length(sub((g.x + g.adv / 2, (g.box[1] + g.box[3]) / 2), atom.p))
+        if best is None or d < best[0]:
+            best = (d, g)
+    if best is None or best[0] > 6:
+        return [], []
+    whole = _glyph_chain(doc, [best[1]])
+    text = "".join(g.ch for g in whole)
+    side = "left" if best[1] is whole[-1] and len(whole) > 1 else "right"
+    k = len(anchor_symbol(text, atom.element, side))
+    elem = whole[-k:] if side == "left" else whole[:k]
     return elem, [g for g in whole if g.box]
 
 
@@ -1705,6 +1738,58 @@ def mech_summary(name: str) -> dict:
     return out
 
 
+ABBREV_REFS = ["abbrev_x1.0", "abbrev_x0.8", "abbrev_x0.6"]
+
+
+def abbrev_summary(name: str) -> dict:
+    """§3.5: per abbreviation (abbrev_x*), each drawn form: displayed text, ChemDraw's
+    LabelJustification, which glyph's advance center sits on the atom (its offset), baseline −
+    atom y, and each bond end with its residual against the §2.1 model (preset values) on the
+    anchor glyphs label_glyphs picks."""
+    from acs_chem_svg import draw_mol
+    from acs_chem_svg.preset import load_preset
+
+    doc = load(name)
+    asg = assign(doc)
+    k = name.rsplit("_x", 1)[1]
+    preset = load_preset("acs1996" if k == "1.0" else f"acs1996_x{k}")
+    L, r = preset.lengths, preset.ratios
+    margin = float(doc.settings["MarginWidth"])
+    forms, offsets, baselines, residuals = [], [], [], []
+    for a in doc.atoms.values():
+        if not a.nickname:
+            continue
+        elem, whole = label_glyphs(doc, a)
+        text = "".join(g.ch for g in whole)
+        right = elem[-1] is whole[-1] and elem[0] is not whole[0]
+        c = whole[-1] if right else whole[0]
+        outline = [[(x - a.p[0], y - a.p[1]) for x, y in cont] for g in elem for cont in g.outline()]
+        ends = []
+        for b in doc.bonds:
+            if a.id not in (b.a, b.b) or not asg.get(b.id, {}).get("lines"):
+                continue
+            fr = frame(doc, b.b if b.a == a.id else b.a, a.id)
+            end = statistics.median(fr.L - _line_from_shape(ln.shape, fr).u1 for ln in asg[b.id]["lines"])
+            model = draw_mol.clip_distance_band(outline, (-fr.u[0], -fr.u[1]), r.label_band_per_size * c.size, margin,
+                                                r.label_clearance_per_margin,
+                                                (L.label_outline_offset_x, L.label_outline_offset_y))
+            ends.append({"dir_deg": round(math.degrees(math.atan2(fr.u[1], -fr.u[0])), 1), "end": _r(end),
+                         "model_minus_end": _r(model - end)})
+            residuals.append(model - end)
+        off = c.x + c.adv / 2 - a.p[0]
+        offsets.append((right, off))
+        baselines.append(c.base - a.p[1])
+        forms.append({"key": a.label, "text": text, "justification": a.justification, "centered": c.ch,
+                      "anchor": "".join(g.ch for g in elem), "centered_dx": _r(off),
+                      "baseline_minus_atom_y": _r(c.base - a.p[1]), "bonds": ends})
+    return {"forms": forms,
+            "centered_dx_left_justified": stats(o for rt, o in offsets if not rt),
+            "centered_dx_right_justified": stats(o for rt, o in offsets if rt),
+            "baseline_minus_atom_y": stats(baselines),
+            "bond_end_model_minus_end": stats(residuals),
+            "bond_ends_over_0.1": sum(abs(x) > 0.1 for x in residuals)}
+
+
 # --------------------------------------------------------------------------- main
 
 
@@ -1722,7 +1807,12 @@ def main(argv=None) -> int:
     ap.add_argument("--mech", action="store_true", help="mechanism parameters per preset (§4)")
     ap.add_argument("--wrap", action="store_true", help="multi-row scheme parameters per preset (§3.4)")
     ap.add_argument("--resonance", action="store_true", help="resonance arrow and bracket parameters per preset (§4.3)")
+    ap.add_argument("--abbrev", action="store_true", help="abbreviation label parameters per preset (§3.5)")
     args = ap.parse_args(argv)
+    if args.abbrev:
+        names = args.names or ABBREV_REFS
+        print(json.dumps({n: abbrev_summary(n) for n in names}, indent=1, ensure_ascii=False))
+        return 0
     if args.resonance:
         refs = {k: n for k, n in RESONANCE_REFS.items() if not args.names or n in args.names}
         print(json.dumps({k: resonance_summary(n) for k, n in refs.items()}, indent=1, ensure_ascii=False))

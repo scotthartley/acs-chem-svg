@@ -115,8 +115,6 @@ When something goes wrong, Claude appends a note to `issues/inbox.md` in the rep
   two stages on one arrow, catalytic cycles.
 - Lewis structures: no rings, no atoms with more than four neighbors (PCl₅), and not inside
   schemes yet.
-- An abbreviation whose bond leaves to the right (MeO–, BnO–) isn't measured yet; Claude turns
-  the structure or writes the group out.
 - Curved-arrow placement is automatic with a few semantic overrides (bow side, curvature);
   crowded mechanisms can need a nudge in a vector editor.
 

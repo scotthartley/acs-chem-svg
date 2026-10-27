@@ -30,7 +30,7 @@ align: auto                # or false: every species on its own layout
 | `steps[].above` / `below` | string or list | Conditions, one string per line, centered on the arrow. |
 | `steps[].stages` | list of 1–2 strings | Numbered stages, left-justified: "1. …" above, "2. …" below. More than 2 is unmeasured. Exclusive with above/below. |
 | `numbers.<name>` | int or string | Bold compound number under the species, on one shared baseline. |
-| `species.<name>.abbreviate` | list | Collapse these terminal groups to labels: OMe, OEt, OBn, OPh, OAc, SMe, NHAc, CO2Me, CO2Et, CO2H, CF3, CN, NO2, Ph, Bn, Et, Ac, TMS, TES, TBS, TIPS. Only the left-justified form (bond from the left or below) is measured; a bond leaving to the right raises an error (turn the structure). |
+| `species.<name>.abbreviate` | list | Collapse these terminal groups to labels: OMe, OEt, OBn, OPh, OAc, SMe, NHAc, CO2Me, CO2Et, CO2H, CF3, CN, NO2, Ph, Bn, Et, Ac, TMS, TES, TBS, TIPS. A group whose bond leaves to the right is set as ChemDraw does: right-justified, in reversed text (MeO, MeO₂C, O₂N, F₃C, AcHN; Ph, Bn, Et, Ac and the silyl groups keep their text). |
 | `species.<name>.align` | bool (default true) | A product takes the orientation of the species it is drawn from: atoms shared by atom map (≥ 2 common maps), else by maximum common substructure, keep their coordinates. `false` = own layout. Molfile species keep their layout unless `align_to` is set. |
 | `species.<name>.align_to` | name | Align to this species instead (it must be drawn earlier). |
 | `align` | `auto` \| `false` | `false` turns alignment off for the whole scheme. |
@@ -269,4 +269,4 @@ species:
   unlabeled atom they go on the bisector of the largest gap. A sign beside drawn lone pairs (or a
   circled / "2+" sign) moves outward until it clears the dots and bonds by 1 pt.
 - **Not yet supported:** condensed labels other than the abbreviations above (CH₃Cl as text),
-  right-justified abbreviations (MeO–), aromatic circles.
+  aromatic circles.

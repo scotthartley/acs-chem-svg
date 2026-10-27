@@ -7,7 +7,8 @@ tests/test_m1_vs_chemdraw.py). Coordinates are pt x 1.5 / BondLength (1.5 A bond
 y up), so chem.from_molfile scales them back to the exact positions on ChemDraw's SVG page.
 
 Writes templates/m1/<reference>__<n>.mol (templates/m2/ for scheme references, templates/m3/
-for mechanism references, radicals kept; templates/m4/ for resonance references), with n =
+for mechanism references, radicals kept; templates/m4/ for resonance references; templates/abbrev/
+for the abbreviation references), with n =
 fragment order in the CDXML (1-based). Labeled carbons (CH3 as text) become molfile atom
 aliases, which chem.from_molfile reads as explicit carbon labels. Nicknames that are known
 abbreviations (OMe, OBn) become their attachment atom with the nickname as its alias; fragments
@@ -34,6 +35,7 @@ OUT = mr.REPO / "templates" / "m1"
 OUT_M2 = mr.REPO / "templates" / "m2"
 OUT_M3 = mr.REPO / "templates" / "m3"
 OUT_M4 = mr.REPO / "templates" / "m4"
+OUT_ABBREV = mr.REPO / "templates" / "abbrev"
 M1_REFERENCES = ["m1_set_x1.0", "m1_set_x0.8", "m1_set_x0.6", "double_bonds_x1.0", "labels_x1.0",
                  "double_bonds_2", "stereo_x1.0", "stereo_x0.8", "stereo_x0.6",
                  "clearance_x1.0", "clearance_x0.8", "clearance_x0.6"]
@@ -42,6 +44,7 @@ M2_REFERENCES = ["scheme_basic_x1.0", "scheme_basic_x0.8", "scheme_basic_x0.6",
 M3_REFERENCES = ["mech_basic_x1.0", "mech_basic_x0.8", "mech_basic_x0.6"]
 M4_REFERENCES = ["resonance_x1.0", "resonance_x0.8", "resonance_x0.6",
                  "scheme_wrap_x1.0", "scheme_wrap_x0.8", "scheme_wrap_x0.6"]
+ABBREV_REFERENCES = ["abbrev_x1.0", "abbrev_x0.8", "abbrev_x0.6"]
 
 
 def fragments(doc: mr.Doc) -> list[tuple[int, str, set[str]]]:
@@ -80,7 +83,7 @@ def with_wedges(block: str, doc: mr.Doc, ids: list[str]) -> str:
 
 def template_path(name: str, n: int) -> Path:
     out = (OUT_M2 if name.startswith("scheme_") else OUT_M3 if name.startswith("mech_")
-           else OUT_M4 if name.startswith("resonance_") else OUT)
+           else OUT_M4 if name.startswith("resonance_") else OUT_ABBREV if name.startswith("abbrev_") else OUT)
     return out / f"{name}__{n}.mol"
 
 
@@ -102,8 +105,9 @@ def convert(name: str) -> list[Path]:
 
 
 def main(argv=None) -> int:
-    names = (argv if argv is not None else sys.argv[1:]) or M1_REFERENCES + M2_REFERENCES + M3_REFERENCES + M4_REFERENCES
-    for d in (OUT, OUT_M2, OUT_M3, OUT_M4):
+    names = (argv if argv is not None else sys.argv[1:]) or (M1_REFERENCES + M2_REFERENCES + M3_REFERENCES
+                                                          + M4_REFERENCES + ABBREV_REFERENCES)
+    for d in (OUT, OUT_M2, OUT_M3, OUT_M4, OUT_ABBREV):
         d.mkdir(parents=True, exist_ok=True)
     for name in names:
         for p in convert(name):

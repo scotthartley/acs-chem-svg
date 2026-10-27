@@ -52,6 +52,16 @@ ABBREVIATIONS = {
     "TMS": "*[Si](C)(C)C", "TES": "*[Si](CC)(CC)CC", "TBS": "*[Si](C)(C)C(C)(C)C",
     "TIPS": "*[Si](C(C)C)(C(C)C)C(C)C",
 }
+# The right-justified form (bond leaving the label to the right), as ChemDraw displays each
+# nickname (abbrev_x1.0 SVG; the CDXML keeps the key text). Formula-like ones are reversed;
+# Ph, Bn, Et, Ac and the silyl groups keep their text.
+ABBREVIATIONS_REVERSED = {
+    "OMe": "MeO", "OEt": "EtO", "OBn": "BnO", "OPh": "PhO", "OAc": "AcO",
+    "SMe": "MeS", "NHAc": "AcHN", "CO2Me": "MeO2C", "CO2Et": "EtO2C", "CO2H": "HO2C",
+    "CF3": "F3C", "CN": "NC", "NO2": "O2N", "Ph": "Ph", "Bn": "Bn",
+    "Et": "Et", "Ac": "Ac",
+    "TMS": "TMS", "TES": "TES", "TBS": "TBS", "TIPS": "TIPS",
+}
 MCS_TIMEOUT = 2  # s
 # Pauling electronegativities (CRC Handbook of Chemistry and Physics, "Electronegativity of the
 # Elements"): chemistry constants for Lewis oxidation-state views, not style numbers.

@@ -8,7 +8,7 @@ import pytest
 
 from acs_chem_svg import chem
 from acs_chem_svg.arrows import notch_x
-from acs_chem_svg.draw_mol import draw_molecule
+from acs_chem_svg.draw_mol import Drawer, draw_molecule
 from acs_chem_svg.geometry_checks import check_scheme
 from acs_chem_svg.layout import build_scheme, render_spec
 from acs_chem_svg.preset import load_preset
@@ -140,6 +140,28 @@ def test_abbreviation_label():
     assert len(ab) == 1 and ab[0].element == "O" and len(m.atoms) == 7
     with pytest.raises(ValueError, match="no such terminal group"):
         chem.from_smiles("CCO", "ethanol", 14.4, abbreviate=["OMe"])
+
+
+@pytest.mark.parametrize("smiles, key, text, anchor", [("COc1ccccc1", "OMe", "MeO", "O"),
+                                                       ("COC(=O)c1ccccc1", "CO2Me", "MeO2C", "C"),
+                                                       ("C[Si](C)(C)c1ccccc1", "TMS", "TMS", "S")])
+def test_right_justified_abbreviation(smiles, key, text, anchor):
+    """A group with its bond leaving to the right is set in ChemDraw's reversed text, the last
+    letter centered on the atom (abbrev_x*; formerly NotImplementedError)."""
+    preset = load_preset("acs1996")
+    m = chem.from_smiles(smiles, "a", 14.4, abbreviate=[key])
+    i = next(a.idx for a in m.atoms if a.abbrev)
+    ring = [a for a in m.atoms if not a.abbrev]
+    if m.atoms[i].x > min(a.x for a in ring):  # put the group on the left of the ring
+        for a in m.atoms:
+            a.x = -a.x
+    lab = Drawer(m, preset).labels[i]
+    assert lab.h_side == "left" and "".join(r.text for r in lab.runs) == text and lab.element == anchor
+    last = lab.runs[-1]
+    end = last.x + last.advance()
+    adv = lab.face.advance(text[-1], lab.size)
+    assert end - adv / 2 == pytest.approx(m.atoms[i].x, abs=1e-9)
+    draw_molecule(m, preset)
 
 
 @pytest.mark.parametrize("stem", ["m1_smiles_x1.0", "m1_smiles_x0.8", "m1_smiles_x0.6"])

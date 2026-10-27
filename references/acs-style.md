@@ -140,24 +140,31 @@ hash ends at the atom.
 Every line of a multiple bond stops at the same axial distance (vertical C=O: both lines and a
 single C–O end 5.519 from the O center at ×1.0).
 
-**Rule (refit 2026-10-24, `measure_refs.py --fit-clip`).** Take the element glyph outline as
-drawn, shifted by (−0.02, +0.03) pt. Keep only the parts within ±0.195 × label size of the bond
-axis (edges clipped to that band). The bond stops 1.0075 × MarginWidth beyond the furthest
-point of those parts along the bond.
-- **Fit:** 396 of 399 bond ends are within 0.1 pt (worst 0.092, rms 0.055). These are all
+**Rule (refit 2026-10-27, `measure_refs.py --fit-clip`).** Take the element glyph outline as
+drawn, shifted by (−0.01, +0.03) pt. Keep only the parts within ±0.195 × label size of the bond
+axis (edges clipped to that band); a **horizontal** bond keeps the whole outline. The bond stops
+1.0075 × MarginWidth beyond the furthest point of those parts along the bond.
+- **Fit:** all 669 bond ends are within 0.1 pt (worst 0.094, rms 0.045). These are all
   lines, wedges and hashes into labels in every reference, at every direction and preset.
+  Horizontal: 220 ends, worst 0.072 with the whole outline; angled: 449, worst 0.098 with the band.
+- **Why horizontal bonds differ (abbrev_x*, 2026-10-27):** a horizontal bond into T (TMS) or
+  A (Ac) stops beyond T's bar and A's foot, both outside the band: 2.44 / 0.65 pt further out
+  than the band model at ×1.0, −0.02 with the whole outline. The same rule fits –F (bond
+  leaving rightward, the former known exception). At 30° and steeper the band is needed
+  (I, Cl, Br corners in clearance_x*). The references have no bond between 0° and 30°; the
+  switch at 15° (`draw_mol.HORIZONTAL_CLIP_DEG`) is unmeasured.
 - **Why a band:** this is the glyph's extent along the bond, limited to what lies near the
   bond's path.
   - **Round glyphs (O):** identical to a convex-hull ray model.
   - **Flat-sided glyphs:** a bond passing an H, N, I or F corner obliquely stops beyond the
     corner, so it gets the 1.2–1.75 × margin "outliers" of the earlier hull model.
   - **Narrow glyphs:** an I or l beside the path is ignored.
-- **Known exception:** F with the bond leaving rightward. ChemDraw stops 0.31–0.41 pt further
-  out, between F's middle bar and its longer top bar (just outside the band). No band shape
-  fits this together with I at 30°. xfail in the acceptance test.
+- **Former exception (resolved 2026-10-27):** F with the bond leaving rightward stopped
+  0.31–0.41 pt beyond the band model (F's top bar). The horizontal rule fits it.
 - **Noise floor:** nominally identical geometries in one file differ by up to 0.05 pt
   (m1_set_x0.8 OH at 30°: 4.199–4.268).
-- **Superseded:** the M1 hull model (1.025 × margin, hull shift (−0.05, +0.08)), and the
+- **Superseded:** the 2026-10-24 fit (offset (−0.02, +0.03), band for every direction; 396 of
+  399 within 0.1 pt, F rightward excepted); the M1 hull model (1.025 × margin, hull shift (−0.05, +0.08)), and the
   provisional box for oblique H/I/N. It mispredicted F, I and Br by up to 1.2 pt and Cl/Br
   bonds to the right by 4.7 pt (right-justification, §2).
 
@@ -250,9 +257,8 @@ Notes:
   on one baseline although their ink bottoms differ by 2.3 pt.
 - Formula text typed in ChemDraw (K₂CO₃, LiAlH₄, PCC, CH₂Cl₂) is stored as a one-node fragment;
   `measure_refs` treats it as a caption (`Doc.text_frags`).
-- Abbreviations (OMe, OBn) are `NodeType="Fragment"` nicknames: one run, left-justified, first
-  letter centered on the atom, on the label baseline. Their bonds fit the §2.1 band model on
-  the O outline (worst 0.08 pt, all presets).
+- Abbreviations (OMe, OBn) are `NodeType="Fragment"` nicknames (Ph, Bn, Et, Ac, silyl:
+  `Nickname`): one run of rich text on the label baseline. See §3.5.
 
 ### 3.4 Multi-row schemes (source: scheme_wrap_x1.0 / x0.8 / x0.6)
 
@@ -280,6 +286,33 @@ Notes:
   the §3.3 range; `scheme.arrow_gap` is unchanged.
 - Conditions sit as in §3.3 (above 4.50–5.75, below 11.36–12.50); compound numbers share one
   baseline per row (3 is 0.18 pt high, by hand).
+
+### 3.5 Abbreviations (source: abbrev_x1.0 / x0.8 / x0.6)
+
+Method: `uv run python scripts/measure_refs.py --abbrev`. Each of the 21 `chem.ABBREVIATIONS` on
+a benzene ring, once with the bond leaving the label to the left (ring on the right) and once
+to the right, plus OMe, CO₂Me and NO₂ at ±30°. ChemDraw justified them itself
+(`LabelJustification` Left / Right); the CDXML keeps the key text in both forms, and the SVG
+shows the reversed text.
+
+| Parameter | ×1.0 | ×0.8 | ×0.6 | Class |
+|---|---|---|---|---|
+| Bond leaving to the left or below | key text left-justified, **first** letter's advance center on the atom: −0.005 (−0.005 to 0.000) | −0.001 | +0.002 | exact |
+| Bond leaving to the right | reversed text right-justified, **last** letter's advance center on the atom, as for Cl– (§2): +0.003 (+0.001 to +0.003) | −0.003 | +0.002 | exact |
+| Baseline below atom center | 3.586 (both forms) | 2.870 | 2.153 | exact (= §2) |
+| Bond clip | §2.1 on the anchor glyph(s): the attachment element at the centered end (OMe, MeO: O; MeO₂C: C; O₂N: N), else the centered letter (Ph: P / h; TMS: T / S). Model − end: −0.09 to +0.06 | −0.08 to +0.07 | −0.08 to +0.06 | exact: all 48 ends per preset within 0.1 pt |
+| Runs | split at script changes, as in conditions: MeO \| ₂ \| C | | | exact |
+
+Reversed text (ChemDraw's display; `chem.ABBREVIATIONS_REVERSED`):
+
+| Key | Reversed | Key | Reversed | Key | Reversed |
+|---|---|---|---|---|---|
+| OMe | MeO | NHAc | AcHN | NO₂ | O₂N |
+| OEt | EtO | CO₂Me | MeO₂C | Ph, Bn, Et, Ac | unchanged |
+| OBn | BnO | CO₂Et | EtO₂C | TMS, TES, TBS, TIPS | unchanged |
+| OPh | PhO | CO₂H | HO₂C | | |
+| OAc | AcO | CF₃ | F₃C | | |
+| SMe | MeS | CN | NC | | |
 
 ## 4. Mechanisms and resonance (source: mech_basic_x1.0 / x0.8 / x0.6, resonance_x1.0 / x0.8 / x0.6)
 
@@ -445,7 +478,10 @@ Rules (M4; unmeasured, user decisions 2026-10-25, flagged at review):
   substituents, fused bonds, and the 108° inset.
 
 ### Open (not measurable from the supplied files)
-1. **F with the bond leaving rightward** (§2.1): 0.31–0.41 pt further out than the band model.
+1. ~~**F with the bond leaving rightward** (§2.1).~~ **Resolved (abbrev_x*, 2026-10-27):** horizontal
+   bonds clip against the whole glyph outline. Still open: where between 0° and 30° the band takes
+   over (`draw_mol.HORIZONTAL_CLIP_DEG` = 15°, unmeasured); a reference with T or F bonds at 10° and
+   20° would settle it.
 2. **Hashes to unlabeled atoms with other bonds**: not in the references.
 3. **Label-to-label bonds** at angles other than 0° (clearance_x* has HO–OH and H₂N–NH₂ at
    0–90°). They are covered by the band model, but only as single-bond cases.
@@ -465,9 +501,8 @@ Rules (M4; unmeasured, user decisions 2026-10-25, flagged at review):
    increments (upper line subscripted; lower line too) fit both, but a reference with a
    subscript on the lower line only, and lines with parentheses but no subscripts, would tell
    whether the rule is about subscripts or about ink.
-10. **Right-justified abbreviations** (MeO–, BnO–: bond leaving the label to the right): not
-    in the references; `draw_mol.layout_abbreviation` raises NotImplementedError. Abbreviations
-    other than OMe/OBn (CO₂Me, Ph, …) follow the OMe rule unmeasured.
+10. ~~**Right-justified abbreviations** (MeO–, BnO–).~~ **Resolved (abbrev_x*, 2026-10-27, §3.5):**
+    all 21 abbreviations measured in both forms at every preset.
 11. **Multistep arrows with more than 2 stages** (where "3." goes): not in the references; the
     spec allows at most 2.
 12. **Italic at ×0.8 / ×0.6:** the scaled scheme_multi files have an upright n in n-BuLi, so

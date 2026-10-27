@@ -1,8 +1,7 @@
 """M1 acceptance (design.md §10): our drawing of each reference's templates vs ChemDraw, within 0.1 pt.
 
 Both drawings are measured by the same code (scripts/measure_refs.py). Items are paired by
-CDXML atom and bond ids. The one known exception to the clip model (acs-style.md §2.1: F
-with the bond leaving rightward, 0.31-0.41 pt) is checked separately as xfail.
+CDXML atom and bond ids. Nickname labels (OMe, MeO) are compared in test_abbrev_vs_chemdraw.py.
 """
 
 import copy
@@ -49,20 +48,13 @@ def _hausdorff(a, b):
     return max(far(pa, pb), far(pb, pa))
 
 
-def _known_exception(r, atom_id, other_id):
-    """F with the bond leaving rightward: ChemDraw ends 0.31-0.41 pt further out (§2.1)."""
-    a, o = r.ref.atoms[atom_id], r.ref.atoms[other_id]
-    d = mr.unit(mr.sub(o.p, a.p))
-    return a.element == "F" and d[0] > 0.96
-
-
 def pairs(ref):
-    """[(category, key, chemdraw, ours, known_exception)] for every compared quantity."""
+    """[(category, key, chemdraw, ours)] for every compared quantity."""
     r, mc, mo = measured(ref)
     out = []
 
-    def add(cat, key, a, b, prov=False):
-        out.append((cat, key, a, b, prov))
+    def add(cat, key, a, b):
+        out.append((cat, key, a, b))
 
     asg_c, asg_o = mr.assign(_unclaimed(r.ref)), mr.assign(_unclaimed(r.ours))
     for b in r.ref.bonds:
@@ -112,10 +104,8 @@ def pairs(ref):
         ob = {(b["bond"], round(b["line_v"], 1)): b for b in o["bonds"]}
         for b in e["bonds"]:
             y = ob[(b["bond"], round(b["line_v"], 1))]
-            bond = next(x for x in r.ref.bonds if x.id == b["bond"])
-            prov = _known_exception(r, e["atom"], bond.b if bond.a == e["atom"] else bond.a)
             add("bond end at label", f"{e['glyph_run']} atom {e['atom']} bond {b['bond']} v{b['line_v']:+.1f}",
-                b["end_dist_from_atom"], y["end_dist_from_atom"], prov)
+                b["end_dist_from_atom"], y["end_dist_from_atom"])
     st_o = {s["bond"]: s for s in mo["stereo"]}
     for s in mc["stereo"]:
         o = st_o[s["bond"]]
@@ -145,12 +135,12 @@ def pairs(ref):
 
 def _fails(rows):
     return [f"{cat} [{key}]: ChemDraw {a} ours {b} (diff {b - a:+.3f})"
-            for cat, key, a, b, _ in rows if a is None or b is None or abs(b - a) > TOL]
+            for cat, key, a, b in rows if a is None or b is None or abs(b - a) > TOL]
 
 
 @pytest.mark.parametrize("ref", REFS)
 def test_exact_geometry_within_tolerance(ref):
-    rows = [p for p in pairs(ref) if not p[4]]
+    rows = pairs(ref)
     cats = {p[0] for p in rows}
     assert {"bond length", "line width", "label baseline"} <= cats or ref == "double_bonds_x1.0"
     fails = _fails(rows)
@@ -167,17 +157,6 @@ def test_every_bond_and_label_compared(ref):
     assert bonds == {b.id for b in r.ref.bonds if b.a in drawn}
     labels = {k for c, k, *_ in rows if c == "label baseline"}
     assert labels == {a.id for a in r.ref.atoms.values() if a.label and a.id in drawn}
-
-
-@pytest.mark.xfail(reason="known exception to the clip model (acs-style.md §2.1); see the diffs", strict=True,
-                   raises=AssertionError)
-@pytest.mark.parametrize("ref", ["clearance_x1.0", "clearance_x0.8", "clearance_x0.6"])
-def test_known_exceptions_within_tolerance(ref):
-    rows = [p for p in pairs(ref) if p[4]]
-    assert rows, "expected F bonds leaving rightward"
-    report = "\n".join(f"{cat} [{key}]: ChemDraw {a} ours {b} (diff {b - a:+.3f})" for cat, key, a, b, _ in rows)
-    print(report)
-    assert not _fails(rows), report
 
 
 def _bond_ink(svg_text, w, h, px, blanks=(), radius=4.0, boxes=()):

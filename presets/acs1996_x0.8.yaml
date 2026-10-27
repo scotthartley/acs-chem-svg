@@ -87,15 +87,15 @@ lengths:
   hash_line_width: 0.60             # m1_set_x0.8: hash polygon thickness; exempt
   hash_spacing: 2.0                 # m1_set_x0.8.cdxml HashSpacing; drawn pitch 3.98 (rule OPEN)
   margin_width: 1.28                # m1_set_x0.8.cdxml MarginWidth; clip rule in acs-style.md §2.1
-  label_outline_offset_x: -0.02      # measure_refs.py --fit-clip: glyph outline shift for clipping, all references (n=399)
+  label_outline_offset_x: -0.01      # measure_refs.py --fit-clip: glyph outline shift for clipping, all references (n=669, refit 2026-10-27)
   label_outline_offset_y: 0.03       # measure_refs.py --fit-clip
 
 ratios:                             # dimensionless; identical in every preset
   bond_spacing_fraction: 0.18       # all files: CDXML BondSpacing=18; measured 2.592/14.40
   ring_inner_inset_tan: 0.5774      # tan 30deg; inset/spacing measured 1.497/2.592
   wedge_end_per_bold: 1.5           # m1_set_x*: 3.0/2.0, 2.4/1.6, 1.802/1.2
-  label_clearance_per_margin: 1.0075 # measure_refs.py --fit-clip: gap beyond the glyph's reach along the bond / margin (n=399; 396 within 0.1 pt, worst of those 0.092, rms 0.055)
-  label_band_per_size: 0.195        # measure_refs.py --fit-clip: only outline within +-0.195 x label size of the bond axis counts
+  label_clearance_per_margin: 1.0075 # measure_refs.py --fit-clip: gap beyond the glyph's reach along the bond / margin (n=669, all within 0.1 pt, worst 0.094, rms 0.045)
+  label_band_per_size: 0.195        # measure_refs.py --fit-clip: only outline within +-0.195 x label size of the bond axis counts (horizontal bonds: all of it, draw_mol.HORIZONTAL_CLIP_DEG)
   label_baseline_per_size: 0.3585   # all files: baseline - atom y = 3.586 at 10 pt (cap height/2)
   subscript_scale: 0.75             # all files: 7.5 pt digits under 10 pt labels
   subscript_drop_per_size: 0.23     # all files: 2.30 at 10 pt

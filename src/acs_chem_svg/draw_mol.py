@@ -15,7 +15,7 @@ import re
 from dataclasses import dataclass, field
 
 from . import richtext
-from .chem import ELECTRONEGATIVITY, Bond, Molecule
+from .chem import ABBREVIATIONS_REVERSED, ELECTRONEGATIVITY, Bond, Molecule
 from .fontmetrics import FontFace, load_face
 from .geometry import (Point, add, angle_deg, dot, length, mul, perp, ray_box_exit, seg_point_dist, segment_box_dist,
                        segment_distance, sub, unit)
@@ -23,6 +23,9 @@ from .preset import Preset
 from .scene import Circle, Group, Polygon, Polyline, TextRun
 
 COLLINEAR_DEG = 175.0  # a substituent this close to straight-through counts as collinear
+# §2.1: a bond this close to horizontal clips against the whole glyph outline, not the band.
+# Unmeasured threshold: the references have 0° (whole outline) and 30° (band) only.
+HORIZONTAL_CLIP_DEG = 15.0
 # hash count step: 2 hashes at D/hash_spacing = 1.997 (m1_set_x0.8), 3 at 2.05 (m1_set_x1.0)
 HASH_COUNT_SHIFT = 0.025
 
@@ -133,31 +136,35 @@ def layout_label(mol: Molecule, i: int, preset: Preset, face: FontFace, side: st
     return Label(i, atom.element, atom.num_h, side, runs, (ex, base), size, face, outline)
 
 
-def anchor_symbol(text: str, element: str) -> str:
+def anchor_symbol(text: str, element: str, side: str = "right") -> str:
     """The glyphs of an abbreviation that stand for its attachment atom: the element symbol when
-    the label starts with it (OMe: O, CO2Me: C), else the first character (Ph, Bn)."""
+    the label starts with it (OMe: O, CO2Me: C), else the first character (Ph, Bn). A
+    right-justified label (side "left": MeO, MeO2C, TMS) is read from its end instead."""
+    if side == "left":
+        return element if text.endswith(element) else text[-1:]
     return element if text.startswith(element) else text[:1]
 
 
 def layout_abbreviation(mol: Molecule, i: int, preset: Preset, face: FontFace, side: str, base: float) -> Label:
-    """Abbreviation label (OMe, OBn: scheme_multi_x*): set left-justified as one rich-text run
-    with the first letter centered on the atom, on the label baseline. The bond clips against
-    the anchor glyphs (anchor_symbol) by the §2.1 band model (OMe/OBn bond ends within 0.08 pt
-    of ChemDraw at all presets). The right-justified form (MeO–, bonds leaving to the right)
-    is unmeasured (acs-style.md §6 Open)."""
+    """Abbreviation label on the label baseline (acs-style.md §3.5; abbrev_x*: all 21
+    ABBREVIATIONS, both forms, three presets). Bonds leaving to the left or vertically: the key
+    text (OMe, CO2Me) left-justified, first letter centered on the atom. Bonds leaving to the right
+    (side "left"): ChemDraw's reversed text (ABBREVIATIONS_REVERSED: MeO, MeO2C, TMS)
+    right-justified, last letter centered on the atom, as element_x does for –Cl. The bond clips
+    against the anchor glyphs (anchor_symbol, read from the centered end) by the §2.1 model."""
     atom = mol.atoms[i]
-    if side == "left":
-        raise NotImplementedError(f"atom {atom.id}: {atom.abbrev} with its bond on the right needs the "
-                                  "right-justified form (MeO–), which is unmeasured (acs-style.md §6 Open); "
-                                  "turn the structure (orientation) so the bond comes from the left or below")
     size = preset.text.label_size
-    parts = richtext.parse(atom.abbrev)
-    anchor = anchor_symbol("".join(p.text for p in parts), atom.element)
-    first = richtext.face_for(parts[0].style)
-    ex = atom.x - first.advance(parts[0].text[0], size) / 2
+    text = ABBREVIATIONS_REVERSED[atom.abbrev] if side == "left" else atom.abbrev
+    parts = richtext.parse(text)
+    anchor = anchor_symbol("".join(p.text for p in parts), atom.element, side)
+    end = parts[-1] if side == "left" else parts[0]
+    aface = richtext.face_for(end.style)
+    ex = atom.x + element_x(aface, anchor, size, side)  # anchor glyph origin
     line = richtext.layout_line(parts, ex, base, size, preset, source=f"atom:{atom.id}")
-    outline = element_outline(first, anchor, size, ex - atom.x, base - atom.y)
-    return Label(i, anchor, 0, "right", line.runs, (ex, base), size, first, outline)
+    if side == "left":  # the text ends where the anchor does
+        line.shift(ex + aface.advance(anchor, size) - (line.x0 + line.advance))
+    outline = element_outline(aface, anchor, size, ex - atom.x, base - atom.y)
+    return Label(i, anchor, 0, side, line.runs, (ex, base), size, aface, outline)
 
 
 # --------------------------------------------------------------------------- clearance (§2.1)
@@ -187,8 +194,11 @@ def band_extent(contours: list[list[Point]], direction: Point, band: float) -> f
 def clip_distance_band(contours: list[list[Point]], direction: Point, band: float, margin: float,
                        per_margin: float, offset: Point = (0.0, 0.0)) -> float:
     """§2.1: a bond stops per_margin x margin beyond the furthest point, along the bond, of the
-    element outline lying within ±band of the bond axis. The outline is shifted by `offset`
-    (fitted). `direction` is the unit vector out of the label toward the bonded atom."""
+    element outline lying within ±band of the bond axis; a horizontal bond (HORIZONTAL_CLIP_DEG)
+    counts the whole outline (T, A, –F: abbrev_x*, clearance_x*). The outline is shifted by
+    `offset` (fitted). `direction` is the unit vector out of the label toward the bonded atom."""
+    if abs(direction[1]) < math.sin(math.radians(HORIZONTAL_CLIP_DEG)):
+        band = math.inf
     shifted = [[(x + offset[0], y + offset[1]) for x, y in c] for c in contours]
     return band_extent(shifted, direction, band) + per_margin * margin
 

@@ -408,3 +408,20 @@ removed renders pixel-identical to the approved `m4_nitration_x1.0`. Inbox triag
   circular handles. The head doesn't scale (4.8 pt at every preset), so at ×0.6 it hid most of
   a 3.8 pt chord: sliding both ends 0.25 bond away from the shared atom gives the stroke room,
   and looks better at ×1.0 too.
+
+## 2026-10-27 (right-justified abbreviations; horizontal bond clip)
+
+- **ChemDraw reverses a right-justified nickname in display only.** abbrev_x* stores "OMe" in
+  the CDXML for both forms; the SVG shows MeO. The reversed texts (MeO₂C, O₂N, F₃C, AcHN; Ph,
+  TMS unchanged) had to come from the SVG, and measure_refs now finds a nickname's anchor by
+  position (the glyph centered on the atom) rather than by the CDXML text.
+- **The last letter is centered, not the attachment element.** For MeO / MeO₂C / O₂N they
+  coincide; Ph– and TMS– settle it (h, S on the atom). Same rule as Cl– (§2).
+- **Controls caught an old bug.** The left-justified copies, drawn only as controls, showed
+  TMS/TES/TBS/TIPS and Ac bonds ending 2.4 / 0.65 pt short of ChemDraw's: the band model
+  ignores T's bar and A's foot. Whole-outline clipping for horizontal bonds fits them, and also
+  fits the –F exception that had been an xfail since M1. Lesson: draw the "known-good" form next
+  to the new one; it was never measured beyond OMe/OBn.
+- **A refit can move a fitted value inside its noise.** With the horizontal rule, the outline
+  offset refit to −0.01 (was −0.02). One new row (MeO₂C at 150°, ×1.0) sat at −0.102 with the old
+  value, so the presets take the refit; three gallery renders moved by 0.013% of pixels.
