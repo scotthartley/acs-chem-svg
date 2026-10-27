@@ -36,6 +36,8 @@ Run every command as `uv run --project <repo> python <repo>/scripts/<script> ...
    - Use only the conditions the user gave. A reagent named in the request (BnBr) goes over
      the arrow unless the user wants it drawn and numbered.
    - Several lines: `above: [line1, line2]`. Two-stage arrows: `stages: ["*n*-BuLi, THF, −78 °C", "H3O+"]`.
+   - Reversible steps: `arrow_type: equilibrium` (⇌), `equilibrium_products` / `equilibrium_reactants`
+     (unbalanced). `arrow_head: standard` (top level) gives ChemDraw's smaller default head at ×1.0.
    - Products are aligned to the species they come from. Orient only the first species (and
      separate reactants) with `orientation: {rotate: …, flip_h: …}`; `align: false` opts out.
    - Without `steps`, the species are drawn side by side (single structures).
@@ -50,8 +52,8 @@ Run every command as `uv run --project <repo> python <repo>/scripts/<script> ...
    bonds or labels, dots on bonds, conditions wider than their arrow).
 3. **Render:** `scripts/render.py spec.yaml --out DIR [--crops]` writes `spec.svg` and
    `spec.png` (4 px/pt; `--px-per-pt 10` for close inspection) and prints the drawing size.
-   `--crops` adds 16 px/pt crops of every curved arrow, charged or dotted label, ↔ arrow and
-   bracket corner. `--affinity` writes for Affinity (separate arrowhead shapes, bold/italic face names).
+   `--crops` adds 16 px/pt crops of every curved arrow, charged or dotted label, ↔ arrow,
+   equilibrium arrow end and bracket corner. `--affinity` writes for Affinity (separate arrowhead shapes, bold/italic face names).
 4. **Inspect** the PNG (and crops): orientation of the first species, label sides, double-bond
    sides, wedges, charges, conditions centered on their arrows, numbers on one line; for
    mechanisms, that each arrow leaves its lone pair or bond and points at its target.

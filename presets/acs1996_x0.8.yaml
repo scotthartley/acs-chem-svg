@@ -12,11 +12,14 @@ exempt:
   - lengths.hash_line_width         # 0.60 in m1_set_x0.8/x0.6 (hash polygons)
   - charge.bar_thickness            # 0.50 in m1_set_x0.8/x0.6
   - arrow.shaft_width               # 0.60 in scheme_basic_x0.8/x0.6
-  - arrow.head_length               # 6.00 / 5.98 in scheme_basic_x0.8/x0.6
-  - arrow.head_half_width           # 1.575 / 1.569 in scheme_basic_x0.8/x0.6
-  - arrow.head_inset                # 5.25 / 5.23 in scheme_basic_x0.8/x0.6
-  - arrow.shaft_end_from_tip        # 5.20 / 5.18 in scheme_basic_x0.8/x0.6
+  - arrow.heads.standard.head_length  # 6.00 / 5.98 in scheme_basic_x0.8/x0.6
+  - arrow.heads.standard.head_half_width  # 1.575 / 1.569 in scheme_basic_x0.8/x0.6
+  - arrow.heads.standard.head_inset # 5.25 / 5.23 in scheme_basic_x0.8/x0.6
+  - arrow.heads.standard.shaft_end_from_tip  # 5.20 / 5.18 in scheme_basic_x0.8/x0.6
   - arrow.head_outline              # 0.05 hairline in all scheme_basic files
+  - equilibrium.shaft_spacing       # 1.805 / 1.800 / 1.793 in equilibrium_x1.0/x0.8/x0.6
+  - equilibrium.stagger             # 0.902 / 0.900 / 0.896
+  - equilibrium.back_control_shift  # 0.60 in all equilibrium_x* and arrows_large_x1.0
   - text.line_pitch_extra           # 10.05 / 8.05 / 6.05 baseline pitch = size + 0.05
   - curved_arrow.stroke_width       # 0.60 in mech_basic_x0.8/x0.6
   - curved_arrow.head_length        # 4.800 / 4.781 in mech_basic_x0.8/x0.6
@@ -35,6 +38,10 @@ nonlinear:
   - charge.unlabeled_distance       # placement default, each preset from its own 3.84 / 3.24 / 2.87 (resonance_x*)
 # Fitted or chosen, not measured per preset: kept at the x1.0 value.
 assumed_exempt:
+  - arrow.heads.large.head_length    # arrows_large_x1.0 only: head geometry is exempt at every measured size
+  - arrow.heads.large.head_half_width
+  - arrow.heads.large.head_inset
+  - arrow.heads.large.shaft_end_from_tip
   - scheme.wrap_width              # 504 pt (7 in, ACS double column) at every preset: user decision 2026-10-25, not k-scaled
   - lengths.label_outline_offset_x  # fitted over x1.0/x0.8/x0.6 together as one fixed-pt shift
   - lengths.label_outline_offset_y
@@ -101,7 +108,8 @@ ratios:                             # dimensionless; identical in every preset
   subscript_drop_per_size: 0.23     # all files: 2.30 at 10 pt
   superscript_scale: 0.75           # scheme_multi_x*: '+' of H3O+ at 0.75 x size
   superscript_raise_per_size: 0.3586 # scheme_multi_x*: baseline raised 3.586 / 2.869 / 2.152
-  arrow_back_control_per_half_width: 0.4375  # scheme_*: every arrowhead's back-edge cubic control sits at (notch, 0.4375 x corner offset)
+  arrow_back_control_per_half_width: 0.4375  # scheme_*, arrows_large_x1.0, equilibrium_x*: every head's back-edge cubic control sits at (notch, 0.4375 x corner offset), standard and large; a half head's from its shaft's center line
+  equilibrium_long_per_short: 3.0   # equilibrium_x*, arrows_large_x1.0: unbalanced, long / short shaft butt -> notch 3.000 (CDXML ArrowEquilibriumRatio 300)
 
 angles:
   chain_angle: 120                  # m1_set_x1.0.cdxml ChainAngle; double_bonds_x1.0 hexane zigzag
@@ -125,13 +133,26 @@ charge:
   digit_scale: 0.75                 # unmeasured (user decision 2026-10-26): the digits of 2+ / +3 at this x label_size, = ratios.superscript_scale
   digit_gap: 0.5                    # unmeasured placement default (user decision 2026-10-26): digit ink to sign bars
 
-arrow:                              # reaction / resonance arrows
+arrow:                              # reaction, equilibrium and ↔ arrows
   shaft_width: 0.60                 # scheme_basic_x0.8; exempt
-  head_length: 6.0                  # scheme_basic_x0.8: 5.996; exempt
-  head_half_width: 1.58             # scheme_basic_x0.8: mean 1.575; exempt
-  head_inset: 5.25                  # scheme_basic_x0.8: 5.246; exempt
-  shaft_end_from_tip: 5.21          # scheme_basic_x0.8: 5.196; exempt
   head_outline: 0.05                # scheme_basic_x0.8: hairline stroke over the fill; exempt
+  default_head: standard            # user decision 2026-10-27: the large head is the x1.0 default only
+  heads:                            # arrowhead variants (CDXML HeadSize / ArrowheadCenterSize / ArrowheadWidth); exempt
+    standard:                       # HeadSize 1000 / 875 / 250 (ChemDraw's default)
+      head_length: 6.0              # scheme_basic_x0.8: 5.996; exempt
+      head_half_width: 1.58         # scheme_basic_x0.8: mean 1.575; exempt
+      head_inset: 5.25              # scheme_basic_x0.8: 5.246; exempt
+      shaft_end_from_tip: 5.21      # scheme_basic_x0.8: 5.196; exempt
+    large:                          # HeadSize 1500 / 1313 / 375
+      head_length: 9.00             # assumed_exempt: the x1.0 value (no large-head reference at x0.8)
+      head_half_width: 2.325        # assumed_exempt
+      head_inset: 7.88              # assumed_exempt
+      shaft_end_from_tip: 7.83      # assumed_exempt
+
+equilibrium:                        # equilibrium_x0.8 (measure_refs.py --equilibrium); exact, exempt
+  shaft_spacing: 1.80               # equilibrium_x0.8: shaft center to center 1.800 (CDXML ArrowShaftSpacing 300)
+  stagger: 0.90                     # equilibrium_x0.8: balanced: each shaft's butt end 0.900 behind the other shaft's tip
+  back_control_shift: 0.60          # equilibrium_x0.8: the back shaft's half head has its back-edge control 0.600 nearer the shaft center line
 
 curved_arrow:                       # mech_basic_x0.8 (measure_refs.py --mech); exempt
   stroke_width: 0.60                # mech_basic_x0.8: stroked cubic

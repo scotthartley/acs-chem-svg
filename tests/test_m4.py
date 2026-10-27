@@ -136,9 +136,9 @@ def test_resonance_arrow_has_a_head_at_each_end():
     g = resonance_arrow((0.0, 0.0), (28.8, 0.0), p)
     (shaft,) = g.children
     h1, h2 = shaft.head_leaves()
-    a = p.arrow
-    assert shaft.points == [(a.shaft_end_from_tip, 0.0), (28.8 - a.shaft_end_from_tip, 0.0)]
-    assert h1.points[0] == (0.0, 0.0) and h2.points[0] == (28.8, 0.0)
+    a = p.head()
+    assert shaft.points == [(a.shaft_end_from_tip, 0.0), (pytest.approx(28.8 - a.shaft_end_from_tip), 0.0)]
+    assert h1.points[0] == pytest.approx((0.0, 0.0)) and h2.points[0] == pytest.approx((28.8, 0.0))
     xs = [q[0] for q in h1.points]
     assert max(xs) == pytest.approx(a.head_length)
 

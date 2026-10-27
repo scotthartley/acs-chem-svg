@@ -25,8 +25,8 @@ and `.png` files:
 - **Lewis structures** of small acyclic molecules: every atom labeled, all lone pairs drawn,
   and bonds as shared dot pairs, or as electrons assigned to atoms by formal charge or
   oxidation state.
-- **Schemes:** reaction arrows with conditions above and below (true subscripts and
-  superscripts, italics), two-stage arrows, plus signs, bold compound numbers, products
+- **Schemes:** reaction and equilibrium arrows (balanced or favoring one side) with conditions
+  above and below (true subscripts and superscripts, italics), two-stage arrows, plus signs, bold compound numbers, products
   aligned to their reactants, rows wrapped to a page width.
 - **Mechanisms:** two-electron and fishhook curved arrows, lone pairs, radicals, charges
   (plain or circled ⊕/⊖, multiple charges such as 2+, display texts such as +3), and

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 import yaml
 from pydantic import BaseModel, ConfigDict
@@ -47,6 +48,7 @@ class Ratios(_Section):
     superscript_scale: float
     superscript_raise_per_size: float
     arrow_back_control_per_half_width: float
+    equilibrium_long_per_short: float
 
 
 class Angles(_Section):
@@ -74,13 +76,29 @@ class Charge(_Section):
     digit_gap: float  # digit ink to the sign bars (unmeasured)
 
 
-class Arrow(_Section):
-    shaft_width: float
+class Head(_Section):
     head_length: float
     head_half_width: float
     head_inset: float
     shaft_end_from_tip: float
+
+
+class Heads(_Section):
+    standard: Head  # ChemDraw's default (HeadSize 1000)
+    large: Head  # HeadSize 1500 (arrows_large_x1.0)
+
+
+class Arrow(_Section):
+    shaft_width: float
     head_outline: float
+    default_head: Literal["standard", "large"]
+    heads: Heads
+
+
+class Equilibrium(_Section):
+    shaft_spacing: float
+    stagger: float
+    back_control_shift: float
 
 
 class CurvedArrow(_Section):
@@ -153,6 +171,7 @@ class Preset(_Section):
     text: Text
     charge: Charge
     arrow: Arrow
+    equilibrium: Equilibrium
     curved_arrow: CurvedArrow
     lone_pair: LonePair
     radical: Radical
@@ -160,6 +179,14 @@ class Preset(_Section):
     bracket: Bracket
     resonance: Resonance
     scheme: Scheme
+
+    def head(self, variant: str | None = None) -> Head:
+        """Reaction, equilibrium and ↔ arrowhead: `variant` ("standard" | "large"), or the
+        preset's arrow.default_head."""
+        v = variant or self.arrow.default_head
+        if v not in Heads.model_fields:
+            raise ValueError(f"unknown arrow head {v!r}; use one of: {', '.join(Heads.model_fields)}")
+        return getattr(self.arrow.heads, v)
 
 
 def available() -> list[str]:

@@ -1,0 +1,7 @@
+# expect: Input should be 'forward', 'equilibrium', 'equilibrium_products' or 'equilibrium_reactants'
+preset: acs1996
+species:
+  a: {smiles: "CC(=O)O"}
+  b: {smiles: "CC(=O)[O-]"}
+steps:
+  - {from: a, to: b, arrow_type: reversible}

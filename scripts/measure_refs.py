@@ -18,6 +18,7 @@ Usage:
     uv run python scripts/measure_refs.py --resonance     # resonance arrows and brackets per preset (§4.3)
     uv run python scripts/measure_refs.py --wrap          # multi-row scheme parameters per preset (§3.4)
     uv run python scripts/measure_refs.py --abbrev        # abbreviation labels per preset (§3.5)
+    uv run python scripts/measure_refs.py --equilibrium   # equilibrium arrows, head variants (§3.1, §3.6)
 """
 
 from __future__ import annotations
@@ -362,8 +363,11 @@ def load_cdxml(doc: Doc, path: Path, off):
             "head": _xy(a.get("Head3D").rsplit(" ", 1)[0], off),
             "tail": _xy(a.get("Tail3D").rsplit(" ", 1)[0], off),
             "both": a.get("ArrowheadTail") == "Full",
+            # two shafts with a half head each (ChemDraw's equilibrium tools)
+            "equilibrium": (a.get("ArrowheadHead") or "").startswith("Half") and bool(a.get("ArrowShaftSpacing")),
             "attrs": {k: a.get(k) for k in ("HeadSize", "ArrowheadCenterSize", "ArrowheadWidth",
-                                             "ArrowheadHead", "ArrowheadTail", "ArrowheadType")},
+                                             "ArrowheadHead", "ArrowheadTail", "ArrowheadType",
+                                             "ArrowShaftSpacing", "ArrowEquilibriumRatio")},
         })
     for c in root.iter("curve"):
         v = [float(t) for t in c.get("CurvePoints").split()]
@@ -947,6 +951,8 @@ def _head_geometry(sh, tip, axis):
 
 
 def _arrow_entry(doc, arr):
+    if arr.get("equilibrium"):
+        return _equilibrium_entry(doc, arr)
     head, tail = arr["head"], arr["tail"]
     axis = unit(sub(head, tail))
     n = (-axis[1], axis[0])
@@ -972,6 +978,106 @@ def _arrow_entry(doc, arr):
             sh.owner = "arrow-shaft"
             rec["shaft"] = {"width": round(max(vs) - min(vs), 3), "u_start": round(min(us), 3),
                             "u_end_from_tip": round(rec["length"] - max(us), 3)}
+    return rec
+
+
+def _half_head_geometry(lp, tip, d, vc, o):
+    """Half arrowhead (one barb) in its shaft's frame: `lp` the polygon's (u, v) in the arrow frame,
+    `tip` its (u, v), d = +1 / -1 the shaft's direction along u, vc the shaft center's v and
+    o = +1 / -1 the side away from the other shaft. back = distance behind the tip, side =
+    offset from the shaft's center line, positive away from the other shaft (where the barb is)."""
+    loc = [(d * (tip[0] - u), o * (v - vc)) for u, v in lp]
+    tip_side = o * (tip[1] - vc)
+    flat = [b for b, s in loc if abs(s - tip_side) < 0.05]
+    barb = max(s for _, s in loc)
+    inset = max(flat)
+    ctl = [s for b, s in loc if abs(b - inset) < 0.05 and tip_side + 0.05 < s < barb - 0.05]
+    return {"length": round(max(b for b, _ in loc), 3), "barb_from_center": round(barb, 3),
+            "tip_from_center": round(tip_side, 3), "inset_from_tip": round(inset, 3),
+            "back_control_from_center": round(ctl[0], 3) if ctl else None,
+            "back_control_per_barb": round(ctl[0] / barb, 4) if ctl else None}
+
+
+def _equilibrium_entry(doc, arr):
+    """Equilibrium arrow (acs-style.md §3.6): two straight shafts parallel to Tail3D -> Head3D,
+    each with a filled half head (curved polygon) at one end. Per shaft: center offset v from the
+    CDXML axis, width, tip and butt along the axis (u from Tail3D), direction (forward: tip
+    toward Head3D) and its half head (_half_head_geometry). Per arrow: shaft spacing (center to
+    center), balanced (equal shafts: the stagger of each butt behind the other shaft's tip) or
+    unbalanced (the short shaft's center against the long one's, and long / short butt-to-notch
+    ratio), and the ink extent along the axis."""
+    head, tail = arr["head"], arr["tail"]
+    axis = unit(sub(head, tail))
+    n = (-axis[1], axis[0])
+    L = length(sub(head, tail))
+    shafts, heads = [], []
+    for sh in doc.shapes:
+        if sh.kind != "poly" or sh.owner:
+            continue
+        lp = [(dot(sub(p, tail), axis), dot(sub(p, tail), n)) for p in sh.pts]
+        us, vs = [q[0] for q in lp], [q[1] for q in lp]
+        if max(abs(v) for v in vs) > 4 or min(us) < -3 or max(us) > L + 3:
+            continue
+        if sh.curved:
+            heads.append((sh, lp))
+        elif max(vs) - min(vs) < 1.0 and max(us) - min(us) > 3:
+            shafts.append((sh, lp))
+    recs = []
+    for sh, lp in shafts:
+        us, vs = [q[0] for q in lp], [q[1] for q in lp]
+        vc, u0, u1 = (max(vs) + min(vs)) / 2, min(us), max(us)
+        o = 1 if vc > 0 else -1
+        for hs, hp in heads:
+            hu = [q[0] for q in hp]
+            if hs.owner or o * statistics.fmean(q[1] for q in hp) < 0:
+                continue
+            if min(hu) < u1 < max(hu) + 0.5:
+                d, tip = 1, max(hp, key=lambda q: q[0])
+            elif min(hu) - 0.5 < u0 < max(hu):
+                d, tip = -1, min(hp, key=lambda q: q[0])
+            else:
+                continue
+            sh.owner, hs.owner = "arrow-shaft", "arrow-head"
+            butt = u0 if d == 1 else u1
+            hg = _half_head_geometry(hp, tip, d, vc, o)
+            recs.append({"v": round(vc, 3), "width": round(max(vs) - min(vs), 3),
+                         "direction": "forward" if d == 1 else "back",
+                         "tip_u": round(tip[0], 3), "butt_u": round(butt, 3),
+                         "length": round(abs(tip[0] - butt), 3),
+                         "u_end_from_tip": round(d * (tip[0] - (u1 if d == 1 else u0)), 3),
+                         "head": hg, "barb": "outer" if hg["barb_from_center"] > 0 else "inner",
+                         "y": add(tail, mul(n, vc))[1]})
+            break
+    recs.sort(key=lambda r: r["v"])
+    rec = {"tail": tuple(round(v, 2) for v in tail), "head": tuple(round(v, 2) for v in head),
+           "length": round(L, 3), "cdxml": arr["attrs"], "equilibrium": {"shafts": recs}, "heads": {}}
+    if len(recs) != 2:
+        rec["equilibrium"]["error"] = f"{len(recs)} shafts with heads"
+        return rec
+    e = rec["equilibrium"]
+    a, b = recs
+    lo = min(min(r["tip_u"], r["butt_u"]) for r in recs)
+    hi = max(max(r["tip_u"], r["butt_u"]) for r in recs)
+    rec["ends"] = (add(tail, mul(axis, lo)), add(tail, mul(axis, hi)))
+    rec["outer_y"] = tuple(sorted(r["y"] for r in recs))
+    e.update({"spacing": round(b["v"] - a["v"], 3), "center_v": round((a["v"] + b["v"]) / 2, 3),
+              "extent_u": (round(lo, 3), round(hi, 3))})
+    fwd = next((r for r in recs if r["direction"] == "forward"), None)
+    back = next((r for r in recs if r["direction"] == "back"), None)
+    if abs(a["length"] - b["length"]) < 1.0:
+        e["kind"] = "balanced"
+        if fwd and back:
+            e["stagger_tail"] = round(fwd["butt_u"] - back["tip_u"], 3)  # forward butt behind the back tip
+            e["stagger_head"] = round(fwd["tip_u"] - back["butt_u"], 3)
+    else:
+        long, short = (a, b) if a["length"] > b["length"] else (b, a)
+        e["kind"] = "unbalanced"
+        e["long"] = long["direction"]
+        e["short_length"], e["long_length"] = short["length"], long["length"]
+        e["short_center_minus_long_center"] = round((short["tip_u"] + short["butt_u"]) / 2
+                                                    - (long["tip_u"] + long["butt_u"]) / 2, 3)
+        e["long_over_short_butt_to_notch"] = round((long["length"] - long["head"]["inset_from_tip"])
+                                                   / (short["length"] - short["head"]["inset_from_tip"]), 4)
     return rec
 
 
@@ -1142,12 +1248,18 @@ def _scheme(doc, arrows: list[dict]):
     for a in arrows:
         tail, head = a["tail"], a["head"]
         inset = (a["heads"].get("head") or {}).get("inset_from_tip") or 0.0
+        if "ends" in a:  # equilibrium: its ink extent, left to right, centered (no notch)
+            tail, head = sorted(a["ends"])
         sgn = 1 if head[0] >= tail[0] else -1
         row = row_of(tail[1])
         left = [structs[f]["ink"] for f in row if structs[f]["ink"][2] <= min(tail[0], head[0])]
         right = [structs[f]["ink"] for f in row if structs[f]["ink"][0] >= max(tail[0], head[0])]
         arrow_recs.append({
             "tail": tail, "head": head, "axis_y": tail[1], "length": a["length"], "notch": head[0] - sgn * inset,
+            "mid": (tail[0] + head[0]) / 2 if "ends" in a else None,
+            # conditions are measured from the outer shafts of an equilibrium arrow
+            "axis_above": a["outer_y"][0] if "outer_y" in a else tail[1],
+            "axis_below": a["outer_y"][1] if "outer_y" in a else tail[1],
             "row": row, "above": [], "below": [],
             "gap_left_struct_to_tail": min(tail[0], head[0]) - max(b[2] for b in left) if left else None,
             "gap_head_to_right_struct": min(b[0] for b in right) - max(tail[0], head[0]) if right else None,
@@ -1200,7 +1312,7 @@ def _scheme(doc, arrows: list[dict]):
         r["above"] = [ln for lines in sorted(r["above"], key=lambda ls: ls[0]["base"]) for ln in lines]
         r["below"] = [ln for lines in sorted(r["below"], key=lambda ls: ls[0]["base"]) for ln in lines]
         tail_x, notch = r["tail"][0], r["notch"]
-        mid = (tail_x + notch) / 2
+        mid = r.pop("mid") or (tail_x + notch) / 2
         for side in ("above", "below"):
             for ln in r[side]:
                 ln["center_minus_tail_notch_mid"] = (ln["x0"] + ln["x1"]) / 2 - mid
@@ -1210,12 +1322,12 @@ def _scheme(doc, arrows: list[dict]):
                 ln["notch_minus_x1"] = notch - ln["x1"]
         if r["above"]:
             last = r["above"][-1]
-            r["above_axis_minus_last_base"] = r["axis_y"] - last["base"]
-            r["above_axis_minus_ink_bottom"] = r["axis_y"] - max(ln["ink"][3] for ln in r["above"])
+            r["above_axis_minus_last_base"] = r["axis_above"] - last["base"]
+            r["above_axis_minus_ink_bottom"] = r["axis_above"] - max(ln["ink"][3] for ln in r["above"])
         if r["below"]:
             first = r["below"][0]
-            r["below_first_base_minus_axis"] = first["base"] - r["axis_y"]
-            r["below_ink_top_minus_axis"] = min(ln["ink"][1] for ln in r["below"]) - r["axis_y"]
+            r["below_first_base_minus_axis"] = first["base"] - r["axis_below"]
+            r["below_ink_top_minus_axis"] = min(ln["ink"][1] for ln in r["below"]) - r["axis_below"]
         lines = r["above"] + r["below"]
         if lines:
             w = max(lines, key=lambda ln: ln["x1"] - ln["x0"])
@@ -1605,6 +1717,71 @@ def resonance_summary(name: str | Doc) -> dict:
     return _r(out)
 
 
+EQUILIBRIUM_REFS = {"1.0": "equilibrium_x1.0", "0.8": "equilibrium_x0.8", "0.6": "equilibrium_x0.6",
+                    "1.0 large": "arrows_large_x1.0"}
+
+
+def equilibrium_summary(name: str | Doc) -> dict:
+    """Equilibrium arrows and head variants (acs-style.md §3.1, §3.6) from one reference: per
+    arrow its CDXML head attributes (HeadSize / ArrowheadCenterSize / ArrowheadWidth say which
+    variant), then for equilibrium arrows the kind (balanced, or unbalanced favoring products or
+    reactants: the long shaft's tip on the right or the left), shaft spacing and stagger, the
+    short shaft's ratio and centering, and the half heads (forward shaft: the one pointing at
+    Head3D; back: the other). Full heads (forward and ↔ arrows) as _arrow_entry measures them.
+    Conditions (hand-placed) are provenance only: from the outer shafts and the arrow's center."""
+    doc = load(name) if isinstance(name, str) else name
+    m = measure(doc)
+    by_axis = {round(a["axis_y"], 1): a for a in m["scheme"]["arrows"]}
+    recs = []
+    for a in sorted(m["arrows"], key=lambda a: a["tail"][1]):
+        c = a["cdxml"]
+        rec = {"head_variant": f"HeadSize {c['HeadSize']} / CenterSize {c['ArrowheadCenterSize']} / "
+                               f"Width {c['ArrowheadWidth']}"}
+        e = a.get("equilibrium")
+        if not e:
+            hs = [h for h in a["heads"].values() if h]
+            rec.update({"kind": "resonance" if len(hs) == 2 else "forward", "length": a["length"],
+                        "head_length": stats([h["length"] for h in hs]),
+                        "head_half_width": stats([(h["half_width_left"] + h["half_width_right"]) / 2 for h in hs]),
+                        "head_inset": stats([h["inset_from_tip"] for h in hs]), "shaft": a.get("shaft")})
+            recs.append(rec)
+            continue
+        sh = e["shafts"]
+        fwd = next(r for r in sh if r["direction"] == "forward")
+        back = next(r for r in sh if r["direction"] == "back")
+        rec["kind"] = e["kind"]
+        if e["kind"] == "unbalanced":
+            long = max(sh, key=lambda r: r["length"])
+            tip_x = add(a["tail"], mul(unit(sub(a["head"], a["tail"])), long["tip_u"]))[0]
+            rec["kind"] += " favoring " + ("products" if tip_x > (a["tail"][0] + a["head"][0]) / 2 else "reactants")
+            rec.update({k: e[k] for k in ("long_length", "short_length", "short_center_minus_long_center",
+                                          "long_over_short_butt_to_notch")})
+        else:
+            rec.update({k: e[k] for k in ("stagger_tail", "stagger_head")})
+        rec.update({
+            "spacing (center to center)": e["spacing"], "shafts_center_minus_axis": e["center_v"],
+            "shaft_width": [r["width"] for r in sh], "barb": [r["barb"] for r in sh],
+            "half_head_length": [r["head"]["length"] for r in sh],
+            "half_head_barb_from_center": [r["head"]["barb_from_center"] for r in sh],
+            "half_head_tip_from_center": [r["head"]["tip_from_center"] for r in sh],
+            "half_head_inset": [r["head"]["inset_from_tip"] for r in sh],
+            "shaft_end_from_tip": [r["u_end_from_tip"] for r in sh],
+            "forward_back_control_per_barb": fwd["head"]["back_control_per_barb"],
+            "back_back_control_from_center": back["head"]["back_control_from_center"],
+            "back_control_shift (forward - back)": round(fwd["head"]["back_control_from_center"]
+                                                         - back["head"]["back_control_from_center"], 3),
+        })
+        s = by_axis.get(round(min(a["tail"][1], a["head"][1]), 1)) or min(
+            m["scheme"]["arrows"], key=lambda r: abs(r["axis_y"] - a["tail"][1]))
+        rec["conditions (provenance)"] = {
+            "above: top shaft - last baseline": s.get("above_axis_minus_last_base"),
+            "below: first baseline - bottom shaft": s.get("below_first_base_minus_axis"),
+            "line centers - arrow center": [ln["center_minus_tail_notch_mid"] for ln in s["above"] + s["below"]],
+            "widest pad (each end)": s.get("widest") and round((s["length"] - s["widest"]["advance"]) / 2, 3)}
+        recs.append(rec)
+    return _r({"arrows": recs})
+
+
 MECH_REFS = {"1.0": "mech_basic_x1.0", "0.8": "mech_basic_x0.8", "0.6": "mech_basic_x0.6"}
 
 
@@ -1808,7 +1985,13 @@ def main(argv=None) -> int:
     ap.add_argument("--wrap", action="store_true", help="multi-row scheme parameters per preset (§3.4)")
     ap.add_argument("--resonance", action="store_true", help="resonance arrow and bracket parameters per preset (§4.3)")
     ap.add_argument("--abbrev", action="store_true", help="abbreviation label parameters per preset (§3.5)")
+    ap.add_argument("--equilibrium", action="store_true",
+                    help="equilibrium arrows and arrowhead variants per preset (§3.1, §3.6)")
     args = ap.parse_args(argv)
+    if args.equilibrium:
+        refs = {k: n for k, n in EQUILIBRIUM_REFS.items() if not args.names or n in args.names}
+        print(json.dumps({k: equilibrium_summary(n) for k, n in refs.items()}, indent=1, ensure_ascii=False))
+        return 0
     if args.abbrev:
         names = args.names or ABBREV_REFS
         print(json.dumps({n: abbrev_summary(n) for n in names}, indent=1, ensure_ascii=False))

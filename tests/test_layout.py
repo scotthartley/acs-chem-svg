@@ -87,7 +87,7 @@ def test_arrow_grows_with_text():
     assert short.head[0] - short.tail[0] == pytest.approx(p.scheme.arrow_min_length)
     long = _one_step("a much longer reagent description").steps[0]
     adv = long.above[0].advance
-    assert long.head[0] - long.tail[0] == pytest.approx(adv + 2 * p.scheme.conditions_pad + p.arrow.head_inset)
+    assert long.head[0] - long.tail[0] == pytest.approx(adv + 2 * p.scheme.conditions_pad + p.head().head_inset)
 
 
 @pytest.mark.parametrize("stem", SEQ + ["m2_suzuki_x1.0", "m2_stages_x1.0", "m2_scheme_basic_x1.0",
@@ -178,3 +178,86 @@ def test_m1_specs_unchanged(stem):
         x += (x1 - x0) + preset.scheme.plus_gap
         groups.append(g)
     assert to_svg(render_spec(path))[0] == to_svg(Group(path.stem, groups))[0]
+
+
+# ---------------------------------------------------------------- arrow heads and equilibrium arrows
+
+
+def _step(arrow_type="forward", above="PCC", below=None, preset="acs1996", arrow_head=None):
+    d = {"preset": preset, "species": {"a": {"smiles": "CCO"}, "b": {"smiles": "CC=O"}},
+         "steps": [{"from": "a", "to": "b", "above": above, "below": below, "arrow_type": arrow_type}]}
+    if arrow_head:
+        d["arrow_head"] = arrow_head
+    return build_scheme(Spec.model_validate(d), REPO, "t")
+
+
+def _marker_ids(lay):
+    return {m.id for leaf in lay.root.leaves() for m in (getattr(leaf, "marker_start", None),
+                                                         getattr(leaf, "marker_end", None)) if m}
+
+
+@pytest.mark.parametrize("preset, head", [("acs1996", "large"), ("acs1996_x0.8", "standard"),
+                                          ("acs1996_x0.6", "standard")])
+def test_default_head_per_preset(preset, head):
+    p = load_preset(preset)
+    assert p.arrow.default_head == head and p.head() == getattr(p.arrow.heads, head)
+    assert _marker_ids(_step(preset=preset)) == {f"{preset}-head-{head}"}
+
+
+def test_arrow_head_override():
+    lay = _step(arrow_head="standard")
+    assert _marker_ids(lay) == {"acs1996-head-standard"}
+    p = lay.preset
+    lay = _step("equilibrium", above="a much longer reagent description", arrow_head="standard")
+    st = lay.steps[0]
+    assert st.head[0] - st.tail[0] == pytest.approx(st.above[0].advance + 2 * p.scheme.conditions_pad
+                                                     + 2 * p.head("standard").head_inset)
+    with pytest.raises(ValueError, match="arrow_head"):
+        Spec.model_validate({"species": {"a": {"smiles": "C"}}, "arrow_head": "huge"})
+
+
+@pytest.mark.parametrize("arrow_type, lengths", [("equilibrium", "equal"), ("equilibrium_products", "forward"),
+                                                 ("equilibrium_reactants", "back")])
+def test_equilibrium_step(arrow_type, lengths):
+    lay = _step(arrow_type, above="H2SO4", below="heat")
+    p, st = lay.preset, lay.steps[0]
+    fwd, back = st.group.children
+    assert [m.marker_end.id for m in (fwd, back)] == ["acs1996-head-large-half-forward", "acs1996-head-large-half-back"]
+    off = p.equilibrium.shaft_spacing / 2
+    assert [q[1] for q in fwd.points + back.points] == pytest.approx([-off, -off, off, off])
+    assert fwd.points[1][0] > fwd.points[0][0] and back.points[1][0] < back.points[0][0]
+    # each shaft ends shaft_end_from_tip before its tip; the tips are the arrow's ends (or centered)
+    tips = [h.points[0][0] for h in fwd.head_leaves() + back.head_leaves()]
+    L = st.head[0] - st.tail[0]
+    if lengths == "equal":
+        assert tips == [pytest.approx(st.head[0]), pytest.approx(st.tail[0])]
+        assert fwd.points[0][0] - st.tail[0] == pytest.approx(p.equilibrium.stagger)
+    else:
+        long, short = (fwd, back) if lengths == "forward" else (back, fwd)
+        h = p.head()
+        short_len = abs(short.head_leaves()[0].points[0][0] - short.points[0][0])
+        assert short_len == pytest.approx(h.head_inset + (L - h.head_inset) / p.ratios.equilibrium_long_per_short)
+        assert (short.head_leaves()[0].points[0][0] + short.points[0][0]) / 2 == pytest.approx((st.tail[0] + st.head[0]) / 2)
+        assert long.head_leaves()[0].points[0][0] in (pytest.approx(st.tail[0]), pytest.approx(st.head[0]))
+    # conditions: centered on the arrow, baselines from the outer shafts
+    s = p.scheme
+    for ln in st.above + st.below:
+        assert ln.x0 + ln.advance / 2 == pytest.approx((st.tail[0] + st.head[0]) / 2)
+    assert st.above[-1].baseline == pytest.approx(-off - s.conditions_above_baseline)
+    assert st.below[0].baseline == pytest.approx(off + s.conditions_below_baseline)
+    assert not check_scheme(lay)
+
+
+def test_equilibrium_half_heads_barb_outward():
+    """Half heads (acs-style.md §3.6): tip and notch on the shaft's inner edge, barb outward; the
+    back shaft's back-edge control back_control_shift nearer its center line."""
+    from acs_chem_svg.arrows import head_marker
+    p = load_preset("acs1996_x0.8")
+    h, w = p.head(), p.arrow.shaft_width
+    for half, shift in (("forward", 0.0), ("back", p.equilibrium.back_control_shift)):
+        m = head_marker(p, half=half)
+        (_, tip), (_, notch), (_, ctl, corner, _) = m.segments
+        e = h.shaft_end_from_tip
+        assert tip == (e, w / 2) and notch == pytest.approx((e - h.head_inset, w / 2))
+        assert corner == pytest.approx((e - h.head_length, -h.head_half_width))
+        assert ctl[1] == pytest.approx(-(p.ratios.arrow_back_control_per_half_width * h.head_half_width - shift))

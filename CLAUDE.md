@@ -54,6 +54,7 @@ they disagree, `acs-style.md` (the ChemDraw references) wins.
 - `uv run python scripts/measure_refs.py --wrap` prints the multi-row scheme parameters per preset (acs-style.md §3.4).
 - `uv run python scripts/measure_refs.py --resonance` prints the resonance arrow and bracket parameters per preset (acs-style.md §4.3).
 - `uv run python scripts/measure_refs.py --abbrev` prints the abbreviation label parameters per preset, both forms (acs-style.md §3.5).
+- `uv run python scripts/measure_refs.py --equilibrium` prints the equilibrium arrows and arrowhead variants per preset, incl. arrows_large_x1.0 (acs-style.md §3.1, §3.6).
 - `uv run python scripts/cdxml_to_molfile.py` regenerates `templates/m1/` … `templates/m4/` and `templates/abbrev/` from the reference CDXMLs.
 - `uv run python scripts/readme_images.py` re-renders the README's example images (`docs/images/`).
 - `uv run python scripts/compare.py <ref>...` renders a reference's templates and prints ours vs
@@ -61,10 +62,11 @@ they disagree, `acs-style.md` (the ChemDraw references) wins.
   mech_basic_x* also gets our curved arrows on ChemDraw's CurvePoints and our dots at its centers.
   `--spec examples/m2_scheme_multi_x1.0.yaml` adds our own layout's approximate items (arrow lengths, gaps);
   resonance_x* (with `examples/m4_resonance_x*.yaml`) and scheme_wrap_x* (`examples/m4_wrap_x*.yaml`) add
-  bracket and row items. resonance_x* also gets our ↔ arrows and brackets on ChemDraw's.
+  bracket and row items. resonance_x* also gets our ↔ arrows and brackets on ChemDraw's. Arrows take the head
+  variant of their CDXML HeadSize; equilibrium_x* and arrows_large_x* draw our arrows and captions only.
 - `uv run python scripts/render.py spec.yaml [--out DIR] [--crops] [--maps]` renders a spec: an M2–M4 scheme
   (`examples/m2_*.yaml` … `examples/m4_*.yaml`) or M1 species (`examples/m1_smiles_x*.yaml`). `--crops` adds
-  16 px/pt crops of curved arrows, charged or dotted labels, ↔ arrows and bracket corners; `--maps` adds
+  16 px/pt crops of curved arrows, charged or dotted labels, ↔ arrows, equilibrium arrow ends and bracket corners; `--maps` adds
   `<stem>_maps.png` with map numbers beside the atoms (preview only). It prints each curved arrow's bow.
 - `uv run python scripts/validate.py [--suggest] spec.yaml` checks schema, chemistry, electron bookkeeping, scheme
   overlaps and mechanism geometry, and prints paste-ready `suggested:` products on a mismatch (`--suggest`: for

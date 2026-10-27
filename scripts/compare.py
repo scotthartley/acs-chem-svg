@@ -8,13 +8,16 @@ measured with the same code in measure_refs.py:
 - Our <text> goes through the same glyph loader.
 
 Scheme references (scheme_*) also get our reaction arrows at ChemDraw's tail and head (resonance
-arrows for ChemDraw's double-headed ones), our brackets on ChemDraw's bracket lines, and
+arrows for ChemDraw's double-headed ones; the head variant from each arrow's CDXML HeadSize,
+ARROW_HEADS), our brackets on ChemDraw's bracket lines, and
 each caption line set by richtext with its first glyph at ChemDraw's (scheme_captions), so the
 exact items (arrowheads, text advances, sub/superscripts) compare one to one. Mechanism
 references (mech_*) get those too, plus our curved arrows drawn on ChemDraw's CurvePoints
 (mechanism.curved_arrow) and our dots at ChemDraw's lone-pair midpoints and radical centers
 (mech_dots): the exact items are the heads, strokes and dot sizes. Our own dot placement and
-arrow layout (approximate) are what examples/m3_*.yaml show.
+arrow layout (approximate) are what examples/m3_*.yaml show. Equilibrium references
+(equilibrium_*, arrows_large_*) get our equilibrium arrows on ChemDraw's (ref_arrow) and the
+captions only: their "B" is a lone boron atom standing in for a structure, with no template.
 
 Prints the summarize() table (ChemDraw vs ours) and the per-bond end distances at labels.
 With --spec, also renders an M2 spec with our own layout and prints its approximate scheme
@@ -44,7 +47,7 @@ import measure_refs as mr  # noqa: E402
 from cdxml_to_molfile import fragments, template_path  # noqa: E402
 
 from acs_chem_svg import chem, richtext  # noqa: E402
-from acs_chem_svg.arrows import reaction_arrow, resonance_arrow  # noqa: E402
+from acs_chem_svg.arrows import equilibrium_arrow, reaction_arrow, resonance_arrow  # noqa: E402
 from acs_chem_svg.brackets import square_bracket  # noqa: E402
 from acs_chem_svg.draw_mol import Drawer  # noqa: E402
 from acs_chem_svg.preset import Preset, load_preset  # noqa: E402
@@ -57,6 +60,23 @@ from acs_chem_svg.spec import load_spec  # noqa: E402
 from acs_chem_svg.svg_writer import to_svg  # noqa: E402
 
 OUT = mr.REPO / "build" / "compare"
+ARROW_HEADS = {"1000": "standard", "1500": "large"}  # CDXML HeadSize -> preset arrow.heads variant
+ARROWS_ONLY = ("equilibrium_", "arrows_large_")  # references drawn without their structures
+
+
+def ref_arrow(a: dict, preset: Preset, name: str):
+    """Our arrow on a CDXML arrow (load_cdxml dict), with its head variant. ChemDraw's Head3D /
+    Tail3D are the forward shaft's tip and butt; a balanced equilibrium arrow's ends (ours)
+    reach equilibrium.stagger beyond them, and an unbalanced one's long shaft is the forward one."""
+    variant = ARROW_HEADS.get(a["attrs"].get("HeadSize"))
+    if a.get("equilibrium"):
+        tail, head = a["tail"], a["head"]
+        if a["attrs"].get("ArrowEquilibriumRatio"):
+            return equilibrium_arrow(tail, head, preset, name, "products", variant)
+        d = mul(unit(sub(head, tail)), preset.equilibrium.stagger)
+        return equilibrium_arrow(sub(tail, d), add(head, d), preset, name, None, variant)
+    kind = resonance_arrow if a["attrs"].get("ArrowheadTail") == "Full" else reaction_arrow
+    return kind(a["tail"], a["head"], preset, name, variant)
 
 
 def preset_for(name: str) -> str:
@@ -80,7 +100,7 @@ def render_reference(name: str, preset_name: str | None = None) -> Rendered:
     ref = mr.load(name)
     preset = load_preset(preset_name or preset_for(name))
     groups, mols, drawers = [], [], []
-    for n, _, _ in fragments(ref):
+    for n, _, _ in [] if name.startswith(ARROWS_ONLY) else fragments(ref):
         mol = chem.from_molfile(template_path(name, n), f"{name}__{n}", preset.lengths.bond_length)
         d = Drawer(mol, preset)
         g = d.draw(f"frag{n}")
@@ -88,9 +108,8 @@ def render_reference(name: str, preset_name: str | None = None) -> Rendered:
         groups.append(g)
         mols.append(mol)
         drawers.append(d)
-    if name.startswith(("scheme_", "mech_", "resonance_")):  # M1 references keep their approved renders (no captions)
-        groups += [(resonance_arrow if a["attrs"].get("ArrowheadTail") == "Full" else reaction_arrow)(
-                       a["tail"], a["head"], preset, f"arrow-{k}") for k, a in enumerate(ref.arrows, 1)]
+    if name.startswith(("scheme_", "mech_", "resonance_") + ARROWS_ONLY):  # M1 references keep their approved renders (no captions)
+        groups += [ref_arrow(a, preset, f"arrow-{k}") for k, a in enumerate(ref.arrows, 1)]
         groups += scheme_captions(ref, preset)
         groups += [square_bracket(b["x"], b["y_top"], b["y_bottom"], "left" if b["lips_point"] == "right" else "right",
                                   preset, f"bracket-{k}") for k, b in enumerate(mr._brackets(copy.deepcopy(ref)), 1)]
@@ -217,6 +236,9 @@ def images(r: Rendered) -> list[Path]:
                       labels=(f"ChemDraw 26.1 ({r.name})", f"acs-chem-svg ({r.preset.name})"))
     boxes = [b for fid, b in r.ref.fragments.items()
              if any(a.frag == fid and not a.nickname for a in r.ref.atoms.values())]
+    if r.name.startswith(ARROWS_ONLY):  # both ends of every arrow
+        boxes = [(x - 12, a["tail"][1] - 6, x + 12, a["tail"][1] + 6) for a in r.ref.arrows
+                 for x in sorted((a["tail"][0], a["head"][0]))]
     zoom = zoom_crops(ref_svg, r.svg, w, h, boxes, OUT / f"{r.name}_zoom.png")
     return [svg_path, cmp, zoom]
 
@@ -246,8 +268,8 @@ def spec_doc(spec_path: Path, ref: mr.Doc) -> tuple[mr.Doc, str]:
             display = {"wedge": "WedgeBegin", "hash": "WedgedHashBegin"}.get(b.stereo, "")
             bonds.append(mr.Bond(f"{name}:{b.id}", f"{name}:{pl.mol.atoms[b.a].id}", f"{name}:{pl.mol.atoms[b.b].id}",
                                  b.order, display, frag=name))
-    arrows = [{"tail": (st.tail[0] + dx, st.tail[1] + dy), "head": (st.head[0] + dx, st.head[1] + dy), "attrs": {}}
-              for st in lay.steps]
+    arrows = [{"tail": (st.tail[0] + dx, st.tail[1] + dy), "head": (st.head[0] + dx, st.head[1] + dy), "attrs": {},
+               "equilibrium": st.kind != "forward"} for st in lay.steps]
     arrows += [{"tail": (t[0] + dx, t[1] + dy), "head": (h[0] + dx, h[1] + dy), "attrs": {"ArrowheadTail": "Full"}}
                for res in lay.resonance for t, h, _ in res.arrows]
     return mr.load_rendered(svg, spec_path.stem, atoms, bonds, copy.deepcopy(ref.settings), arrows), svg

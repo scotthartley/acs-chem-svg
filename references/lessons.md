@@ -425,3 +425,30 @@ removed renders pixel-identical to the approved `m4_nitration_x1.0`. Inbox triag
 - **A refit can move a fitted value inside its noise.** With the horizontal rule, the outline
   offset refit to −0.01 (was −0.02). One new row (MeO₂C at 150°, ×1.0) sat at −0.102 with the old
   value, so the presets take the refit; three gallery renders moved by 0.013% of pixels.
+
+## 2026-10-27 (equilibrium arrows; large arrowheads)
+
+- **A half head is half of the full head, not a new shape.** Length, inset, shaft end and the
+  0.4375 control ratio all carry over, measured from the shaft's center line; only the tip and
+  notch move to the inner edge (shaft width / 2). Measuring in the inner-edge frame gave a
+  different, misleading ratio (0.53 vs 0.50 for the large head); the center frame gives 0.4375
+  for both sizes.
+- **ChemDraw's two half heads differ.** The back shaft's back-edge control sits 0.60 nearer its
+  center line than the forward shaft's, in every file and both sizes. Only a per-control-point
+  comparison found it; overlays at 4 px/pt look identical.
+- **Head3D / Tail3D are not the arrow's ends.** A balanced arrow's back tip reaches 0.9 beyond
+  Tail3D (the stagger); an unbalanced arrow's long shaft spans them exactly. Our ends are the ink
+  extent; compare.ref_arrow converts.
+- **The unbalanced ratio is on the butt → notch runs.** ArrowEquilibriumRatio 300: long / short
+  = 3.000 after subtracting each head's inset, at every preset and with flat heads, while tip-to-tip
+  lengths gave 0.38–0.41.
+- **Check every arrow's CDXML head attributes.** arrows_large_x1.0's unbalanced arrows carry
+  CenterSize 1500 (flat back) while the rest carry 1313: a settings change that didn't reach every
+  arrow. Reading the attributes per arrow caught it before it became a preset value; the user
+  re-exported (all 1313), which also moved the large head by ≤ 0.02 pt (9.00 / 2.325 / 7.88 / 7.83):
+  re-measure after any re-export, don't keep the old numbers.
+- **Inbox 2026-10-27, flipping one ring about its bond** (terminal pyrazine of an oligomer): not
+  supported; `orientation` flips whole species and a mirrored SMILES gives the same layout.
+  Workaround that worked: a molfile with the ring mirrored across the inter-ring bond (`molfile:`).
+  Candidate feature: a per-species `flip_ring: <map number>` that mirrors the ring containing
+  that atom across its bond to the rest.

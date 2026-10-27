@@ -1,0 +1,15 @@
+# M3: proton transfer on an unbalanced equilibrium arrow: water takes the O-H proton of acetic
+# acid; the equilibrium lies on the side of the reactants.
+preset: acs1996
+species:
+  acid:      {smiles: "C[C:1](=O)[O:2][H:3]", orientation: {flip_h: true}}
+  water:     {smiles: "[H][O:4][H]"}
+  acetate:   {smiles: "C[C:1](=O)[O-:2]"}
+  hydronium: {smiles: "[H][O+:4]([H])[H:3]"}
+steps:
+  - from: [acid, water]
+    to: [acetate, hydronium]
+    arrow_type: equilibrium_reactants
+    arrows:
+      - {from: "lp(4)", to: "between(4,3)"}
+      - {from: "bond(2-3)", to: "atom(2)"}

@@ -105,13 +105,14 @@ def test_bold_and_italic_by_editor():
 
 # ---------------------------------------------------------------- arrowheads as markers
 
-ARROW_SPECS = ["m4_nitration_x1.0", "m4_resonance_x0.8", "m3_radical_propagation_x1.0"]
+ARROW_SPECS = ["m4_nitration_x1.0", "m4_resonance_x0.8", "m3_radical_propagation_x1.0", "m2_equilibrium_x1.0",
+               "m2_equilibrium_x0.6"]
 
 
 def _old_reaction_head(tip, u, p):
     """The reaction head as arrows._head built it before markers (separate Path)."""
     from acs_chem_svg.geometry import add, mul, perp
-    a, n = p.arrow, perp(u)
+    a, n = p.head(), perp(u)
 
     def at(back, side):
         return add(tip, add(mul(u, -back), mul(n, side)))

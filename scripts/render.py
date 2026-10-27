@@ -3,9 +3,10 @@
 Layout is acs_chem_svg.layout.render_spec, shared with scripts/gallery.py. Writes
 <stem>.svg and <stem>.png (4 px/pt) next to the spec, or in --out, and prints the drawing width.
 --crops also writes zoomed crops (design.md §6.5, 16 px/pt) of every curved arrow, every
-labeled atom with a charge or dots, every resonance arrow and every bracket corner:
-<stem>_crop_arrow-<step>-<index>.png, <stem>_crop_<species>-atom<id>.png,
-<stem>_crop_resonance-<step>-<k>.png and <stem>_crop_bracket-<step>-<left|right>-<top|bottom>.png.
+labeled atom with a charge or dots, every resonance arrow, both ends of every equilibrium arrow
+and every bracket corner: <stem>_crop_arrow-<step>-<index>.png, <stem>_crop_<species>-atom<id>.png,
+<stem>_crop_resonance-<step>-<k>.png, <stem>_crop_equilibrium-<step>-<tail|head>.png and
+<stem>_crop_bracket-<step>-<left|right>-<top|bottom>.png.
 --maps also writes <stem>_maps.png: the drawing with every mapped atom's map number in small red
 type beside it, for choosing arrows and orientations. The overlay is preview only: it goes into
 a copy of the SVG text, never into <stem>.svg.
@@ -35,8 +36,8 @@ MAP_COLOR = "#d01c5b"
 
 def crop_boxes(lay: SchemeLayout, offset: tuple[float, float]) -> dict[str, tuple]:
     """name -> box in the SVG frame: each curved arrow, each labeled atom with a charge or dots
-    (the union of its label runs, charge bars and dots), each resonance arrow, and each bracket
-    corner (6 pt around it)."""
+    (the union of its label runs, charge bars and dots), each resonance arrow, each end of an
+    equilibrium arrow (12 pt long) and each bracket corner (6 pt around it)."""
     dx, dy = offset
 
     def moved(b):
@@ -51,6 +52,11 @@ def crop_boxes(lay: SchemeLayout, offset: tuple[float, float]) -> dict[str, tupl
             src = f"atom:{a.id}"
             out[f"{name}-atom{a.id}"] = moved(union_box(leaf.bbox() for leaf in p.group.leaves()
                                                         if getattr(leaf, "source", "") == src))
+    for st in lay.steps:
+        if st.kind != "forward":
+            b = st.group.bbox()
+            out[f"equilibrium-{st.n}-tail"] = moved((b[0] - 1, b[1] - 1, b[0] + 12, b[3] + 1))
+            out[f"equilibrium-{st.n}-head"] = moved((b[2] - 12, b[1] - 1, b[2] + 1, b[3] + 1))
     for res in lay.resonance:
         for k, (_, _, g) in enumerate(res.arrows, 1):
             out[f"resonance-{res.n}-{k}"] = moved(g.bbox())
@@ -136,7 +142,8 @@ def main(argv=None) -> int:
     ap.add_argument("--out", type=Path)
     ap.add_argument("--px-per-pt", type=float, default=4.0)
     ap.add_argument("--crops", action="store_true",
-                    help="also write zoomed crops of curved arrows, charged / dotted atoms, resonance arrows and bracket corners")
+                    help="also write zoomed crops of curved arrows, charged / dotted atoms, resonance and equilibrium arrows "
+                         "and bracket corners")
     ap.add_argument("--maps", action="store_true",
                     help="also write <stem>_maps.png with each mapped atom's map number (preview only)")
     ap.add_argument("--affinity", action="store_true",

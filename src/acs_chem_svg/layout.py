@@ -14,6 +14,10 @@ scheme_basic_x* and scheme_multi_x*, user decision 2026-10-24):
   ink at tail + multistep_indent.
 - Arrow length = max(arrow_min_length, widest line + 2 conditions_pad + head_inset), or for
   stages max(min, indent + widest + pad + head_inset).
+- Equilibrium arrows (a step's arrow_type, arrows.equilibrium_arrow): the same rules, with the
+  above/below baselines measured from the outer shafts (equilibrium.shaft_spacing / 2 off the
+  axis), the conditions centered on the arrow, and a head_inset at each end in the length
+  (unmeasured rules, acs-style.md §3.6). Heads: spec arrow_head, else the preset's default.
 - Compound numbers: bold, ink-centered under each structure, on one baseline: the tallest
   number's ink top is number_gap below the lowest structure ink in the row.
 
@@ -33,7 +37,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from . import electrons, richtext
-from .arrows import notch_x, reaction_arrow, resonance_arrow
+from .arrows import conditions_mid, heads_along, resonance_arrow, step_arrow
 from .brackets import bracket_pair
 from .chem import Molecule
 from .draw_mol import DotSet, Drawer
@@ -69,6 +73,16 @@ class StepLayout:
     staged: bool
     row: int = 0
     group: Group | None = None  # arrow-step-<n>
+    kind: str = "forward"  # spec arrow_type
+    variant: str | None = None  # head variant (spec arrow_head; None: the preset's default)
+
+    def shaft_offset(self, preset: Preset) -> float:
+        """How far the outer shafts sit off the axis (0 for a forward arrow)."""
+        return 0.0 if self.kind == "forward" else preset.equilibrium.shaft_spacing / 2
+
+    def mid_x(self, preset: Preset) -> float:
+        """x the conditions (and reactants drawn above the arrow) are centered on."""
+        return conditions_mid(self.tail, self.head, preset, self.kind, self.variant)
 
 
 @dataclass
@@ -193,21 +207,21 @@ def _place_conditions(st: StepLayout, preset: Preset) -> None:
     """Stack the step's lines around the arrow (module docstring)."""
     s = preset.scheme
     size = preset.text.caption_size
-    axis = st.tail[1]
-    mid = (st.tail[0] + notch_x(st.tail, st.head, preset)) / 2
+    axis, off = st.tail[1], st.shaft_offset(preset)
+    mid = st.mid_x(preset)
 
     def x_for(ln):
         if st.staged:
             return st.tail[0] + s.multistep_indent - ln.ink()[0]
         return mid - ln.advance / 2
 
-    base = axis - s.conditions_above_baseline
+    base = axis - off - s.conditions_above_baseline
     for k in range(len(st.above) - 1, -1, -1):
         ln = st.above[k]
         if k < len(st.above) - 1:
             base -= richtext.line_pitch(ln, st.above[k + 1], size, preset)
         ln.shift(x_for(ln), base)
-    base = axis + s.conditions_below_baseline
+    base = axis + off + s.conditions_below_baseline
     for k, ln in enumerate(st.below):
         if k:
             base += richtext.line_pitch(st.below[k - 1], ln, size, preset)
@@ -276,7 +290,7 @@ def _place(spec: Spec, out: SchemeLayout, breaks: set[tuple[str, int]], rings: d
             if k:
                 tail = (x + r.arrow_gap, 0.0)
                 head = (tail[0] + r.arrow_length, 0.0)
-                g = resonance_arrow(tail, head, preset, f"resonance-arrow-step-{n}-{k}")
+                g = resonance_arrow(tail, head, preset, f"resonance-arrow-step-{n}-{k}", spec.arrow_head)
                 res.arrows.append((tail, head, g))
                 units[-1].items.append(g)
                 x = head[0] + r.arrow_gap
@@ -291,11 +305,11 @@ def _place(spec: Spec, out: SchemeLayout, breaks: set[tuple[str, int]], rings: d
         """Reactants a mechanism step adds, side by side (with '+') above its arrow: centered on
         tail -> notch, their ink bottom conditions_above_baseline above the arrow or above its
         conditions (unmeasured rule, acs-style.md §4.3)."""
-        top = min([ln.ink()[1] for ln in st.above] + [0.0])
+        top = min([ln.ink()[1] for ln in st.above] + [-st.shaft_offset(preset)])
         base = top - s.conditions_above_baseline
         boxes = [out.species[n].group.ink_bbox() for n in names]
         width = sum(b[2] - b[0] for b in boxes) + (len(names) - 1) * (2 * s.plus_gap + face_plus_width(preset))
-        cx = (st.tail[0] + notch_x(st.tail, st.head, preset)) / 2 - width / 2
+        cx = st.mid_x(preset) - width / 2
         mid_y = base - max(b[3] - b[1] for b in boxes) / 2
         for k, (n, b) in enumerate(zip(names, boxes)):
             if k:
@@ -340,11 +354,11 @@ def _place(spec: Spec, out: SchemeLayout, breaks: set[tuple[str, int]], rings: d
             plus_w = face_plus_width(preset)
             need = max(need, sum(b[2] - b[0] for b in boxes) + (len(over) - 1) * (2 * s.plus_gap + plus_w)
                        + 2 * s.conditions_pad)
-        length = max(s.arrow_min_length, need + preset.arrow.head_inset)
+        length = max(s.arrow_min_length, need + heads_along(st.arrow_type) * preset.head(spec.arrow_head).head_inset)
         tail = (x + s.arrow_gap, 0.0)
         head = (tail[0] + length, 0.0)
-        g = reaction_arrow(tail, head, preset, f"arrow-step-{i}")
-        step = StepLayout(i, tail, head, above, below, staged, row, g)
+        g = step_arrow(st.arrow_type, tail, head, preset, f"arrow-step-{i}", spec.arrow_head)
+        step = StepLayout(i, tail, head, above, below, staged, row, g, st.arrow_type, spec.arrow_head)
         _place_conditions(step, preset)
         out.steps.append(step)
         units[-1].items.append(g)

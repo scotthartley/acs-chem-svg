@@ -1,0 +1,7 @@
+# expect: arrow_type belongs on a reaction step; a resonance step's arrows are always ↔
+preset: acs1996
+species:
+  x: {smiles: "[CH2+:1][CH:2]=[CH2:3]"}
+  y: {smiles: "[CH2:1]=[CH:2][CH2+:3]"}
+steps:
+  - {resonance: [x, y], arrow_type: equilibrium}

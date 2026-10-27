@@ -12,6 +12,8 @@ Cases:
 - m3_*.png: examples/m3_*.yaml mechanisms with our own layout (the M3 acceptance).
 - resonance_x<k>.png: the resonance references' templates with our ↔ arrows and brackets on
   ChemDraw's.
+- equilibrium_x<k>.png, arrows_large_x1.0.png: our equilibrium, forward and ↔ arrows on
+  ChemDraw's, with the captions (no structures: the references' "B" is a stand-in atom).
 - m4_*.png: examples/m4_*.yaml with our own layout (m4_nitration_x<k>: the M4 acceptance).
 
 All are rendered at 4 px/pt with a transparent background. tests/test_gallery.py re-renders
@@ -43,7 +45,8 @@ REFERENCES = ["m1_set_x1.0", "m1_set_x0.8", "m1_set_x0.6", "double_bonds_x1.0", 
               "scheme_multi_x1.0", "scheme_multi_x0.8", "scheme_multi_x0.6",
               "mech_basic_x1.0", "mech_basic_x0.8", "mech_basic_x0.6",
               "resonance_x1.0", "resonance_x0.8", "resonance_x0.6",
-              "abbrev_x1.0", "abbrev_x0.8", "abbrev_x0.6"]
+              "abbrev_x1.0", "abbrev_x0.8", "abbrev_x0.6",
+              "equilibrium_x1.0", "equilibrium_x0.8", "equilibrium_x0.6", "arrows_large_x1.0"]
 SPECS = ["examples/m1_smiles_x1.0.yaml", "examples/m1_smiles_x0.8.yaml", "examples/m1_smiles_x0.6.yaml",
          "examples/m1_lewis_x1.0.yaml", "examples/m1_lewis_x0.8.yaml", "examples/m1_lewis_x0.6.yaml",
          "examples/m1_lewis_assigned_x1.0.yaml",
@@ -53,10 +56,11 @@ SPECS = ["examples/m1_smiles_x1.0.yaml", "examples/m1_smiles_x0.8.yaml", "exampl
          "examples/m2_scheme_basic_x1.0.yaml", "examples/m2_scheme_basic_x0.8.yaml", "examples/m2_scheme_basic_x0.6.yaml",
          "examples/m2_scheme_multi_x1.0.yaml", "examples/m2_scheme_multi_x0.8.yaml", "examples/m2_scheme_multi_x0.6.yaml",
          "examples/m2_suzuki_x1.0.yaml", "examples/m2_stages_x1.0.yaml",
+         "examples/m2_equilibrium_x1.0.yaml", "examples/m2_equilibrium_x0.8.yaml", "examples/m2_equilibrium_x0.6.yaml",
          "examples/m3_sn2_x1.0.yaml", "examples/m3_sn2_x0.8.yaml", "examples/m3_sn2_x0.6.yaml",
          "examples/m3_e2_x1.0.yaml", "examples/m3_carbonyl_addition_x1.0.yaml",
          "examples/m3_radical_initiation_x1.0.yaml", "examples/m3_radical_propagation_x1.0.yaml",
-         "examples/m3_radical_propagation_2_x1.0.yaml",
+         "examples/m3_radical_propagation_2_x1.0.yaml", "examples/m3_proton_transfer_x1.0.yaml",
          "examples/m4_nitration_x1.0.yaml", "examples/m4_nitration_x0.8.yaml", "examples/m4_nitration_x0.6.yaml",
          "examples/m4_resonance_x1.0.yaml", "examples/m4_resonance_x0.8.yaml", "examples/m4_resonance_x0.6.yaml",
          "examples/m4_wrap_x1.0.yaml", "examples/m4_wrap_x0.8.yaml", "examples/m4_wrap_x0.6.yaml",

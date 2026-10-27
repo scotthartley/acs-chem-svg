@@ -212,6 +212,24 @@ within runs, its PDF glyph origins (`measure_refs.pdf_char_origins`).
 | CDXML arrow attributes | HeadSize 1000, ArrowheadCenterSize 875, ArrowheadWidth 250 (= 10, 8.75, 2.5 × LineWidth) | | | | exact |
 | Arrow bounding-box center | 0.25 / 0.20 / 0.155 above the axis (the asymmetric head) | | | CDXML BoundingBox | exact |
 
+**Arrowhead variants** (source: arrows_large_x1.0; `measure_refs.py --equilibrium`). The table
+above is the **standard** head (HeadSize 1000 / ArrowheadCenterSize 875 / ArrowheadWidth 250).
+The **large** head is HeadSize 1500 / 1313 / 375, set in ChemDraw's arrow settings: the same
+shape, with the same shaft, hairline and back-edge control ratio (0.4375, all large heads):
+
+| Parameter | Large, ×1.0 | Method | Class |
+|---|---|---|---|
+| Head length | 9.000 (forward, ↔, half heads) → **9.00** | fill path | exact (`arrow.heads.large`) |
+| Half-width | 2.30 / 2.35 (asymmetric, as the standard head), mean 2.325 → **2.325**; half heads 2.30 / 2.35 | | exact |
+| Inset | 7.875–7.878 → **7.88** | | exact |
+| Shaft end from tip | 7.825–7.828 → **7.83** | | exact |
+
+Default (user decision 2026-10-27): reaction, equilibrium and ↔ arrows take the **large** head at
+×1.0 and the standard one at ×0.8 and ×0.6 (`arrow.default_head`); a spec's `arrow_head`
+overrides it. No reference has a large head at ×0.8 or ×0.6: those presets copy the ×1.0 values
+(`assumed_exempt`; head geometry is exempt at every measured size; Open 19). Curved-arrow heads
+(§4.1) are unchanged.
+
 Encoding: the head is an SVG `<marker>` on the shaft's end (`render.py --affinity` expands it into
 a separate filled path, as above). The geometry is the same either way.
 
@@ -313,6 +331,44 @@ Reversed text (ChemDraw's display; `chem.ABBREVIATIONS_REVERSED`):
 | OPh | PhO | CO₂H | HO₂C | | |
 | OAc | AcO | CF₃ | F₃C | | |
 | SMe | MeS | CN | NC | | |
+
+### 3.6 Equilibrium arrows (source: equilibrium_x1.0 / x0.8 / x0.6, arrows_large_x1.0)
+
+Method: `uv run python scripts/measure_refs.py --equilibrium` (`_equilibrium_entry`: the two
+straight shaft polygons along each CDXML arrow and the curved half-head polygon at one end of
+each, in the frame of Tail3D → Head3D). Each reference has three rows, A ⇌ B drawn with
+ChemDraw's equilibrium tools: balanced, unbalanced favoring products, and the unbalanced arrow
+turned around (favoring reactants), each with one line of conditions above and below.
+CDXML: `ArrowheadHead`/`ArrowheadTail` `HalfLeft`, `ArrowShaftSpacing` 300, unbalanced
+`ArrowEquilibriumRatio` 300.
+
+| Parameter | ×1.0 | ×0.8 | ×0.6 | Class |
+|---|---|---|---|---|
+| Shafts | two, shaft width 0.60, centered on the axis (center offset ≤ 0.006) | same | same | exact |
+| Shaft spacing, center to center | 1.805 | 1.800 | 1.793 | exact, **exempt** (`equilibrium.shaft_spacing` 1.80) |
+| Directions | the forward shaft (left of travel: above for a left-to-right arrow) points at the head, the back shaft at the tail | same | same | exact |
+| Half head | the outer half of the full head (§3.1, same variant: length, half-width, inset, shaft end from tip all within 0.02 of the full head's), with its tip and notch on the shaft's **inner** edge (0.300 = shaft width / 2 from the center line) and the barb **outward** (`HalfLeft`) | same | same | exact |
+| Back-edge control | forward shaft: at 0.4375 × barb from the center line, as the full head (0.437–0.438); back shaft: 0.60 nearer the center line (0.599–0.601; large 0.600) | same | same | exact, **exempt** (`equilibrium.back_control_shift`) |
+| Balanced: stagger | each shaft's butt end 0.902 behind the other shaft's tip (ChemDraw's Tail3D / Head3D are the forward shaft's butt and tip; the back tip reaches 0.9 beyond Tail3D) | 0.900 | 0.896 | exact, **exempt** (`equilibrium.stagger` 0.90) |
+| Unbalanced: long shaft | Tail3D to Head3D | | | exact |
+| Unbalanced: short shaft | centered on the long one (≤ 0.001); butt → notch 1/3 of the long one's: long / short = 3.000 (74.58 / 28.37; large heads 74.50 / 30.08) | 3.000 (59.67 / 23.39) | 3.000 (44.75 / 18.40) | exact (`ratios.equilibrium_long_per_short`) |
+| Favoring reactants | the favoring-products arrow turned 180°: the long shaft below, pointing back | same | same | exact |
+| Large head | same rules (spacing 1.80, stagger 0.90, shift 0.600–0.601, ratio 3.000) with the large half head (§3.1) | — | — | exact |
+
+Placement (hand-placed; provenance only, user decision 2026-10-27: the existing `scheme`
+defaults apply). Our rules, unmeasured: the conditions' baselines are measured from the **outer**
+shafts (`conditions_above_baseline` above the forward shaft, `conditions_below_baseline` below the
+back one); the lines are centered on the arrow's middle (it is symmetric; ChemDraw −0.4 to −1.6,
+by eye); the length is max(`arrow_min_length`, widest line + 2 `conditions_pad` + 2 head insets),
+one notch at each end.
+
+| Hand-placed (provenance) | ×1.0 | ×0.8 | ×0.6 | Default used |
+|---|---|---|---|---|
+| Above: forward shaft − last baseline | 5.00 / 5.25 / 4.75 (large 5.69 / 6.25 / 5.26) | 3.82 / 4.02 / 3.62 | 2.64 / 2.79 / 2.49 | `conditions_above_baseline` 5.5 / 4.5 / 3.5 |
+| Below: first baseline − back shaft | 12.36 / 12.11 / 12.61 (large 11.69 / 11.12 / 12.12) | 9.71 / 9.51 / 9.91 | 7.06 / 6.91 / 7.21 | `conditions_below_baseline` 11.5 / 9.5 / 7.0 |
+
+Exact check: `tests/test_equilibrium_vs_chemdraw.py` (our arrows on ChemDraw's, every shaft and
+half head within 0.1 pt at all three presets, and arrows_large_x1.0's forward and ↔ heads).
 
 ## 4. Mechanisms and resonance (source: mech_basic_x1.0 / x0.8 / x0.6, resonance_x1.0 / x0.8 / x0.6)
 
@@ -597,11 +653,18 @@ Module `src/acs_chem_svg/draw_mol.py` unless noted.
 | Charges | §2.2 | `Drawer.charge_center`, `Drawer.charge_bars` (stroked bars); placement offsets are round defaults |
 | SVG output rules | design.md §4.4 | `svg_writer.to_svg` |
 
+19. **Arrowhead variants** (§3.1, §3.6): no reference has a large head at ×0.8 or ×0.6 (the presets
+    copy the ×1.0 values, `assumed_exempt`). ~~arrows_large_x1.0's unbalanced arrows had
+    ArrowheadCenterSize 1500 (flat-backed).~~ **Resolved (re-export, 2026-10-27):** every large
+    head is 1500 / 1313 / 375.
+
 ## 9. Implemented as (M2)
 
 | Rule | Section | Implementation |
 |---|---|---|
 | Reaction arrow: shaft stroke, concave cubic head, hairline | §3.1 | `arrows.reaction_arrow` (`scene.Path`) |
+| Head variants (standard, large) and the per-preset default; spec `arrow_head` | §3.1 | `preset.Preset.head`, `arrows.head_marker(variant=…)`; `tests/test_equilibrium_vs_chemdraw.py` |
+| Equilibrium arrows: two shafts, half heads, stagger, unbalanced short shaft; spec `arrow_type` | §3.6 | `arrows.equilibrium_arrow`, `arrows.head_marker(half=…)`, `arrows.step_arrow`; `layout._place_conditions` (outer shafts, `arrows.conditions_mid`); `tests/test_equilibrium_vs_chemdraw.py` (exact, 0.1 pt) |
 | Rich text: auto sub/superscripts, italics, escapes; consecutive runs; kerning within runs | §3.2 | `richtext.parse`, `richtext.layout_line` |
 | Line pitch | §3.2 | `richtext.line_pitch` (fitted subscript increments, Open 9) |
 | Abbreviations (OMe, OBn, …) | §3.3 notes, §2.1 | `chem.condense` (rdAbbreviations on an aromatic copy, collapsed on the Kekulé mol); `draw_mol.layout_abbreviation` |

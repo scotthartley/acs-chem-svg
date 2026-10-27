@@ -47,6 +47,14 @@ of those products are by-products left behind, and further reactants are added (
 A resonance step may follow a step with several products: the first product opens the bracket
 and the rest are drawn after it ("+ HX").
 
+Arrows: a step's arrow_type is forward (default), equilibrium (⇌), equilibrium_products or
+equilibrium_reactants (unbalanced: the long shaft points to the favored side). arrow_head
+(standard | large) sets every reaction, equilibrium and ↔ head; default: the preset's.
+
+    arrow_head: standard                 # e.g. to match a ChemDraw drawing with default heads at x1.0
+    steps:
+      - {from: acid, to: [base, hydronium], arrow_type: equilibrium_reactants, above: H2O}
+
 Generic atoms (X, R, Nu): write a real element in the SMILES as a stand-in and relabel it by
 atom-map number; the electron bookkeeping keeps the stand-in (Cl for a radical X·).
 
@@ -87,6 +95,7 @@ from .draw_mol import parse_charge_text
 from .preset import available, load_preset
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+ArrowType = Literal["forward", "equilibrium", "equilibrium_products", "equilibrium_reactants"]  # arrows.ARROW_TYPES
 MAX_STAGES = 2  # multistep arrows with more stages are unmeasured (acs-style.md §6 Open)
 LABEL_TEXT = re.compile(r"^[A-Z][a-z]?'*$")  # a generic atom label: X, R, Nu, R'
 
@@ -284,6 +293,7 @@ class Step(BaseModel):
     above: Names | None = None  # conditions above the arrow, one string per line
     below: Names | None = None
     stages: list[str] | None = None  # "1. ..." above and "2. ..." below, left-justified
+    arrow_type: ArrowType = "forward"  # the step's arrow: forward, or equilibrium (balanced or favoring one side)
     arrows: list[CurvedArrow] = Field(default_factory=list)  # M3 curved arrows, drawn on the reactants
 
     @model_validator(mode="before")
@@ -336,6 +346,13 @@ class ResonanceStep(BaseModel):
     model_config = ConfigDict(extra="forbid")
     resonance: list[str] = Field(min_length=2)
     arrows: list[list[CurvedArrow]] = Field(default_factory=list)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _no_arrow_type(cls, data):
+        if isinstance(data, dict) and "arrow_type" in data:
+            raise ValueError("arrow_type belongs on a reaction step; a resonance step's arrows are always ↔")
+        return data
 
     @model_validator(mode="after")
     def _lists(self):
@@ -400,6 +417,7 @@ class Spec(BaseModel):
     layout: Layout = Field(default_factory=Layout)
     numbers: dict[str, int | str] | None = None
     align: Literal["auto"] | bool = "auto"
+    arrow_head: Literal["standard", "large"] | None = None  # reaction, equilibrium and ↔ heads; default: the preset's
     labels: dict[int, str] = Field(default_factory=dict)  # atom-map number -> drawn symbol (X); chemistry keeps the SMILES element
     charges: ChargeOptions = Field(default_factory=ChargeOptions)
     overrides: Overrides = Field(default_factory=Overrides)

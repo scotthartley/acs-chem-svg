@@ -27,7 +27,7 @@ def test_every_planned_failure_has_a_spec():
         "carbon_with_ten_electrons", "duplicate_map_number", "arrow_crosses_bond", "lone_pair_on_bond",
         "resonance_wrong_connectivity", "resonance_wrong_arrow", "from_skips_products", "resonance_first_not_product",
         "row_too_wide", "label_unknown_map", "label_overlap", "lewis_ring", "lewis_degree5",
-        "charge_label_bad_text", "charge_label_unknown_map"}
+        "charge_label_bad_text", "charge_label_unknown_map", "arrow_type_on_resonance", "arrow_type_unknown"}
 
 
 def test_wrong_product_prints_a_paste_ready_suggestion(capsys):

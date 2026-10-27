@@ -1,0 +1,18 @@
+# Equilibrium arrows (acs-style.md §3.6): balanced, favoring products, favoring reactants,
+# one sequence per row. At x1.0 the heads are the large variant (arrow.default_head).
+preset: acs1996_x0.6
+species:
+  acid:      {smiles: "CC(=O)O"}
+  ethanol:   {smiles: "CCO"}
+  ester:     {smiles: "CCOC(C)=O"}
+  water:     {smiles: "O"}
+  ketone:    {smiles: "O=C1CCCCC1"}
+  glycol:    {smiles: "OCCO"}
+  ketal:     {smiles: "C1CCC2(CC1)OCCO2"}
+  water2:    {smiles: "O"}
+  acetone:   {smiles: "CC(C)=O"}
+  enol:      {smiles: "C=C(C)O"}
+steps:
+  - {from: [acid, ethanol], to: [ester, water], arrow_type: equilibrium, above: H2SO4, below: heat}
+  - {new_row: true, from: [ketone, glycol], to: [ketal, water2], arrow_type: equilibrium_products, above: TsOH, below: "PhH, reflux"}
+  - {new_row: true, from: acetone, to: enol, arrow_type: equilibrium_reactants, above: H3O+}
