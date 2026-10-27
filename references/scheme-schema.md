@@ -233,7 +233,9 @@ species:
 ```
 
 - **Atoms:** every H becomes an atom and every atom is labeled with its bare element symbol
-  (C included); every lone pair and radical is drawn. Charges come from the SMILES (±1 only).
+  (C included); every lone pair and radical is drawn. Charges come from the SMILES (±2 or
+  more draws "2+"); `charges.circled`, `circled_charges` and `charge_labels` apply as for any
+  species.
 - **Layout:** a square lattice, every bond `lewis.bond_length` long whatever its order. The
   root is the heavy-atom tree center; its heavy neighbors go right, left, up, down. Each other
   atom continues its largest heavy branch straight and puts the others up, then down; H atoms
