@@ -262,7 +262,7 @@ def clashes(arrow: "MechArrow", parts: dict[str, Parts], others: list["MechArrow
         for box, text, _ in pt.labels:
             if _box_gap(whole, box) >= max(sw / 2, margin):
                 continue
-            if any(segment_box_dist(a, b, box) < sw / 2 for a, b, _ in segs):
+            if any(_box_gap(sb, box) < sw / 2 and segment_box_dist(a, b, box) < sw / 2 for a, b, sb in segs):
                 out.append(f"crosses the {sp} label {text!r}")
                 continue
             for end, d in (("head", min(segment_box_dist(a, b, box) for a, b in head)),
@@ -493,16 +493,19 @@ class Planner:
             for rank_s, ds in enumerate(ranked):
                 for rank_f, soft in enumerate(SOFTER if o.curvature is None else (1.0,)):
                     for rank_x, extra in enumerate(FARTHER):
+                        ends: dict = {}  # solve_end's roots, shared by the picks
                         for pick, far in itertools.product(range(picks), sides):
                             cand = self.build(step, index, arr, o, name, bow, ds, s0, p_anchor, pick, soft, extra, far,
-                                              same)
+                                              same, ends)
                             if cand is None:
                                 if far == sides[-1]:
                                     break
                                 continue
                             off = 0.0 if aims(cand, r) else 0.5 + miss(cand) / 360.0  # under a clash; the closer miss first
-                            score = (len(clashes(cand, self.parts, self.done, self.preset)) + off,
-                                     flip + 2 * (same and not o.bow), rank_b + rank_s + rank_f + rank_x + pick + far)
+                            rest = (flip + 2 * (same and not o.bow), rank_b + rank_s + rank_f + rank_x + pick + far)
+                            if best is not None and (off, *rest) >= best[0]:
+                                continue  # can't win even without clashes
+                            score = (len(clashes(cand, self.parts, self.done, self.preset)) + off, *rest)
                             if best is None or score < best[0]:
                                 best = (score, cand, bow, ds)
                         if best[0][0] == 0 and rank_x == 0:
@@ -556,14 +559,14 @@ class Planner:
         return tail
 
     def build(self, step, index, arr, o, name, bow, ds, s0, p_anchor, pick=0, soft=1.0,
-              extra=0.0, far=0, same=False) -> MechArrow | None:
+              extra=0.0, far=0, same=False, ends: dict | None = None) -> MechArrow | None:
         """The arrow for one bow, tail set and solve_end root (`pick`; a hook: its ranked
         landing direction), its curvature times `soft` and its tip `extra` beyond head_gap;
         None past the last root. A bond target's tip goes on the tail's side of the bond, or
         with `far` the other side (a ring bond next to the tail's bond, where the tail's side
         is inside the ring). A cramped hook (C-H -> C-C) takes far 0 as passing through the
         bond and curling back onto it from the far side, then 1 and 2 as the tail's side and the
-        other."""
+        other. `ends` (a dict) keeps solve_end's roots for the arrow's later picks."""
         P = self.preset
         ca, r = P.curved_arrow, P.lone_pair.dot_radius
         src = arr.source
@@ -647,10 +650,12 @@ class Planner:
                 if done:
                     break
         elif c1 is None:
-            ends = solve_end(tail, controls, tip_for, target, ca, dots, r)
-            if pick >= len(ends):
+            ends = {} if ends is None else ends
+            if "roots" not in ends:
+                ends["roots"] = solve_end(tail, controls, tip_for, target, ca, dots, r)
+            if pick >= len(ends["roots"]):
                 return None
-            end = ends[pick]
+            end = ends["roots"][pick]
         if c1 is None:
             if pick and fixed_tip is not None:
                 return None
@@ -682,14 +687,13 @@ def clear_along(c: Point, d: Point, box: tuple | None, dots: list[Point], r: flo
     beyond: the nearest distance, not along the line through c, so a diagonal approach keeps
     its full gap and a head never pokes between a pair's dots."""
     s = gap if box is None else 0.0
-    if box is not None:
-        lo, hi = 0.0, ray_box_exit(c, d, box) + gap
-        while point_box_dist(add(c, mul(d, hi)), box) < gap:  # a slanted ray needs more than gap
-            hi += gap
-        for _ in range(40):
-            mid = (lo + hi) / 2
-            lo, hi = (mid, hi) if point_box_dist(add(c, mul(d, mid)), box) < gap else (lo, mid)
-        s = hi
+    if box is not None:  # past the exits tx, ty on each axis: dist(s)² = Σ (|d_i| max(0, s - t_i))²
+        (t1, a1), (t2, a2) = sorted((ray_box_exit(c, (d[i], 0.0) if i == 0 else (0.0, d[i]), box), abs(d[i]))
+                                    for i in (0, 1))
+        s = t1 + gap / a1
+        if s > t2:  # a slanted ray: both axes contribute, the larger root of the quadratic
+            A, B = a1 * a1 + a2 * a2, a1 * a1 * t1 + a2 * a2 * t2
+            s = (B + math.sqrt(max(A * gap * gap - (a1 * a2 * (t1 - t2)) ** 2, 0.0))) / A
     for q in dots:
         w = sub(q, c)
         along, R = dot(w, d), r + gap
@@ -760,13 +764,14 @@ def solve_end(tail: Point, controls, tip_for, target: tuple, ca, dots: list[Poin
         (fa, ga, *_), (fb, gb, *_) = vals[k], vals[k + 1]
         if fa * fb > 0 or min(ga, gb) <= 0:
             continue
-        lo, hi = ths[k], ths[k + 1]
+        lo, hi, f_lo = ths[k], ths[k + 1], fa
         for _ in range(40):
             mid = (lo + hi) / 2
-            if at(lo)[0] * at(mid)[0] <= 0:
+            f_mid = at(mid)[0]
+            if f_lo * f_mid <= 0:
                 hi = mid
             else:
-                lo = mid
+                lo, f_lo = mid, f_mid
         f, g, end, _, _ = at((lo + hi) / 2)
         if abs(f) < 1e-3 and g > 0:  # not a jump (a dot pushing the tip out) posing as a root
             roots.append(end)
@@ -790,10 +795,14 @@ def solve_end(tail: Point, controls, tip_for, target: tuple, ca, dots: list[Poin
         for k in range(72):
             if not (hs[k] * hs[k + 1] <= 0):  # also skips nan (tangent pointing back)
                 continue
-            lo, hi = phs[k], phs[k + 1]
+            lo, hi, h_lo = phs[k], phs[k + 1], hs[k]
             for _ in range(40):
                 mid = (lo + hi) / 2
-                lo, hi = (lo, mid) if h(lo)[0] * h(mid)[0] <= 0 else (mid, hi)
+                h_mid = h(mid)[0]
+                if h_lo * h_mid <= 0:
+                    hi = mid
+                else:
+                    lo, h_lo = mid, h_mid
             f, e, w = h((lo + hi) / 2)
             if abs(f) < 1e-6:
                 found.append((min(lo - ph0, 2 * math.pi - (lo - ph0)), e, w))
@@ -831,18 +840,28 @@ def plan_step(step: int, arrows: list[CurvedArrow], overrides: list[ArrowOverrid
     If overrides leave no plan that keeps those side rules, they are dropped. `offset` numbers
     the arrows from there (a resonance step's later lists)."""
     best = None
-    for strict, flips in itertools.product((True, False), itertools.product((False, True), repeat=len(arrows))):
-        if any(f and overrides[k].bow for k, f in enumerate(flips)) or (best and not strict):
-            continue
-        pl = Planner(preset, atoms, bonds, centroids, parts, pluses, strict)
-        out, total = [], (0, 0, 0)
-        for k, a in enumerate(arrows):
-            r = pl.plan(step, offset + k, a, overrides[k], f"curved-arrow-step-{step}-{offset + k}", flips[k])
-            if r is None:
-                break
-            out.append(r[0])
-            total = tuple(x + y for x, y in zip(total, r[1]))
-        else:
-            if best is None or total < best[0]:
-                best = (total, out)
+
+    def search(pl: Planner, k: int, out: list, total: tuple) -> None:
+        """Depth first over the flips in itertools.product order, so arrows share their planned
+        prefix and the first plan among ties still wins. Scores never go negative, so a prefix
+        already no better than the best can't lead to a better plan."""
+        nonlocal best
+        if best is not None and total >= best[0]:
+            return
+        if k == len(arrows):
+            best = (total, out)
+            return
+        for flip in (False, True):
+            if flip and overrides[k].bow:
+                continue
+            saved = (dict(pl.bond_sides), dict(pl.meet_sides), set(pl.used_sets), len(pl.done))
+            r = pl.plan(step, offset + k, arrows[k], overrides[k], f"curved-arrow-step-{step}-{offset + k}", flip)
+            if r is not None:
+                search(pl, k + 1, out + [r[0]], tuple(x + y for x, y in zip(total, r[1])))
+            pl.bond_sides, pl.meet_sides, pl.used_sets = saved[:3]
+            del pl.done[saved[3]:]
+
+    for strict in (True, False):
+        if best is None:
+            search(Planner(preset, atoms, bonds, centroids, parts, pluses, strict), 0, [], (0, 0, 0))
     return best[1]
