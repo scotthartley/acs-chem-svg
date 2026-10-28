@@ -56,7 +56,7 @@ SPECS = ["examples/m1_smiles_x1.0.yaml", "examples/m1_smiles_x0.8.yaml", "exampl
          "examples/m2_sequence_x1.0.yaml", "examples/m2_sequence_x0.8.yaml", "examples/m2_sequence_x0.6.yaml",
          "examples/m2_scheme_basic_x1.0.yaml", "examples/m2_scheme_basic_x0.8.yaml", "examples/m2_scheme_basic_x0.6.yaml",
          "examples/m2_scheme_multi_x1.0.yaml", "examples/m2_scheme_multi_x0.8.yaml", "examples/m2_scheme_multi_x0.6.yaml",
-         "examples/m2_suzuki_x1.0.yaml", "examples/m2_stages_x1.0.yaml",
+         "examples/m2_suzuki_x1.0.yaml", "examples/m2_stages_x1.0.yaml", "examples/m2_stages3_x1.0.yaml",
          "examples/m2_equilibrium_x1.0.yaml", "examples/m2_equilibrium_x0.8.yaml", "examples/m2_equilibrium_x0.6.yaml",
          "examples/m3_sn2_x1.0.yaml", "examples/m3_sn2_x0.8.yaml", "examples/m3_sn2_x0.6.yaml",
          "examples/m3_e2_x1.0.yaml", "examples/m3_carbonyl_addition_x1.0.yaml",

@@ -11,7 +11,7 @@ scheme_basic_x* and scheme_multi_x*, user decision 2026-10-24):
 - Conditions: above, stacked upward with the last baseline conditions_above_baseline above
   the axis; below, stacked downward from conditions_below_baseline. Line pitch from
   richtext.line_pitch. Centered on tail -> notch; stages (numbered) left-justified with their
-  ink at tail + multistep_indent.
+  ink at tail + multistep_indent, the first ⌈n/2⌉ above and the rest below.
 - Arrow length = max(arrow_min_length, widest line + 2 conditions_pad + head_inset), or for
   stages max(min, indent + widest + pad + head_inset).
 - Equilibrium arrows (a step's arrow_type, arrows.equilibrium_arrow): the same rules, with the

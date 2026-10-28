@@ -98,7 +98,6 @@ from .preset import available, load_preset
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 ArrowType = Literal["forward", "equilibrium", "equilibrium_products", "equilibrium_reactants"]  # arrows.ARROW_TYPES
-MAX_STAGES = 2  # multistep arrows with more stages are unmeasured (acs-style.md §6 Open)
 LABEL_TEXT = re.compile(r"^[A-Z][a-z]?'*$")  # a generic atom label: X, R, Nu, R'
 
 
@@ -294,7 +293,7 @@ class Step(BaseModel):
     to: Names
     above: Names | None = None  # conditions above the arrow, one string per line
     below: Names | None = None
-    stages: list[str] | None = None  # "1. ..." above and "2. ..." below, left-justified
+    stages: list[str] | None = None  # numbered, left-justified: the first ⌈n/2⌉ above, the rest below
     arrow_type: ArrowType = "forward"  # the step's arrow: forward, or equilibrium (balanced or favoring one side)
     arrows: list[CurvedArrow] = Field(default_factory=list)  # M3 curved arrows, drawn on the reactants
     omit: list[str] = Field(default_factory=list)  # products the bookkeeping uses but the drawing leaves out
@@ -315,9 +314,8 @@ class Step(BaseModel):
         if self.stages is not None:
             if self.above is not None or self.below is not None:
                 raise ValueError("give either stages or above/below, not both")
-            if not 1 <= len(self.stages) <= MAX_STAGES:
-                raise ValueError(f"stages: {len(self.stages)} given; 1 to {MAX_STAGES} are supported "
-                                 "(more stages are unmeasured, acs-style.md §6 Open)")
+            if not self.stages:
+                raise ValueError("stages: give at least one")
         return self
 
     @model_validator(mode="after")
@@ -356,7 +354,8 @@ class Step(BaseModel):
         """(above, below) text lines; stages are numbered."""
         if self.stages:
             numbered = [f"{i}. {t}" for i, t in enumerate(self.stages, 1)]
-            return numbered[:1], numbered[1:]
+            k = (len(numbered) + 1) // 2  # first ⌈n/2⌉ above (user decision 2026-10-28)
+            return numbered[:k], numbered[k:]
         return _names(self.above), _names(self.below)
 
 

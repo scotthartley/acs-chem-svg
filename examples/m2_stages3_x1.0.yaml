@@ -1,0 +1,8 @@
+# A three-stage arrow (user decision 2026-10-28): the first ⌈n/2⌉ stages above, the rest below.
+# Iodobenzene from scheme_multi_x1.0's template; the boronic acid from SMILES.
+preset: acs1996
+species:
+  iodobenzene: {molfile: templates/m2/scheme_multi_x1.0__12.mol}
+  boronic_acid: {smiles: "OB(O)c1ccccc1"}
+steps:
+  - {from: iodobenzene, to: boronic_acid, stages: ["*n*-BuLi, THF, −78 °C", "B(OMe)3", "H3O+"]}

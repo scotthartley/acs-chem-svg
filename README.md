@@ -26,7 +26,7 @@ and `.png` files:
   and bonds as shared dot pairs, or as electrons assigned to atoms by formal charge or
   oxidation state.
 - **Schemes:** reaction and equilibrium arrows (balanced or favoring one side) with conditions
-  above and below (true subscripts and superscripts, italics), two-stage arrows, plus signs, bold compound numbers, products
+  above and below (true subscripts and superscripts, italics), multistep arrows, plus signs, bold compound numbers, products
   aligned to their reactants, rows wrapped to a page width.
 - **Mechanisms:** two-electron and fishhook curved arrows, lone pairs, radicals, charges
   (plain or circled ⊕/⊖, multiple charges such as 2+, display texts such as +3), and
@@ -111,8 +111,7 @@ When something goes wrong, Claude appends a note to `issues/inbox.md` in the rep
 
 ## Limits
 
-- Not yet supported: explicit CH₂/CH labels on internal carbons, carbenes, more than
-  two stages on one arrow, catalytic cycles.
+- Not yet supported: explicit CH₂/CH labels on internal carbons, carbenes, catalytic cycles.
 - Lewis structures: no rings, no atoms with more than four neighbors (PCl₅), and not inside
   schemes yet.
 - Curved-arrow placement is automatic with a few semantic overrides (bow side, curvature);

@@ -54,8 +54,14 @@ def test_unused_and_repeated_species():
 def test_stages():
     s = spec([{"from": "a", "to": "b", "stages": ["*n*-BuLi", "H3O+"]}], species={k: SPECIES[k] for k in "ab"})
     assert s.steps[0].lines() == (["1. *n*-BuLi"], ["2. H3O+"])
-    with pytest.raises(ValidationError, match="1 to 2 are supported"):
-        spec([{"from": "a", "to": "b", "stages": ["x", "y", "z"]}], species={k: SPECIES[k] for k in "ab"})
+    def lines(n):
+        return spec([{"from": "a", "to": "b", "stages": list("wxyz"[:n])}],
+                    species={k: SPECIES[k] for k in "ab"}).steps[0].lines()
+    assert lines(1) == (["1. w"], [])
+    assert lines(3) == (["1. w", "2. x"], ["3. y"])
+    assert lines(4) == (["1. w", "2. x"], ["3. y", "4. z"])
+    with pytest.raises(ValidationError, match="give at least one"):
+        spec([{"from": "a", "to": "b", "stages": []}], species={k: SPECIES[k] for k in "ab"})
     with pytest.raises(ValidationError, match="either stages or above/below"):
         spec([{"from": "a", "to": "b", "stages": ["x"], "above": "y"}], species={k: SPECIES[k] for k in "ab"})
 

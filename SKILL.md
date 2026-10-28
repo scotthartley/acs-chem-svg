@@ -27,7 +27,7 @@ Run every command as `uv run --project <repo> python <repo>/scripts/<script> ...
      a trailing `+`/`−` is a superscript (H3O+); `*n*-BuLi` is italic; `\` escapes.
    - Use only the conditions the user gave. A reagent named in the request (BnBr) goes over
      the arrow unless the user wants it drawn and numbered.
-   - Several lines: `above: [line1, line2]`. Two-stage arrows: `stages: ["*n*-BuLi, THF, −78 °C", "H3O+"]`.
+   - Several lines: `above: [line1, line2]`. Multistep arrows: `stages: ["*n*-BuLi, THF, −78 °C", "H3O+"]`.
    - Reversible steps: `arrow_type: equilibrium` (⇌), `equilibrium_products` / `equilibrium_reactants`
      (unbalanced). `arrow_head: standard` (top level) gives ChemDraw's smaller default head at ×1.0.
    - Products are aligned to the species they come from. Orient only the first species of each
@@ -120,7 +120,6 @@ steps:
 
 ## Known limits (raise errors rather than guess)
 
-- At most 2 stages per arrow.
 - Explicit CH₂/CH labels on internal carbons, carbenes.
 - Lewis structures: rings, more than 4 neighbors (PCl₅), Lewis species in schemes.
 - Condensed labels other than the listed abbreviations (CH₃Cl as text), aromatic circles.

@@ -261,7 +261,7 @@ box, and our head is symmetric.
 | Arrow length = max(min, widest line + 2 pad + head inset) | min 40 / 31.5 / 23.5 | 39.5 | 31.6 | 23.72 | 39.5–112.5 (6) | `arrow_min_length` (shortest reference arrow) |
 | Conditions pad (tail → first origin; end of advance → notch, widest line) | 2.5 / 2.0 / 1.5 | 2.33 | (1.505) | (0.752) | 0.82–6.04 (10) | `conditions_pad`; ×0.8/×0.6 from ×1.0 × k (their text overhangs: ChemDraw scaled text about its anchor) |
 | Conditions horizontal | advance center on the tail → notch midpoint | median offset −0.28 (advance), −0.13 (ink) | | | −1.28 to +0.58 (13) | rule |
-| Multistep stages ("1." above, "2." below): ink left of each line after the tail | 3.0 / 2.5 / 2.0 | 3.195 | 2.553 | 1.921 | 3.192 / 3.197 | `multistep_indent` |
+| Multistep stages ("1." above, "2." below; n stages: first ⌈n/2⌉ above, rest below, user decision 2026-10-28): ink left of each line after the tail | 3.0 / 2.5 / 2.0 | 3.195 | 2.553 | 1.921 | 3.192 / 3.197 | `multistep_indent` |
 | Above: axis − last baseline | 5.5 / 4.5 / 3.5 | 5.444 | 4.361 | 3.278 | 3.89–7.18 (6) | `conditions_above_baseline` |
 | Below: first baseline − axis | 11.5 / 9.5 / 7.0 | 11.638 | 9.312 | 6.982 | 11.36–12.61 (6) | `conditions_below_baseline` |
 | Structure vertical: ring centers (rows where every structure has a ring; else ink centers) above the axis | 0 / 0 / 0 | 0.25 | 0.20 | 0.155 | ring −0.25 (19); ink −0.25 to −0.30 (3) | `center_above_axis` |
@@ -559,8 +559,10 @@ Rules (M4; unmeasured, user decisions 2026-10-25, flagged at review):
    whether the rule is about subscripts or about ink.
 10. ~~**Right-justified abbreviations** (MeO–, BnO–).~~ **Resolved (abbrev_x*, 2026-10-27, §3.5):**
     all 21 abbreviations measured in both forms at every preset.
-11. **Multistep arrows with more than 2 stages** (where "3." goes): not in the references; the
-    spec allows at most 2.
+11. ~~**Multistep arrows with more than 2 stages** (where "3." goes).~~ **Resolved by user
+    decision (2026-10-28):** the first ⌈n/2⌉ stages go above the arrow, the rest below (3 → 1, 2 /
+    3; 4 → 1, 2 / 3, 4), each at the same indent and line pitch; no upper limit. Not in the
+    references.
 12. **Italic at ×0.8 / ×0.6:** the scaled scheme_multi files have an upright n in n-BuLi, so
     the italic run is measured at ×1.0 only.
 13. **Wrapping and width limits** (multi-row schemes, conditions wider than a page column).

@@ -68,6 +68,18 @@ def test_multistep_left_justified():
     assert any(r.style == "italic" and r.text == "n" for r in st.above[0].runs)
 
 
+def test_three_stages():
+    lay = scheme("m2_stages3_x1.0")
+    st = lay.steps[0]
+    s = lay.preset.scheme
+    assert [ln.text[:2] for ln in st.above] == ["1.", "2."] and [ln.text[:2] for ln in st.below] == ["3."]
+    assert st.above[0].baseline < st.above[1].baseline < st.tail[1] < st.below[0].baseline
+    assert st.above[-1].baseline == pytest.approx(st.tail[1] - s.conditions_above_baseline)
+    for ln in st.above + st.below:
+        assert ln.ink()[0] - st.tail[0] == pytest.approx(s.multistep_indent, abs=1e-6)
+        assert ln.x0 + ln.advance + s.conditions_pad <= notch_x(st.tail, st.head, lay.preset) + 1e-6
+
+
 def test_two_line_pitch():
     lay = scheme("m2_suzuki_x1.0")
     st = lay.steps[0]
