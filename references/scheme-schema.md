@@ -1,11 +1,11 @@
 # Scheme spec schema
 
-Validated by `src/acs_chem_svg/spec.py` (pydantic). Unknown keys are errors. M2 covers one row of
-species, plus signs, reaction arrows with conditions, and compound numbers. A spec without `steps`
-is an M1 spec: its species are drawn side by side. M3 adds curved arrows, lone pairs and
-radicals; M4 adds resonance brackets, several sequences and wrapping into rows (below).
+Validated by `src/acs_chem_svg/spec.py` (pydantic). Unknown keys are errors. Sections: schemes
+(one row of species, plus signs, reaction arrows with conditions, compound numbers); mechanisms
+(curved arrows, lone pairs, radicals); resonance, sequences and rows; single species (a spec
+without `steps`: its species are drawn side by side), with Lewis structures.
 
-## M2: linear scheme
+## Schemes
 
 ```yaml
 preset: acs1996            # acs1996 (default) | acs1996_x0.8 | acs1996_x0.6
@@ -39,8 +39,8 @@ align: auto                # or false: every species on its own layout
 | `align` | `auto` \| `false` | `false` turns alignment off for the whole scheme. |
 | `labels` | map number → symbol | Draw a generic atom (X, Y, R, Nu, R′ as `R'`): `labels: {9: X}` draws atom 9 as X in every species. Write a real element with the same bonds, H count and electrons as its stand-in in the SMILES (`[Cl:9]` for a radical X·, `[H:6][Cl:9]` for HX); the electron bookkeeping uses the stand-in. Each map number must be on some atom. |
 
-An aligned species can't also set `orientation` (set `align: false` to orient it yourself). Each
-species is drawn once; give a repeated compound a second name.
+An aligned species can't also set `orientation` (set `align: false` to orient it yourself). A
+species named again is drawn again as a copy (see "repeated names" under Resonance, sequences, rows).
 
 ### Conditions text
 
@@ -60,7 +60,7 @@ layers): `species-<name>`, `plus-<i>`, `arrow-step-<n>`, `conditions-step-<n>` (
 `-below`), `numbers` (with `number-<name>`). `scripts/validate.py` checks the schema, the
 chemistry, and overlaps.
 
-## M3: mechanisms
+## Mechanisms
 
 ```yaml
 preset: acs1996
@@ -68,7 +68,7 @@ species:
   hydroxide: {smiles: "[H][O-:1]"}
   mebr:      {smiles: "[CH3:2][Br:3]", show_carbons: terminal}
   methanol:  {smiles: "[OH:1][CH3:2]", show_carbons: terminal}
-  bromide:   {smiles: "[Br-:3]", show_lone_pairs: [3]}
+  bromide:   {smiles: "[Br-:3]"}
 steps:
   - from: [hydroxide, mebr]
     to: [methanol, bromide]
@@ -108,9 +108,9 @@ what the arrows do give, one paste-ready line per molecule, named after the decl
 it shares the most atoms with (`?`: none does, so add a species):
 
 ```
-step 1 (hydroxide, mebr ->): the arrows give (paste to replace the products):
+step 1 (hydroxide, mebr ->): the arrows give (paste them if they are the products you meant; if not, fix the arrows):
   suggested: methanol: {smiles: "[OH:1][CH3:2]"}
-  suggested: bromine: {smiles: "[Br-:3]"}
+  suggested: bromide: {smiles: "[Br-:3]"}
 ```
 
 `validate.py --suggest` prints these for every step with arrows (and each resonance list:
@@ -148,7 +148,7 @@ starts from the default (`bow: left` when it already bows left changes nothing).
   `margin_width` to a label; dots overlapping bonds, labels, charges or each other, or a pair
   straddling a bond.
 
-## M4: resonance, several sequences, wrapping
+## Resonance, sequences, rows
 
 ```yaml
 layout: {width: 504}                       # pt; default: the preset's scheme.wrap_width (504 = 7 in)
@@ -197,7 +197,7 @@ Drawing (acs-style.md §3.4, §4.3):
 - **Groups:** `row-<r>` (only with several rows), `bracket-step-<n>` (`-left`, `-right`),
   `resonance-arrow-step-<n>-<k>`, `numbers-row-<r>` (several rows; else `numbers`).
 
-## M1: single-species spec
+## Single species
 
 ```yaml
 preset: acs1996

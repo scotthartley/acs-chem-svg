@@ -1,17 +1,9 @@
 ---
 name: acs-chem-svg
-description: Draw chemical structures, reaction schemes, and arrow-pushing mechanisms in ACS (ChemDraw ACS Document 1996) style as editable SVG, with a PNG preview Claude inspects before delivering. Use when the user asks to draw a molecule, a reaction scheme, a mechanism with curved arrows, or resonance structures.
+description: Draw chemical structures, Lewis structures, reaction schemes, and arrow-pushing mechanisms in ACS (ChemDraw ACS Document 1996) style as editable SVG, with a PNG preview Claude inspects before delivering. Use when the user asks to draw a molecule, a Lewis structure, a reaction scheme, a mechanism with curved arrows, or resonance structures.
 ---
 
 # acs-chem-svg
-
-> **Status: M5. Single structures, schemes, arrow-pushing mechanisms and resonance work** (all
-> three presets): rings, bonds, wedges, labels with H counts and charges, abbreviations (OMe,
-> OBn, CO₂Me, NO₂, Ph, …), reaction arrows with conditions, plus signs, bold compound numbers,
-> products aligned to their reactants, curved arrows (2e⁻ and fishhook), lone pairs and
-> radicals with electron bookkeeping, resonance brackets with ↔ arrows, several sequences, and
-> rows wrapped to a width (504 pt by default). Product suggestions, species reused by name, and
-> a map-number overlay help turn a one-sentence request into a spec.
 
 `<repo>` is this skill's directory: the target of the project's `.claude/skills/acs-chem-svg` symlink.
 Run every command as `uv run --project <repo> python <repo>/scripts/<script> ...`.
@@ -38,52 +30,55 @@ Run every command as `uv run --project <repo> python <repo>/scripts/<script> ...
    - Several lines: `above: [line1, line2]`. Two-stage arrows: `stages: ["*n*-BuLi, THF, −78 °C", "H3O+"]`.
    - Reversible steps: `arrow_type: equilibrium` (⇌), `equilibrium_products` / `equilibrium_reactants`
      (unbalanced). `arrow_head: standard` (top level) gives ChemDraw's smaller default head at ×1.0.
-   - Products are aligned to the species they come from. Orient only the first species (and
-     separate reactants) with `orientation: {rotate: …, flip_h: …}`; `align: false` opts out.
+   - Products are aligned to the species they come from. Orient only the first species of each
+     sequence (and separate reactants) with `orientation: {rotate: …, flip_h: …}`; `align: false` opts out.
    - Without `steps`, the species are drawn side by side (single structures).
    - `kekule: ["1=2", ...]` (atom maps) chooses the Kekulé form; `show_carbons: terminal`
      labels CH₃; a molfile from `templates/` keeps its layout.
    - Lewis structures (every atom labeled, bonds as dot pairs): `lewis: true`, or
      `lewis: {electrons: formal_charge | oxidation_state}`; see `references/scheme-schema.md`.
-   - Charges: ±2 or more draws "2+"; `charges: {circled: true}` (spec) or `circled_charges` (species)
-     circles ±1 signs; `charge_labels: {1: "+3"}` (species, by atom map) draws a text, display only.
+   - Charges: `charges: {circled: true}` (spec) or `circled_charges` (species) circles ±1 signs;
+     `charge_labels: {1: "+3"}` (species, by atom map) draws a text, display only.
 2. **Validate:** `scripts/validate.py spec.yaml`. Fix the spec until it prints OK (schema,
    RDKit chemistry, abbreviations, electron bookkeeping, overlaps, curved arrows crossing
    bonds or labels, dots on bonds, conditions wider than their arrow).
-3. **Render:** `scripts/render.py spec.yaml --out DIR [--crops]` writes `spec.svg` and
+3. **Render:** `scripts/render.py spec.yaml --out DIR [--crops] [--maps]` writes `spec.svg` and
    `spec.png` (4 px/pt; `--px-per-pt 10` for close inspection) and prints the drawing size.
-   `--crops` adds 16 px/pt crops of every curved arrow, charged or dotted label, ↔ arrow,
-   equilibrium arrow end and bracket corner. `--affinity` writes for Affinity (separate arrowhead shapes, bold/italic face names).
+   `--crops` adds 16 px/pt crops of curved arrows, charged or dotted labels, ↔ arrows,
+   equilibrium arrow ends and bracket corners.
 4. **Inspect** the PNG (and crops): orientation of the first species, label sides, double-bond
    sides, wedges, charges, conditions centered on their arrows, numbers on one line; for
    mechanisms, that each arrow leaves its lone pair or bond and points at its target.
 5. **Adjust** the spec only (orientation, abbreviations, line breaks, `align`, `overrides`),
-   never the SVG. Stop after about 5 visual iterations and report what is left.
-6. **Deliver** `.svg` (editable text, named groups; verified in Inkscape; `--affinity` for
-   Affinity, which drops marker arrowheads), `.yaml`, `.png`. Mention a fallback-font warning.
-
-## From a request (mechanisms)
-
-Worked example and common mistakes: `references/workflow.md`.
-1. Write the steps in words (who attacks what, what leaves).
-2. Assign map numbers once, in a table, to every atom that moves or is an arrow end; keep them
-   for the whole scheme. Map the H atoms that move as atoms (`[H:17]`).
-3. Write the reactants and each step's arrows.
-4. Write rough products, run `validate.py --suggest`, and paste the `suggested:` lines.
-5. **Account for every product.** An acid/base that only gives or takes a proton goes `over:`
-   the arrow; its conjugate (AcOH from AcO−) and the acid/base regenerated last are `omit:`ted
-   without text. Omit other products the next step doesn't use, a loss worth noting written on
-   the arrow ("−H2O", "−AcO−"): `above:`, or `below:` a → with a structure over it; never below ⇌.
-6. Render with `--maps` (map numbers beside the atoms, preview only): it shows which end of
-   each species faces its partner.
-7. Orient, render, inspect. Reuse a species by name when it appears again: each later
-   occurrence is its own copy. Keep the user's preset (default acs1996); three rows is fine.
+   never the SVG. At most 3 tries per curved arrow and 5 render rounds overall; then deliver
+   and report what is left.
+6. **Deliver** `.svg` (editable text, named groups; `--affinity` writes for Affinity: separate
+   arrowhead shapes, bold/italic face names), `.yaml`, `.png`. Mention a fallback-font warning.
 
 ## Mechanisms (curved arrows)
 
-Map every atom an arrow touches (`[O-:1]`) and keep the map numbers across the scheme. H atoms
-that move must be written as atoms (`[H:4][CH2:3]…`); a carbon with one H atom draws all its H's.
-Arrows are drawn on the step's reactants:
+Worked example and common mistakes: `references/workflow.md`.
+1. Write the steps in words (who attacks what, what leaves).
+2. Assign map numbers once, in a table, to every atom an arrow touches (`[O-:1]`); keep them
+   for the whole scheme. Map each H that moves as an atom (`[H:4][CH2:3]…`). Writing one of a
+   carbon's H's as an atom draws all of them as bonds, so write only the H that moves.
+3. Write the reactants and each step's arrows (drawn on the step's reactants).
+4. Write rough products, run `validate.py --suggest`, and paste the `suggested:` lines. Every
+   step's arrows must turn its reactants into its products exactly (charges, radicals, bond
+   orders, H moved); the validator's message names the arrow and the atom.
+5. **Account for every product:**
+   - An acid/base that only gives or takes a proton goes `over:` the arrow; its conjugate
+     (AcOH from AcO−) and the acid/base regenerated last are `omit:`ted, without text.
+   - Omit other products the next step doesn't use; note a loss that matters on the arrow
+     (`above: "−H2O"`, or `below:` a → with a structure over it).
+   - Never write text below ⇌ (it reads as the reverse direction).
+6. Render with `--maps` (map numbers beside the atoms, preview only): it shows which end of
+   each species faces its partner.
+7. Orient, render, inspect. `render.py` prints each arrow's default `bow`; if an arrow crosses
+   something, try `overrides` (the other `bow`, then `tail_side`, `curvature`), or turn a species
+   (`orientation`) or swap the reactants (`from: [mebr, hydroxide]`) so the atoms face each other.
+   Keep the user's preset (default acs1996); three rows is fine.
+
 ```yaml
 species:
   hydroxide: {smiles: "[H][O-:1]"}
@@ -102,16 +97,8 @@ overrides:
 - Endpoints: from `lp(n)`, `bond(a-b)` / `bond(a=b)` / `bond(a#b)`, `electron(n)` (a radical);
   to `atom(n)` or `between(a,b)` (a new or stronger bond). Full vocabulary and drawing rules:
   `references/scheme-schema.md` (Mechanisms).
-- Every step's arrows must turn its reactants into its products exactly (charges, radicals,
-  bond orders, H moved). Read the validator's message; it names the arrow and the atom, and
-  on a product mismatch it prints paste-ready `suggested:` products.
 - Generic atoms (X·, R): a stand-in element in the SMILES plus `labels: {9: X}` (map → symbol).
-- Lone pairs are drawn on arrow-tail and arrow-target atoms and on atoms that gain a pair; add
-  others with `show_lone_pairs: [n]` per species. Radicals are always drawn.
-- `render.py` prints each arrow's default `bow`. If an arrow crosses something, try
-  `overrides` (the other `bow`, `curvature`, `tail_side`), or turn a
-  species (`orientation`) so the atoms face each other. Order the reactants so partners sit
-  side by side (`from: [mebr, hydroxide]` swaps them).
+- Lone pairs the arrows don't involve: `show_lone_pairs: [n]` per species.
 
 ## Resonance, sequences, rows
 
@@ -124,19 +111,19 @@ steps:
   - {from: [sigma_c, bisulfate], to: [nitrobenzene, sulfuric], omit: [sulfuric], arrows: [...]}
   - {new_row: true, from: [a, b], to: c}             # another sequence, on a new row
 ```
-- Contributors keep their atom maps and connectivity; give them the same orientation by
-  aligning (the default) and orient only the first.
+- Contributors keep their atom maps and connectivity; they align to the first (orient only it).
+- Reuse a species by name when it appears again: each later occurrence is its own copy.
 - `omit:` products stay in the bookkeeping, out of the drawing; a later step that names one
   adds it. A mechanism step's added reactants (a base) and its `over:` sit above its arrow.
-- Rows break only between steps; a continuation row starts with an arrow, or, after a
-  mechanism step's arrow, with its products. If a step plus a
-  bracket can't fit, raise `layout.width`. Full rules: `references/scheme-schema.md` (M4).
+- Rows break only between steps; if a step plus a bracket can't fit, raise `layout.width`.
+  Full rules: `references/scheme-schema.md` (Resonance, sequences, rows).
 
 ## Known limits (raise errors rather than guess)
 
 - At most 2 stages per arrow.
 - Explicit CH₂/CH labels on internal carbons, carbenes.
 - Lewis structures: rings, more than 4 neighbors (PCl₅), Lewis species in schemes.
+- Condensed labels other than the listed abbreviations (CH₃Cl as text), aromatic circles.
 
 ## Rules
 

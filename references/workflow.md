@@ -1,6 +1,6 @@
 # From a request to a mechanism (worked example)
 
-The order in SKILL.md "From a request", applied to: *"Draw the full arrow-pushing mechanism for
+The procedure in SKILL.md "Mechanisms", applied to: *"Draw the full arrow-pushing mechanism for
 the nitration of benzene with HNO3 and H2SO4."* Commands are `uv run --project <repo> python
 <repo>/scripts/<script>`.
 
@@ -52,11 +52,8 @@ steps:
 
 Benzene needs no `[H:17]`: the H appears in the sigma complex, where it is written as an atom.
 
-Account for every product: the bookkeeping needs all of them in `to`, but a chemist draws only
-the ones the story continues with. A product no later step takes is omitted; the acid or base
-regenerated in the last step (`sulfuric` after the deprotonation) is omitted without text.
 `validate.py` prints a `note:` for each product of a multi-step mechanism that is drawn and
-never used again.
+never used again (see "A product that disappears" below).
 
 ## 4. Rough products, then paste the suggestions
 
@@ -64,8 +61,8 @@ Write each product as any SMILES with the right map numbers, then
 `validate.py --suggest spec.yaml` prints what the arrows give:
 
 ```
-step 1 (nitric, sulfuric ->): the arrows give (paste to replace the products):
-  suggested: nitric_h: {smiles: "[O:1]=[N+:2]([O-:3])[OH+:4][H:10]"}
+step 1 (nitric, sulfuric ->): the arrows give (paste them if they are the products you meant; if not, fix the arrows):
+  suggested: nitric_h: {smiles: "[O:1]=[N+:2]([O-:3])[O+:4]([H:10])[H]"}
   suggested: bisulfate: {smiles: "[O:5]=[S:6](=[O:7])([OH:8])[O-:9]"}
 ```
 
@@ -102,8 +99,8 @@ that is expected.
   acs1996). Rows wrap at 504 pt; a long mechanism takes three rows, and the products alone on
   the last row are fine. Raise `layout.width` only if the user wants a wider figure.
 - **Brute-force override loops.** `render.py` prints each arrow's `bow`; try the other side
-  once, then `tail_side`, then turn a species. If two or three tries fail, deliver and report
-  the arrow, rather than looping.
+  once, then `tail_side`, then turn a species. At most 3 tries per curved arrow and 5 render
+  rounds overall; then deliver and report the arrow, rather than looping.
 - **Unmapped atoms in a product that an arrow changed.** Map every atom an arrow touches, on
   both sides; the mismatch message lists the map numbers found on one side only.
 - **A carbanion or other carbon with lone pairs drawn without a label** (C≡N⁻): its dots sit
@@ -117,9 +114,10 @@ that is expected.
   drawn and never used again leaves the reader looking for it, and the next step's curved
   arrows have to reach across it. Omit it (`omit: [water]`) and, if the loss matters, write it
   on the arrow (`above: "−H2O"`; never below ⇌, where it reads as the reverse direction). The
-  conjugate acid/base of a reagent over the arrow needs no text. If a later step uses it again, name it there: it is added as
-  a reactant (above that step's arrow). An acid or base that only gives or takes a proton goes
-  `over:` the arrow, not inline with "+".
+  conjugate acid/base of a reagent over the arrow, and the acid or base regenerated in the last
+  step (`sulfuric` after the deprotonation), are omitted without text. If a later step uses an
+  omitted product, name it there: it is added as a reactant (above that step's arrow). An acid
+  or base that only gives or takes a proton goes `over:` the arrow, not inline with "+".
 - **Pasting a suggestion that looks wrong.** The suggestions are what the arrows give. If
   they show odd charges (`[OH+:1]`, `[CH3-:2]`), the arrows are wrong, not the products: a
   new bond is `to: between(a,b)`, while `to: atom(b)` makes a lone pair on b.
