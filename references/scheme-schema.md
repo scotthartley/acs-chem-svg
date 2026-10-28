@@ -224,7 +224,7 @@ species:
 | `charges.circled` | bool (default false) | Draw every ±1 sign in a ring (⊕ / ⊖). Unmeasured ring size (`charge.circle_radius`). |
 | `species.<name>.circled_charges` | bool | Overrides `charges.circled` for this species. |
 | `species.<name>.charge_labels` | map: atom-map number → text | Draw this charge text instead of the formal charge: one sign before or after optional digits (`+3`, `2+`, `-`; `-` draws the minus bar). Display only: electron bookkeeping keeps the SMILES charge; a neutral atom draws it too (an oxidation state). Never circled. |
-| `species.<name>.lewis` | `true` \| `{electrons: shared \| formal_charge \| oxidation_state}` | Draw a Lewis structure (below). `true` = `shared`. SMILES only, specs without `steps` only; not with `kekule`, `abbreviate`, `show_carbons` or `show_lone_pairs` (the last two are implied). `orientation.rotate` must be a multiple of 90. |
+| `species.<name>.lewis` | `true` \| `{electrons: shared \| formal_charge \| oxidation_state, bonds: dots \| lines}` | Draw a Lewis structure (below). `true` = `{electrons: shared, bonds: dots}`; `bonds: lines` needs `shared`. SMILES only, specs without `steps` only; not with `kekule`, `abbreviate`, `show_carbons` or `show_lone_pairs` (the last two are implied). `orientation.rotate` must be a multiple of 90. |
 
 Give exactly one of `smiles` or `molfile`. Without `steps`, several species are placed left to
 right with `scheme.plus_gap` between their ink boxes.
@@ -236,6 +236,7 @@ species:
   ccl4:     {smiles: "ClC(Cl)(Cl)Cl", lewis: true}
   co2:      {smiles: "O=C=O", lewis: {electrons: formal_charge}}
   methanol: {smiles: "CO", lewis: {electrons: oxidation_state}}
+  hcn:      {smiles: "C#N", lewis: {bonds: lines}}
 ```
 
 - **Atoms:** every H becomes an atom and every atom is labeled with its bare element symbol
@@ -256,6 +257,10 @@ species:
     electronegative atom (Pauling, `chem.ELECTRONEGATIVITY`) gets all of them, equal atoms
     split. Assigned electrons pack outward from the owner's label like lone pairs (a pair, then
     one dot on the axis if odd). The labels don't move between the three modes.
+  - The `oxidation_state` view also draws each atom's nonzero oxidation state as a charge text
+    (H `+`, C `2−` in CH₃OH); display only, like `charge_labels`, which override it by atom map.
+- **Bonds as lines** (`bonds: lines`, shared only): the same layout, labels and lone pairs, with
+  each bond drawn as ordinary lines between the labels instead of shared-pair dots.
 - **Limits (errors):** rings; atoms with more than 4 neighbors (PCl₅); trees that don't fit
   on the lattice (neopentane); salts written as one SMILES; Lewis species in schemes.
   `validate` reports a triple bond assigned to one atom in `oxidation_state` (its 3 columns

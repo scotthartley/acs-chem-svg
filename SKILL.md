@@ -35,8 +35,8 @@ Run every command as `uv run --project <repo> python <repo>/scripts/<script> ...
    - Without `steps`, the species are drawn side by side (single structures).
    - `kekule: ["1=2", ...]` (atom maps) chooses the Kekulé form; `show_carbons: terminal`
      labels CH₃; a molfile from `templates/` keeps its layout.
-   - Lewis structures (every atom labeled, bonds as dot pairs): `lewis: true`, or
-     `lewis: {electrons: formal_charge | oxidation_state}`; see `references/scheme-schema.md`.
+   - Lewis structures (every atom labeled, bonds as dot pairs): `lewis: true`, `lewis: {bonds: lines}`
+     (bond lines), or `lewis: {electrons: formal_charge | oxidation_state}`; see `references/scheme-schema.md`.
    - Charges: `charges: {circled: true}` (spec) or `circled_charges` (species) circles ±1 signs;
      `charge_labels: {1: "+3"}` (species, by atom map) draws a text, display only.
 2. **Validate:** `scripts/validate.py spec.yaml`. Fix the spec until it prints OK (schema,
@@ -54,9 +54,8 @@ Run every command as `uv run --project <repo> python <repo>/scripts/<script> ...
    and report what is left.
 6. **Deliver** `.svg` (editable text, named groups; `--affinity` writes for Affinity: separate
    arrowhead shapes, bold/italic face names), `.yaml`, `.png`. Mention a fallback-font warning.
-   For ChemDraw, `--cdxml` also writes `.cdxml` (M1–M4: species, schemes, mechanisms,
-   abbreviations, resonance brackets; Lewis structures are refused). Report its stderr warnings
-   (circled signs, 2+ / 2−, `charge_labels` and atom maps are written as plain chemistry).
+   For ChemDraw, `--cdxml` also writes `.cdxml` for every spec kind (M1–M4, Lewis structures,
+   abbreviations, charges). Report its stderr warnings (atom maps are not written).
 
 ## Mechanisms (curved arrows)
 

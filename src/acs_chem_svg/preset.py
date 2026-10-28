@@ -158,6 +158,7 @@ class Scheme(_Section):
 
 class Cdxml(_Section):
     charge_box_dx: float  # charge <graphic> BoundingBox second point, center x minus this (acs-style.md §13)
+    circled_box_dx: float  # the same for CirclePlus / CircleMinus (charges_lewis_x*; ChemDraw sizes the ring from it)
     electron_box_dx: float  # radical <graphic> (Electron) BoundingBox second point, dot x minus this (§13.2)
     lone_pair_box_reach: float  # fragment BoundingBox beyond a lone-pair dot center (§13.2)
     electron_box_reach: float  # fragment BoundingBox beyond a radical dot center (§13.2)

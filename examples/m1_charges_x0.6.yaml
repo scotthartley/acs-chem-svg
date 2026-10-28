@@ -1,5 +1,6 @@
 # M1 charges: circled ±1 signs (charges.circled, with a per-species override), "2+" / "2−" from the
-# SMILES charge, a charge_labels text (+3), and a circled sign beside lone pairs. Unmeasured
+# SMILES charge, a charge_labels text (+3), a circled sign beside lone pairs, and two unpaired
+# electrons (triplet CH2). Ring radius from charges_lewis_x*; placement unmeasured
 # (acs-style.md §2.2, Open 18).
 preset: acs1996_x0.6
 charges: {circled: true}
@@ -12,3 +13,4 @@ species:
   iron: {smiles: "[Fe+2]"}
   oxide: {smiles: "[O-2]"}
   iron_iii: {smiles: "[Fe+2:1]", charge_labels: {1: "+3"}}
+  methylene: {smiles: "[CH2]"}

@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <!DOCTYPE CDXML SYSTEM "https://static.chemistry.revvitycloud.com/cdxml/CDXML.dtd">
-<CDXML CreationProgram="acs-chem-svg 0.3.0" Name="m1_charges_x1.0.cdxml" BoundingBox="2.15 2.10 323.02 31.28" WindowPosition="0 0" WindowSize="0 0" FractionalWidths="yes" InterpretChemically="yes" ShowAtomQuery="yes" ShowAtomStereo="no" ShowAtomEnhancedStereo="yes" ShowAtomNumber="no" ShowResidueID="no" ShowBondQuery="yes" ShowBondRxn="yes" ShowBondStereo="no" ShowTerminalCarbonLabels="no" ShowNonTerminalCarbonLabels="no" HideImplicitHydrogens="no" Magnification="250" LabelFont="21" LabelSize="10" LabelFace="96" CaptionFont="21" CaptionSize="10" HashSpacing="2.50" MarginWidth="1.60" LineWidth="0.60" BoldWidth="2" BondLength="14.40" BondSpacing="18" ChainAngle="120" LabelJustification="Auto" CaptionJustification="Left" AminoAcidTermini="HOH" ShowSequenceTermini="yes" ShowSequenceBonds="yes" ShowSequenceUnlinkedBranches="no" ShowPrimeLabels="no" ResidueWrapCount="40" PrintMargins="36 36 36 36" MacPrintInfo="0003000000480048000000000300024CFFF4FFF4030C02580367052803FB0002000000480048000000000300024C000100000064000000010001010100000001270F000100010000000000000000000000000002001901900000000000400000000000000000000100000000000000000000000000000000" ChemPropName="" ChemPropFormula="Chemical formula: " ChemPropExactMass="Exact mass: " ChemPropMolWt="Molecular weight: " ChemPropMOverZ="m/z: " ChemPropAnalysis="Elemental analysis: " ChemPropBoilingPt="Boiling point: " ChemPropMeltingPt="Melting point: " ChemPropCritTemp="Critical temp: " ChemPropCritPres="Critical pres: " ChemPropCritVol="Critical vol: " ChemPropGibbs="Gibbs energy: " ChemPropLogP="Log P: " ChemPropMR="MR: " ChemPropHenry="Henry's law: " ChemPropEForm="Heat of form: " ChemProptPSA="tPSA: " ChemPropID="" ChemPropFragmentLabel="" color="0" bgcolor="1" RxnAutonumberStart="1" RxnAutonumberConditions="no" RxnAutonumberStyle="Roman" RxnAutonumberFormat="(#)">
+<CDXML CreationProgram="acs-chem-svg 0.3.0" Name="m1_charges_x1.0.cdxml" BoundingBox="2.15 2.10 358.06 31.28" WindowPosition="0 0" WindowSize="0 0" FractionalWidths="yes" InterpretChemically="yes" ShowAtomQuery="yes" ShowAtomStereo="no" ShowAtomEnhancedStereo="yes" ShowAtomNumber="no" ShowResidueID="no" ShowBondQuery="yes" ShowBondRxn="yes" ShowBondStereo="no" ShowTerminalCarbonLabels="no" ShowNonTerminalCarbonLabels="no" HideImplicitHydrogens="no" Magnification="250" LabelFont="21" LabelSize="10" LabelFace="96" CaptionFont="21" CaptionSize="10" HashSpacing="2.50" MarginWidth="1.60" LineWidth="0.60" BoldWidth="2" BondLength="14.40" BondSpacing="18" ChainAngle="120" LabelJustification="Auto" CaptionJustification="Left" AminoAcidTermini="HOH" ShowSequenceTermini="yes" ShowSequenceBonds="yes" ShowSequenceUnlinkedBranches="no" ShowPrimeLabels="no" ResidueWrapCount="40" PrintMargins="36 36 36 36" MacPrintInfo="0003000000480048000000000300024CFFF4FFF4030C02580367052803FB0002000000480048000000000300024C000100000064000000010001010100000001270F000100010000000000000000000000000002001901900000000000400000000000000000000100000000000000000000000000000000" ChemPropName="" ChemPropFormula="Chemical formula: " ChemPropExactMass="Exact mass: " ChemPropMolWt="Molecular weight: " ChemPropMOverZ="m/z: " ChemPropAnalysis="Elemental analysis: " ChemPropBoilingPt="Boiling point: " ChemPropMeltingPt="Melting point: " ChemPropCritTemp="Critical temp: " ChemPropCritPres="Critical pres: " ChemPropCritVol="Critical vol: " ChemPropGibbs="Gibbs energy: " ChemPropLogP="Log P: " ChemPropMR="MR: " ChemPropHenry="Henry's law: " ChemPropEForm="Heat of form: " ChemProptPSA="tPSA: " ChemPropID="" ChemPropFragmentLabel="" color="0" bgcolor="1" RxnAutonumberStart="1" RxnAutonumberConditions="no" RxnAutonumberStyle="Roman" RxnAutonumberFormat="(#)">
   <colortable>
     <color r="1" g="1" b="1"/>
     <color r="0" g="0" b="0"/>
@@ -17,7 +17,7 @@
     <font id="310" charset="x-mac-roman" name="Helvetica Bold"/>
   </fonttable>
   <page id="1" BoundingBox="0 0 540 720" HeaderPosition="36" FooterPosition="36" PrintTrimMarks="yes" HeightPages="1" WidthPages="1">
-    <fragment id="2" BoundingBox="2.15 2.10 37.27 31.28" Z="10">
+    <fragment id="2" BoundingBox="2.15 2.10 38.45 31.28" Z="10">
       <n id="3" p="2.30 27.38" Z="1"/>
       <n id="4" p="14.77 20.18" Z="2" Element="7" NumHydrogens="0" Charge="1" NeedsClean="yes">
         <t p="11.16 23.77" BoundingBox="11.92 16.60 17.62 23.77" LabelJustification="Left">
@@ -37,114 +37,130 @@
       <b id="7" Z="5" B="3" E="4"/>
       <b id="8" Z="6" B="4" E="5" Order="2"/>
       <b id="9" Z="7" B="4" E="6"/>
-      <graphic id="10" BoundingBox="8.64 13.31 1.14 13.31" Z="8" GraphicType="Symbol" SymbolType="Plus">
+      <graphic id="10" BoundingBox="8.05 12.72 0.55 12.72" Z="8" GraphicType="Symbol" SymbolType="CirclePlus">
         <represent attribute="Charge" object="4"/>
       </graphic>
-      <graphic id="11" BoundingBox="34.02 20.32 26.52 20.32" Z="9" GraphicType="Symbol" SymbolType="Minus">
+      <graphic id="11" BoundingBox="34.61 19.73 27.11 19.73" Z="9" GraphicType="Symbol" SymbolType="CircleMinus">
         <represent attribute="Charge" object="6"/>
       </graphic>
     </fragment>
-    <fragment id="12" BoundingBox="53.72 8.42 78.96 24.42" Z="17">
-      <n id="13" p="53.87 24.16" Z="11"/>
-      <n id="14" p="66.34 16.96" Z="12" Charge="1"/>
-      <n id="15" p="78.81 24.16" Z="13"/>
+    <fragment id="12" BoundingBox="54.90 7.83 80.14 25.01" Z="17">
+      <n id="13" p="55.05 24.75" Z="11"/>
+      <n id="14" p="67.52 17.55" Z="12" Charge="1"/>
+      <n id="15" p="79.99 24.75" Z="13"/>
       <b id="16" Z="14" B="13" E="14"/>
       <b id="17" Z="15" B="14" E="15"/>
-      <graphic id="18" BoundingBox="66.34 11.67 58.84 11.67" Z="16" GraphicType="Symbol" SymbolType="Plus">
+      <graphic id="18" BoundingBox="67.52 11.67 60.02 11.67" Z="16" GraphicType="Symbol" SymbolType="CirclePlus">
         <represent attribute="Charge" object="14"/>
       </graphic>
     </fragment>
-    <fragment id="19" BoundingBox="95.27 7.35 127.66 25.62" Z="27">
-      <n id="20" p="127.51 18.02" Z="18"/>
-      <n id="21" p="115.05 25.22" Z="19"/>
-      <n id="22" p="102.57 18.02" Z="20" Element="8" NumHydrogens="0" Charge="-1" NeedsClean="yes">
-        <t p="98.69 21.71" BoundingBox="99.08 14.34 106.07 21.92" LabelJustification="Left">
+    <fragment id="19" BoundingBox="96.45 6.76 128.84 26.21" Z="27">
+      <n id="20" p="128.69 18.61" Z="18"/>
+      <n id="21" p="116.23 25.81" Z="19"/>
+      <n id="22" p="103.75 18.61" Z="20" Element="8" NumHydrogens="0" Charge="-1" NeedsClean="yes">
+        <t p="99.87 22.30" BoundingBox="100.26 14.93 107.25 22.51" LabelJustification="Left">
           <s font="21" size="10" color="0" face="96">O</s>
         </t>
       </n>
       <b id="23" Z="21" B="20" E="21" Order="2"/>
       <b id="24" Z="22" B="21" E="22"/>
-      <graphic id="25" BoundingBox="109.70 10.60 102.20 10.60" Z="23" GraphicType="Symbol" SymbolType="Minus">
+      <graphic id="25" BoundingBox="111.47 10.60 103.97 10.60" Z="23" GraphicType="Symbol" SymbolType="CircleMinus">
         <represent attribute="Charge" object="22"/>
       </graphic>
-      <graphic id="26" BoundingBox="104.45 11.41 100.70 11.41" Z="24" GraphicType="Symbol" SymbolType="LonePair">
+      <graphic id="26" BoundingBox="105.63 12.00 101.88 12.00" Z="24" GraphicType="Symbol" SymbolType="LonePair">
         <represent attribute="Radical" object="22"/>
       </graphic>
-      <graphic id="27" BoundingBox="100.70 24.65 104.45 24.65" Z="25" GraphicType="Symbol" SymbolType="LonePair">
+      <graphic id="27" BoundingBox="101.88 25.24 105.63 25.24" Z="25" GraphicType="Symbol" SymbolType="LonePair">
         <represent attribute="Radical" object="22"/>
       </graphic>
-      <graphic id="28" BoundingBox="96.24 16.15 96.24 19.90" Z="26" GraphicType="Symbol" SymbolType="LonePair">
+      <graphic id="28" BoundingBox="97.42 16.74 97.42 20.49" Z="26" GraphicType="Symbol" SymbolType="LonePair">
         <represent attribute="Radical" object="22"/>
       </graphic>
     </fragment>
-    <fragment id="29" BoundingBox="144.41 7.56 173.49 25.62" Z="32">
-      <n id="30" p="144.41 19.59" Z="28"/>
-      <n id="31" p="158.81 19.59" Z="29" Element="7" NumHydrogens="3" Charge="1" NeedsClean="yes">
-        <t p="155.20 23.18" BoundingBox="155.97 16.01 173.49 25.62" LabelJustification="Left" LabelAlignment="Left">
+    <fragment id="29" BoundingBox="145.59 6.97 174.67 26.21" Z="32">
+      <n id="30" p="145.59 20.18" Z="28"/>
+      <n id="31" p="159.99 20.18" Z="29" Element="7" NumHydrogens="3" Charge="1" NeedsClean="yes">
+        <t p="156.38 23.77" BoundingBox="157.15 16.60 174.67 26.21" LabelJustification="Left" LabelAlignment="Left">
           <s font="21" size="10" color="0" face="96">NH3</s>
         </t>
       </n>
       <b id="32" Z="30" B="30" E="31"/>
-      <graphic id="33" BoundingBox="158.81 10.81 151.31 10.81" Z="31" GraphicType="Symbol" SymbolType="Plus">
+      <graphic id="33" BoundingBox="159.99 10.81 152.49 10.81" Z="31" GraphicType="Symbol" SymbolType="CirclePlus">
         <represent attribute="Charge" object="31"/>
       </graphic>
     </fragment>
-    <fragment id="34" BoundingBox="189.64 2.10 222.20 31.28" Z="42">
-      <n id="35" p="189.79 27.38" Z="33"/>
-      <n id="36" p="202.26 20.18" Z="34" Element="7" NumHydrogens="0" Charge="1" NeedsClean="yes">
-        <t p="198.65 23.77" BoundingBox="199.41 16.60 205.11 23.77" LabelJustification="Left">
+    <fragment id="34" BoundingBox="190.82 2.10 223.38 31.28" Z="42">
+      <n id="35" p="190.97 27.38" Z="33"/>
+      <n id="36" p="203.44 20.18" Z="34" Element="7" NumHydrogens="0" Charge="1" NeedsClean="yes">
+        <t p="199.83 23.77" BoundingBox="200.59 16.60 206.29 23.77" LabelJustification="Left">
           <s font="21" size="10" color="0" face="96">N</s>
         </t>
       </n>
-      <n id="37" p="202.27 5.78" Z="35" Element="8" NumHydrogens="0" NeedsClean="yes">
-        <t p="198.38 9.47" BoundingBox="198.77 2.10 205.76 9.68" LabelJustification="Left">
+      <n id="37" p="203.45 5.78" Z="35" Element="8" NumHydrogens="0" NeedsClean="yes">
+        <t p="199.56 9.47" BoundingBox="199.95 2.10 206.94 9.68" LabelJustification="Left">
           <s font="21" size="10" color="0" face="96">O</s>
         </t>
       </n>
-      <n id="38" p="214.73 27.38" Z="36" Element="8" NumHydrogens="0" Charge="-1" NeedsClean="yes">
-        <t p="210.85 31.07" BoundingBox="211.24 23.70 218.23 31.28" LabelJustification="Left">
+      <n id="38" p="215.91 27.38" Z="36" Element="8" NumHydrogens="0" Charge="-1" NeedsClean="yes">
+        <t p="212.03 31.07" BoundingBox="212.42 23.70 219.41 31.28" LabelJustification="Left">
           <s font="21" size="10" color="0" face="96">O</s>
         </t>
       </n>
       <b id="39" Z="37" B="35" E="36"/>
       <b id="40" Z="38" B="36" E="37" Order="2"/>
       <b id="41" Z="39" B="36" E="38"/>
-      <graphic id="42" BoundingBox="197.41 14.60 189.91 14.60" Z="40" GraphicType="Symbol" SymbolType="Plus">
+      <graphic id="42" BoundingBox="198.59 14.60 191.09 14.60" Z="40" GraphicType="Symbol" SymbolType="Plus">
         <represent attribute="Charge" object="36"/>
       </graphic>
-      <graphic id="43" BoundingBox="220.23 21.60 212.73 21.60" Z="41" GraphicType="Symbol" SymbolType="Minus">
+      <graphic id="43" BoundingBox="221.41 21.60 213.91 21.60" Z="41" GraphicType="Symbol" SymbolType="Minus">
         <represent attribute="Charge" object="38"/>
       </graphic>
     </fragment>
-    <fragment id="44" BoundingBox="238.45 10.26 256.92 22.92" Z="45">
-      <n id="45" p="240.65 19.15" Z="43" Element="26" NumHydrogens="0" Charge="2" NeedsClean="yes">
-        <t p="237.59 22.73" BoundingBox="238.45 15.56 248.83 22.92" LabelJustification="Left" LabelAlignment="Left">
+    <fragment id="44" BoundingBox="239.63 10.26 258.10 22.92" Z="46">
+      <n id="45" p="241.83 19.15" Z="43" Element="26" NumHydrogens="0" Charge="2" NeedsClean="yes">
+        <t p="238.77 22.73" BoundingBox="239.63 15.56 250.01 22.92" LabelJustification="Left" LabelAlignment="Left">
           <s font="21" size="10" color="0" face="96">Fe</s>
         </t>
       </n>
-      <graphic id="46" BoundingBox="252.89 12.89 245.39 12.89" Z="44" GraphicType="Symbol" SymbolType="Plus">
-        <represent attribute="Charge" object="45"/>
-      </graphic>
+      <graphic id="46" BoundingBox="256.13 12.89 248.63 12.89" Z="44" GraphicType="Symbol" SymbolType="Plus"/>
     </fragment>
-    <fragment id="47" BoundingBox="273.17 10.15 288.25 23.13" Z="48">
-      <n id="48" p="276.67 19.23" Z="46" Element="8" NumHydrogens="0" Charge="-2" NeedsClean="yes">
-        <t p="272.78 22.92" BoundingBox="273.17 15.55 280.16 23.13" LabelJustification="Left">
+    <fragment id="48" BoundingBox="274.35 10.15 289.43 23.13" Z="50">
+      <n id="49" p="277.85 19.23" Z="47" Element="8" NumHydrogens="0" Charge="-2" NeedsClean="yes">
+        <t p="273.96 22.92" BoundingBox="274.35 15.55 281.34 23.13" LabelJustification="Left">
           <s font="21" size="10" color="0" face="96">O</s>
         </t>
       </n>
-      <graphic id="49" BoundingBox="284.22 12.78 276.72 12.78" Z="47" GraphicType="Symbol" SymbolType="Minus">
-        <represent attribute="Charge" object="48"/>
-      </graphic>
+      <graphic id="50" BoundingBox="287.47 12.78 279.97 12.78" Z="48" GraphicType="Symbol" SymbolType="Minus"/>
     </fragment>
-    <fragment id="50" BoundingBox="304.50 10.20 323.02 22.98" Z="51">
-      <n id="51" p="306.70 19.21" Z="49" Element="26" NumHydrogens="0" Charge="2" NeedsClean="yes">
-        <t p="303.65 22.80" BoundingBox="304.50 15.63 314.89 22.98" LabelJustification="Left" LabelAlignment="Left">
+    <fragment id="52" BoundingBox="305.68 10.20 324.20 22.98" Z="54">
+      <n id="53" p="307.88 19.21" Z="51" Element="26" NumHydrogens="0" Charge="2" NeedsClean="yes">
+        <t p="304.83 22.80" BoundingBox="305.68 15.63 316.07 22.98" LabelJustification="Left" LabelAlignment="Left">
           <s font="21" size="10" color="0" face="96">Fe</s>
         </t>
       </n>
-      <graphic id="52" BoundingBox="318.97 12.89 311.47 12.89" Z="50" GraphicType="Symbol" SymbolType="Plus">
-        <represent attribute="Charge" object="51"/>
+      <graphic id="54" BoundingBox="318.07 12.89 310.57 12.89" Z="52" GraphicType="Symbol" SymbolType="Plus"/>
+    </fragment>
+    <fragment id="56" BoundingBox="340.20 9.08 358.06 24.10" Z="58">
+      <n id="57" p="343.37 16.60" Z="55" NumHydrogens="2" Radical="Singlet" NeedsClean="yes">
+        <t p="339.76 20.28" BoundingBox="340.20 12.91 358.06 22.58" LabelJustification="Left" LabelAlignment="Left">
+          <s font="21" size="10" color="0" face="96">CH2</s>
+        </t>
+      </n>
+      <graphic id="58" BoundingBox="343.38 9.98 335.88 9.98" Z="56" GraphicType="Symbol" SymbolType="Electron">
+        <represent attribute="Radical" object="57"/>
+      </graphic>
+      <graphic id="59" BoundingBox="343.38 23.20 335.88 23.20" Z="57" GraphicType="Symbol" SymbolType="Electron">
+        <represent attribute="Radical" object="57"/>
       </graphic>
     </fragment>
+    <t id="47" p="249.80 15.53" BoundingBox="250.04 10.26 253.66 15.53" Z="45" LineHeight="auto">
+      <s font="21" size="7.5" color="0">2</s>
+    </t>
+    <t id="51" p="281.14 15.42" BoundingBox="281.37 10.15 285.00 15.42" Z="49" LineHeight="auto">
+      <s font="21" size="7.5" color="0">2</s>
+    </t>
+    <t id="55" p="320.35 15.45" BoundingBox="320.53 10.20 324.20 15.59" Z="53" LineHeight="auto">
+      <s font="21" size="7.5" color="0">3</s>
+    </t>
   </page>
 </CDXML>

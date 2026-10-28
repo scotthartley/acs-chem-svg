@@ -1,0 +1,14 @@
+# M1 Lewis structures with bond lines (lewis: {bonds: lines}): every atom labeled, lone pairs as dots.
+preset: acs1996_x0.8
+species:
+  ccl4: {smiles: "ClC(Cl)(Cl)Cl", lewis: {bonds: lines}}
+  methanol: {smiles: "CO", lewis: {bonds: lines}}
+  co2: {smiles: "O=C=O", lewis: {bonds: lines}}
+  hcn: {smiles: "C#N", lewis: {bonds: lines}}
+  n2: {smiles: "N#N", lewis: {bonds: lines}}
+  ammonium: {smiles: "[NH4+]", lewis: {bonds: lines}}
+  cyanide: {smiles: "[C-]#N", lewis: {bonds: lines}}
+  nitric_oxide: {smiles: "[N]=O", lewis: {bonds: lines}}
+  acetic_acid: {smiles: "CC(=O)O", lewis: {bonds: lines}, orientation: {flip_h: true}}
+  hydronium: {smiles: "[OH3+]", lewis: {bonds: lines}}
+  nitrate: {smiles: "[O-][N+](=O)[O-]", lewis: {bonds: lines}}

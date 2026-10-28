@@ -688,7 +688,10 @@ class Drawer:
                        ((1.0, 1.0), (x1 + c.labeled_offset_x + ex, y1 - c.labeled_offset_y + ey)),  # nitro N⁺: a lower corner
                        ((-1.0, 1.0), (x0 - c.labeled_offset_x - ex, y1 - c.labeled_offset_y + ey))]
             chosen = None
-            for limit in (CHARGE_CORNER_DEG, CHARGE_CORNER_MIN_DEG):
+            # a Lewis lattice puts every bond 45° from each corner: the upper right, as the user
+            # placed every sign in charges_lewis_x* (user review 2026-10-28: consistent placement)
+            limits = (CHARGE_CORNER_MIN_DEG,) if self.mol.lewis else (CHARGE_CORNER_DEG, CHARGE_CORNER_MIN_DEG)
+            for limit in limits:
                 chosen = next(((d, p) for d, p in corners if spare(unit(d)) >= limit - 1e-9), None)
                 if chosen:
                     break
@@ -750,8 +753,9 @@ class Drawer:
                    default=math.inf)
 
     def bond_lines(self, i: int) -> list[tuple[Point, Point, float]]:
-        """(a, b, half width) of the lines drawn for atom i's bonds (none in a Lewis structure)."""
-        if self.mol.lewis:
+        """(a, b, half width) of the lines drawn for atom i's bonds (none in a Lewis structure
+        with dots for bonds)."""
+        if self.mol.lewis and not self.mol.lewis_lines:
             return []
         lw, out = self.preset.lengths.line_width, []
         for _, b in self.mol.neighbors(i):
@@ -879,8 +883,9 @@ class Drawer:
     # ---------------------------------------------------------------- Lewis bond electrons
 
     def lewis_dot_sets(self) -> list[DotSet]:
-        """Each bond's electrons in a Lewis structure (mol.lewis), in bond order."""
-        if self.mol.lewis is None:
+        """Each bond's electrons in a Lewis structure (mol.lewis), in bond order; none when its
+        bonds are lines (mol.lewis_lines)."""
+        if self.mol.lewis is None or self.mol.lewis_lines:
             return []
         if self._bond_dots is None:
             self._bond_dots = [ds for b in self.mol.bonds for ds in self.bond_dots(b)]
@@ -1004,7 +1009,7 @@ class Drawer:
 
     def draw(self, name: str) -> Group:
         lw = self.preset.lengths.line_width
-        geoms = {} if self.mol.lewis else {b.idx: self.bond_geometry(b) for b in self.mol.bonds}
+        geoms = {} if self.mol.lewis and not self.mol.lewis_lines else {b.idx: self.bond_geometry(b) for b in self.mol.bonds}
         bonds = Group(f"species-{name}-bonds")
         for line, closed, bis in self.chains(geoms):
             src = "bond:" + ",".join(self.mol.bonds[bi].id for bi in bis)

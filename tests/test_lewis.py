@@ -273,3 +273,28 @@ species:
   b: {smiles: "[OH-]"}
 steps: [{from: a, to: b}]
 """))
+
+
+# --------------------------------------------------------------------------- bonds: lines
+
+
+def lines_drawer(smiles, preset=PRESET):
+    return Drawer(chem.from_smiles(smiles, "m", preset.lewis.bond_length, lewis="shared", lewis_lines=True), preset)
+
+
+@pytest.mark.parametrize("smiles", SHARED)
+def test_lines_draw_bonds_not_shared_pairs(smiles):
+    """bonds: lines keeps the dots layout and lone pairs, draws each bond as lines and no shared pair."""
+    d, dots = lines_drawer(smiles), drawer(smiles)
+    assert d.lewis_dot_sets() == []
+    assert [a.p for a in d.mol.atoms] == [a.p for a in dots.mol.atoms]
+    assert d.dot_sets() == dots.dot_sets()
+    g = {c.id.rsplit("-", 1)[-1]: c for c in d.draw("m").children}
+    assert "bonds" in g and "bonding" not in "".join(g)
+    assert check_lewis("m", d) == []
+
+
+def test_lines_need_shared_electrons():
+    with pytest.raises(ValueError, match="bonds: lines"):
+        Spec.model_validate(yaml.safe_load(
+            'preset: acs1996\nspecies: {co2: {smiles: "O=C=O", lewis: {electrons: formal_charge, bonds: lines}}}'))

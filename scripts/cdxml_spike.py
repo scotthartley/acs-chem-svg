@@ -49,7 +49,26 @@ Expand Label), drag a contributor (do the brackets and ↔ steps hold?), and mov
 9. the brackets: BoundingBox and LipSize (phase 2's <graphic> diff), and any <bracketedgroup>
    or objecttag ChemDraw adds (new elements in the re-save).
 
+Phase 4b (--phase 4b, acs-style.md §13.4; files in build/cdxml_spike/phase4b/): render.py
+--cdxml's output for m1_charges (circled signs, 2+ / 2-, +3, triplet CH2), m1_lewis,
+m1_lewis_lines and m1_lewis_assigned (oxidation states). By hand in ChemDraw, besides the
+re-saves (CDXML and SVG): note any warning, drag a Lewis atom and a charged atom (what follows?).
+--diff reports, besides phase 2's items:
+10. the symbols per type, bound or free, with the largest move, and the free digit texts; node
+   Charge / Radical rewrites show in the species attributes.
+
+Draft (--lewis-draft, phase 4b; files in build/cdxml_spike/lewis_draft/): a first draft of the
+charges_lewis_x* reference, for the user to edit in ChemDraw and save as the reference, at each
+preset. Row 1: the charge structures with their bonds, without charges or unpaired electrons
+(ChemDraw's tools place those, so they are measured, not ours read back). Rows 2-4: there is no
+ChemDraw Lewis reference to copy (Open 17), so they are our Lewis drawing in ChemDraw's objects:
+every atom labeled; shared pairs as dots (bonds kept but Visible="no") and as bond lines (lewis:
+{bonds: lines}); formal-charge and oxidation-state views. Each column of two dots is a LonePair
+symbol (shared pairs free, assigned and lone pairs bound to their atom), an odd electron an
+Electron.
+
 Usage: uv run python scripts/cdxml_spike.py [--phase N]          # write the gate files
+       uv run python scripts/cdxml_spike.py --lewis-draft        # the Lewis reference draft
        uv run python scripts/cdxml_spike.py [--phase N] --diff   # after the ChemDraw re-saves
 """
 
@@ -86,7 +105,10 @@ PHASE3_SPECS = ["examples/m3_sn2_x1.0.yaml", "examples/m3_radical_initiation_x1.
 PHASE4A_REFS = ["abbrev_x1.0", "resonance_x1.0", "scheme_wrap_x1.0"]
 PHASE4A_SPECS = ["examples/m1_abbrev_x1.0.yaml", "examples/m4_resonance_x1.0.yaml", "examples/m4_wrap_x1.0.yaml",
                  "examples/m4_nitration_x1.0.yaml", "examples/m2_sequence_x1.0.yaml"]
-PHASES = {"2": (PHASE2_REFS, PHASE2_SPECS), "3": (PHASE3_REFS, PHASE3_SPECS), "4a": (PHASE4A_REFS, PHASE4A_SPECS)}
+PHASE4B_SPECS = ["examples/m1_charges_x1.0.yaml", "examples/m1_lewis_x1.0.yaml", "examples/m1_lewis_lines_x1.0.yaml",
+                 "examples/m1_lewis_assigned_x1.0.yaml"]
+PHASES = {"2": (PHASE2_REFS, PHASE2_SPECS), "3": (PHASE3_REFS, PHASE3_SPECS), "4a": (PHASE4A_REFS, PHASE4A_SPECS),
+          "4b": ([], PHASE4B_SPECS)}
 PAIR_TOL = 0.05  # pt: node positions should survive a re-save unchanged
 NUM_TOL = 0.005
 PARSER = etree.XMLParser(load_dtd=False, no_network=True, remove_blank_text=True)
@@ -125,6 +147,62 @@ def write(phase: str = "1") -> list[Path]:
     for s in SPECS:
         paths.append(OUT / f"{Path(s).stem}.cdxml")
         paths[-1].write_text(spec_cdxml(mr.REPO / s))
+    return paths
+
+
+LEWIS_SHARED = {"methanol": "CO", "co2": "O=C=O", "nitrate": "[O-][N+](=O)[O-]", "hcn": "C#N",
+                "ccl4": "ClC(Cl)(Cl)Cl"}
+LEWIS_ASSIGNED = {"co2_formal": ("O=C=O", "formal_charge"), "hcn_formal": ("C#N", "formal_charge"),
+                  "methanol_ox": ("CO", "oxidation_state"), "water_ox": ("O", "oxidation_state")}
+# the charge items, each written without its charge and radicals: the user places them with
+# ChemDraw's tools (circled signs, 2+ / 2-, a "+3" text, two unpaired electrons)
+DRAFT_CHARGES = {"nitromethane": "C[N+](=O)[O-]", "isopropyl": "C[CH+]C",
+                 "enolate": "C=C[O-:1]", "iron_ii": "[Fe+2]", "oxide": "[O-2]", "iron_iii": "[Fe]",
+                 "methylene": "[CH2]"}
+LEWIS_ROW_GAP = 20.0  # draft layout only, not a style value
+LEWIS_PRESETS = {"x1.0": "acs1996", "x0.8": "acs1996_x0.8", "x0.6": "acs1996_x0.6"}
+
+
+def lewis_draft(out: Path = OUT / "lewis_draft") -> list[Path]:
+    """The charges_lewis draft files (module docstring), one per preset. Never overwrites: the
+    user saved the reference over the first draft (2026-10-28)."""
+    from acs_chem_svg.layout import m1_placed
+    (out / "specs").mkdir(parents=True, exist_ok=True)
+    rows_species = (
+        ("charges", {k: f'smiles: "{v}"' + (", show_lone_pairs: [1]" if ":1]" in v else "")
+                     for k, v in DRAFT_CHARGES.items()}),
+        ("shared", {k: f'smiles: "{v}", lewis: true' for k, v in LEWIS_SHARED.items()}),
+        ("lines", {k: f'smiles: "{v}", lewis: {{bonds: lines}}' for k, v in LEWIS_SHARED.items()}),
+        ("assigned", {k: f'smiles: "{v}", lewis: {{electrons: {m}}}' for k, (v, m) in LEWIS_ASSIGNED.items()}))
+    paths = []
+    for scale, preset in LEWIS_PRESETS.items():
+        species, charges, y = [], [], 0.0
+        for row, items in rows_species:
+            spec = out / "specs" / f"{row}_{scale}.yaml"
+            spec.write_text(f"preset: {preset}\nspecies:\n" + "".join(f"  {k}: {{{v}}}\n" for k, v in items.items()))
+            placed = m1_placed(load_spec(spec), spec.parent)
+            boxes = [p.group.bbox() for p in placed]
+            top, bottom = min(b[1] for b in boxes), max(b[3] for b in boxes)
+            off = (LEWIS_ROW_GAP - min(b[0] for b in boxes), y + LEWIS_ROW_GAP - top)
+            for p in placed:
+                if row == "charges":
+                    charges.append(len(species))
+                species.append((p.mol, p.drawer, add(p.offset, off)))
+            y += LEWIS_ROW_GAP + bottom - top
+        root = etree.fromstring(to_cdxml(species, preset, f"charges_lewis_draft_{scale}.cdxml", warn=lambda m: None).encode())
+        frags = root.find("page").findall("fragment")
+        for i in charges:  # left for the user: charges and unpaired electrons
+            for n in frags[i].findall("n"):
+                n.attrib.pop("Charge", None)
+                n.attrib.pop("Radical", None)
+            for g in frags[i].findall("graphic"):
+                if g.get("SymbolType") in ("Plus", "Minus", "Electron"):
+                    frags[i].remove(g)
+        paths.append(out / f"charges_lewis_draft_{scale}.cdxml")
+        if paths[-1].exists():
+            raise SystemExit(f"{paths[-1].relative_to(mr.REPO)} exists; not overwritten")
+        paths[-1].write_bytes(etree.tostring(root.getroottree(), xml_declaration=True, encoding="UTF-8",
+                                             doctype=root.getroottree().docinfo.doctype, pretty_print=True))
     return paths
 
 
@@ -585,6 +663,30 @@ def ink_diff(ref: str) -> list[str]:
     return [f"  {k:45} {v:.3f}" for k, v in worst.items()] or ["  ink identical"]
 
 
+def symbol_diff(ours_root, theirs_root) -> list[str]:
+    """Phase 4b (module docstring, item 10): the symbols per (SymbolType, bound or free) in ours
+    and the re-save, the largest move of a box's first point (paired by type), and the free
+    <t> texts (charge digits)."""
+    def syms(root):
+        out = collections.defaultdict(list)
+        for g in root.iter("graphic"):
+            if g.get("GraphicType") == "Symbol":
+                out[(g.get("SymbolType"), "bound" if g.find("represent") is not None else "free")].append(
+                    _floats(g.get("BoundingBox"))[:2])
+        return out
+    a, b = syms(ours_root), syms(theirs_root)
+    lines = []
+    for k in sorted(set(a) | set(b)):
+        move = max((min(length(sub(p, q)) for q in b[k]) for p in a[k]), default=0.0) if b[k] else float("nan")
+        lines.append(f"  {k[0]:12} {k[1]:5} ours {len(a[k]):3}  re-save {len(b[k]):3}  largest move {move:.3f}")
+
+    def texts(root):
+        return sorted("".join(x.text or "" for x in t.iter("s")) for t in root.find("page").findall("t"))
+    ta, tb = texts(ours_root), texts(theirs_root)
+    lines.append(f"  free texts: {'the same' if ta == tb else f'{ta} -> {tb}'}")
+    return lines
+
+
 def diff(phase: str = "1") -> int:
     found = False
     out = out_dir(phase)
@@ -603,6 +705,10 @@ def diff(phase: str = "1") -> int:
             print(f"{path.stem}: species attributes")
             for line in attribute_diff(ours, theirs):
                 print(line)
+            if phase == "4b":
+                print(f"{path.stem}: symbols and charge digits")
+                for line in symbol_diff(ours, theirs):
+                    print(line)
             if phase == "4a":
                 print(f"{path.stem}: nicknames")
                 for line in nickname_diff(ours, theirs):
@@ -633,9 +739,14 @@ def diff(phase: str = "1") -> int:
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--diff", action="store_true", help="compare ChemDraw's re-saves with our exports")
-    ap.add_argument("--phase", choices=("1", "2", "3", "4a"), default="1",
+    ap.add_argument("--lewis-draft", action="store_true", help="write the Lewis reference draft (phase 4b)")
+    ap.add_argument("--phase", choices=("1", "2", "3", "4a", "4b"), default="1",
                     help="1: M1 species; 2: M2 schemes; 3: M3 mechanisms; 4a: abbreviations, resonance, wrap")
     args = ap.parse_args(argv)
+    if args.lewis_draft:
+        for p in lewis_draft():
+            print(p.relative_to(mr.REPO))
+        return 0
     if args.diff:
         return diff(args.phase)
     for p in write(args.phase):

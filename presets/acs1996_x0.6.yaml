@@ -37,6 +37,7 @@ nonlinear:
   - lone_pair.dot_spacing           # 3.75 / 2.40 / 2.40
   - lone_pair.gap                   # placement default, each preset from its own 2.14 / 2.29 / 1.06
   - lewis.bond_length               # placement default, each preset from its own lone_pair values (nonlinear)
+  - charge.circle_radius            # 3.59 / 2.89 / 2.24 (charges_lewis_x*): ChemDraw's ring, copied exactly (user decision 2026-10-28)
   - cdxml.charge_box_dx              # 7.5 / 4.8 / 2.7 (= 0.075 x LabelSize^2): CDXML data, not drawn
   - cdxml.electron_box_dx            # 7.5 / 4.8 / 4.8 (mech_basic_x*): CDXML data, not drawn; not charge_box_dx at x0.6
   - cdxml.lone_pair_box_reach        # 0.97 / 0.67 / 0.67 (mech_basic_x*): CDXML data, not drawn
@@ -65,7 +66,6 @@ placement:
   - charge.labeled_offset_x
   - charge.labeled_offset_y
   - charge.above_label
-  - charge.circle_radius
   - charge.digit_gap
   - scheme.arrow_min_length
   - scheme.conditions_pad
@@ -136,7 +136,7 @@ charge:
   labeled_offset_x: 1.0             # placement default (user decision 2026-10-24); x1.0 mean 1.77 x k = 1.06; ChemDraw m1_set_x0.6 N+ was (+1.78, -1.33) for its smaller sign
   labeled_offset_y: -1.0            # placement default (user decision 2026-10-24); x1.0 mean -1.75 x k = -1.05
   above_label: 4.5                  # placement default (user decision 2026-10-24); H on the right (NH3+); unmeasured at x0.6 (labels_x1.0 7.43 x k = 4.46)
-  circle_radius: 2.0                # unmeasured placement default (user decision 2026-10-26); x1.0 3.0 x k = 1.8
+  circle_radius: 2.24               # charges_lewis_x0.6: ChemDraw's CirclePlus / CircleMinus ring, stroke center, stroke 0.5 (measure_refs.py --charges-lewis); user decision 2026-10-28
   digit_scale: 0.75                 # unmeasured (user decision 2026-10-26): the digits of 2+ / +3 at this x label_size, = ratios.superscript_scale
   digit_gap: 0.5                    # unmeasured placement default (user decision 2026-10-26): digit ink to sign bars
 
@@ -214,6 +214,7 @@ scheme:                             # hand-placed in the references (measure_ref
 
 cdxml:                              # CDXML export only (acs-style.md §13); not drawn
   charge_box_dx: 2.7                # charge <graphic> BoundingBox: second point = (center x - this, center y); m1_set_x0.6, mech_basic_x0.6, resonance_x0.6 (measure_refs.py --cdxml-symbols)
+  circled_box_dx: 4.5               # CirclePlus / CircleMinus <graphic> BoundingBox: second point = (center x - this, center y); charges_lewis_x0.6, all four (measure_refs.py --charges-lewis); ChemDraw sizes the drawn ring from it
   electron_box_dx: 4.8              # radical <graphic SymbolType="Electron"> BoundingBox: second point = (dot center x - this, center y); mech_basic_x0.6 (measure_refs.py --cdxml-symbols)
   lone_pair_box_reach: 0.67         # fragment BoundingBox beyond a lone-pair dot center (dot_radius + 0.137); mech_basic_x0.6 (measure_refs.py --cdxml-symbols)
   electron_box_reach: 0.60          # fragment BoundingBox beyond a radical dot center (dot_radius + 0.067); mech_basic_x0.6, one dot per file (Cl·'s, on the left) (measure_refs.py --cdxml-symbols)

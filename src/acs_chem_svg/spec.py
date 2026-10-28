@@ -70,6 +70,7 @@ Lewis structures (M1 only): every atom labeled, bonds on a square lattice drawn 
     species:
       ccl4: {smiles: "ClC(Cl)(Cl)Cl", lewis: true}                  # = {electrons: shared}
       co2:  {smiles: "O=C=O", lewis: {electrons: formal_charge}}     # or oxidation_state
+      hcn:  {smiles: "C#N", lewis: {bonds: lines}}                   # bond lines, lone pairs as dots
 
 Charges: a formal charge of ±1 draws a plain sign, ±2 or more "2+" / "2−". Circled signs (⊕ / ⊖,
 ±1 only) for the whole spec, with a per-species override; charge_labels draws a text instead
@@ -197,6 +198,15 @@ class LewisOptions(BaseModel):
     # shared: each bond as 1-3 shared pairs; formal_charge: each bond's electrons split between its
     # atoms; oxidation_state: all to the more electronegative atom (references/scheme-schema.md)
     electrons: Literal["shared", "formal_charge", "oxidation_state"] = "shared"
+    # dots: shared pairs as dots; lines: bond lines between the labels (shared only)
+    bonds: Literal["dots", "lines"] = "dots"
+
+    @model_validator(mode="after")
+    def _lines_shared(self):
+        if self.bonds == "lines" and self.electrons != "shared":
+            raise ValueError(f"lewis: bonds: lines draws shared pairs as lines; electrons: {self.electrons} "
+                             "needs bonds: dots")
+        return self
 
 
 class ChargeOptions(BaseModel):
@@ -681,7 +691,8 @@ def molecules(spec: Spec, base_dir: Path) -> list[chem.Molecule]:
         if sp.lewis_mode:
             try:
                 mol = chem.from_smiles(sp.smiles, name, preset.lewis.bond_length, rotate_deg=o.rotate,
-                                       flip_h=o.flip_h, flip_v=o.flip_v, lewis=sp.lewis_mode)
+                                       flip_h=o.flip_h, flip_v=o.flip_v, lewis=sp.lewis_mode,
+                                       lewis_lines=sp.lewis.bonds == "lines")
             except ValueError as e:
                 raise ValueError(f"species {name}: {e}") from None
             out.append(with_charges(spec, name, relabel(spec, mol)))

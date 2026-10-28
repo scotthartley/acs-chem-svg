@@ -21,6 +21,7 @@ Usage:
     uv run python scripts/measure_refs.py --equilibrium   # equilibrium arrows, head variants (§3.1, §3.6)
     uv run python scripts/measure_refs.py --cdxml-symbols # charge-symbol <graphic> boxes (§13, CDXML export)
     uv run python scripts/measure_refs.py --cdxml-scheme  # CDXML captions, arrows and steps (§13.1)
+    uv run python scripts/measure_refs.py --charges-lewis # circled signs, symbols, two-electron radicals (§2.2, §13.4)
 """
 
 from __future__ import annotations
@@ -2006,6 +2007,53 @@ def cdxml_symbols(name: str) -> dict:
     return res
 
 
+CHARGES_LEWIS_REFS = ["charges_lewis_x1.0", "charges_lewis_x0.8", "charges_lewis_x0.6"]
+
+
+def charges_lewis(name: str) -> dict:
+    """charges_lewis_x* (the user's edit of cdxml_spike.py --lewis-draft, 2026-10-28; §2.2,
+    §13.4). Per symbol the user added with ChemDraw's tools (circled and plain signs, Electron
+    dots): SymbolType, its attachment, BoundingBox dx, and the ink ChemDraw drew around the box's
+    first point: ring radius (stroke center) and stroke width, bar length and thickness, dot
+    radius. Also each node with Radical or Charge set and its label runs (face 64 = superscript),
+    and the free <t> texts."""
+    doc = load(name)
+    root = etree.parse(str(REF_DIR / f"{name}.cdxml")).getroot()
+
+    def center(sh):
+        if sh.center:
+            return sh.center
+        xs, ys = [q[0] for q in sh.pts], [q[1] for q in sh.pts]
+        return ((min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2)
+    symbols = []
+    for g in root.iter("graphic"):
+        kind = g.get("SymbolType")
+        if g.get("GraphicType") != "Symbol" or kind not in ("CirclePlus", "CircleMinus", "Plus", "Minus", "Electron"):
+            continue
+        x0, y0, x1, y1 = (float(v) for v in g.get("BoundingBox").split())
+        c = (x0 + doc.offset[0], y0 + doc.offset[1])
+        ink = [sh for sh in doc.shapes if length(sub(center(sh), c)) < 0.05]
+        rec = {"symbol": kind, "first": (x0, y0), "dx": round(x0 - x1, 3),
+               "attached": None if g.find("represent") is None else g.find("represent").get("attribute")}
+        for sh in ink:
+            if sh.kind == "stroke":
+                rec["ring_radius"], rec["ring_width"] = round(sh.r, 3), round(sh.width, 3)
+            elif sh.kind == "circle":
+                rec["dot_radius"] = round(sh.r, 3)
+            else:
+                xs, ys = [q[0] for q in sh.pts], [q[1] for q in sh.pts]
+                if max(xs) - min(xs) > max(ys) - min(ys):
+                    rec["bar_length"], rec["bar_thickness"] = round(max(xs) - min(xs), 3), round(max(ys) - min(ys), 3)
+        symbols.append(rec)
+    nodes = [{"id": n.get("id"), "Element": n.get("Element"), "Charge": n.get("Charge"), "Radical": n.get("Radical"),
+              "Warning": n.get("Warning"),
+              "runs": [(s.text, s.get("face")) for s in n.iter("s")]}
+             for n in root.iter("n") if n.get("Radical") or n.get("Charge") or n.get("Warning")]
+    texts = [{"text": "".join(s.text or "" for s in t.iter("s")), "faces": [s.get("face") for s in t.iter("s")],
+              "size": [s.get("size") for s in t.iter("s")]} for t in root.find("page").findall("t")]
+    return {"label_size": float(root.get("LabelSize")), "symbols": symbols, "nodes": nodes, "free_texts": texts}
+
+
 def _cdxml_dots(root, dots: list) -> dict:
     """Lone-pair and radical symbols (§13.2) vs the drawn dot centers (CDXML frame).
     LonePair: BoundingBox = the two dot centers, counterclockwise on screen around the atom
@@ -2191,7 +2239,13 @@ def main(argv=None) -> int:
                     help="equilibrium arrows and arrowhead variants per preset (§3.1, §3.6)")
     ap.add_argument("--cdxml-symbols", action="store_true", help="charge-symbol <graphic> boxes per reference (§13)")
     ap.add_argument("--cdxml-scheme", action="store_true", help="CDXML captions, arrows and steps per reference (§13.1)")
+    ap.add_argument("--charges-lewis", action="store_true",
+                    help="circled signs, symbols and two-electron radicals in charges_lewis_x* (§2.2, §13.4)")
     args = ap.parse_args(argv)
+    if args.charges_lewis:
+        names = args.names or CHARGES_LEWIS_REFS
+        print(json.dumps({n: charges_lewis(n) for n in names}, indent=1, ensure_ascii=False))
+        return 0
     if args.cdxml_scheme:
         names = args.names or CDXML_SCHEME_REFS
         print(json.dumps({n: cdxml_scheme(n) for n in names}, indent=1, ensure_ascii=False))

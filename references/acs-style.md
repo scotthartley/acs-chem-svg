@@ -188,8 +188,8 @@ axis (edges clipped to that band); a **horizontal** bond keeps the whole outline
 | On a labeled atom with bonds near both upper corners (nitro N⁺ in a ring compound) | the first lower corner with no bond within 60° (lower right, then lower left; offsets mirrored down); if every corner has a bond within 60°: the first with none within 45° (m1_set_x*: N⁺ with bonds at 0° and 180° keeps the upper right, as ChemDraw); else on the largest gap's bisector, the corner offset's length beyond the element ink box | | | — | rule (M4, nitration); unmeasured (`draw_mol.CHARGE_CORNER_MIN_DEG`, Open 16) |
 | On an unlabeled C that draws a lone pair or radical (ring carbanion with an arrow from its pair) | the dots keep the largest-gap bisectors (§4.2; the charge does not count as a direction); the charge takes the direction inside the largest bond gap, every 5°, whose ink clears the dots and the atom's drawn bond lines the most, at `unlabeled_distance` or 0.5 pt steps beyond it (up to +2.0) until some direction clears by 1.0; ties go nearest the bisector | | | — | rule (inbox 2026-10-26); unmeasured (`draw_mol.CHARGE_DOT_CLEARANCE`, `CHARGE_DOT_STEP_*`, Open 16) |
 | On a labeled atom that draws lone pairs or radicals (HO⁻, Br⁻, bisulfate O⁻ in m3_sn2, m4_nitration) | the corner is chosen as above; the sign then moves out along that corner's diagonal (straight up for NH₃⁺ / single-atom HO⁻) in 0.5 pt steps, up to +2.0, until its ink clears the dots and the atom's drawn bond lines by 1.0 (`CHARGE_DOT_CLEARANCE`); a charge without dots keeps its corner | | | — | rule (user decision 2026-10-26); unmeasured (`draw_mol.Drawer._charge_clear`, Open 18) |
-| Circled ⊕ / ⊖ (`charges.circled`, `circled_charges`) | the plain bars plus a ring of `circle_radius`, stroked at `bar_thickness`. **Default 3.0** | 2.5 | 2.0 | — | unmeasured placement default (user decision 2026-10-26, Open 18). The starting position moves out by the ring's extra reach beyond a plain sign; a circled sign always runs the clearance search (labeled: along the corner diagonal; unlabeled: the largest-gap search above) |
-| Multiple charges ("2+", "2−") and `charge_labels` texts ("+3") | digits in the label font at `digit_scale` × label size (**0.75**, = `ratios.superscript_scale`), ink `digit_gap` (**0.5**) from the bars, in the written order, the whole centered on the sign position and vertically on the bars; never circled. Positions move out by the extra width / height and run the clearance search | | | — | unmeasured (user decision 2026-10-26, Open 18) |
+| Circled ⊕ / ⊖ (`charges.circled`, `circled_charges`) | the plain bars plus a ring of `circle_radius` (stroke center), stroked at `bar_thickness`: **3.59** | 2.89 | 2.24 | charges_lewis_x\* (ChemDraw's CirclePlus / CircleMinus, all four per file; stroke 0.5; `measure_refs.py --charges-lewis`) | exact ring, copied (user decision 2026-10-28). Placement stays our rule (user decision 2026-10-28; the user's by-eye positions vary): the starting position moves out by the ring's extra reach beyond a plain sign; a circled sign always runs the clearance search (labeled: along the corner diagonal; unlabeled: the largest-gap search above). ChemDraw's bars inside the ring here: 3.93 / 3.27 / 2.60 (it sizes symbols from their CDXML box; §13.4) |
+| Multiple charges ("2+", "2−") and `charge_labels` texts ("+3") | digits in the label font at `digit_scale` × label size (**0.75**, = `ratios.superscript_scale`), ink `digit_gap` (**0.5**) from the bars, in the written order, the whole centered on the sign position and vertically on the bars; never circled. Positions move out by the extra width / height and run the clearance search | | | — | unmeasured (user decision 2026-10-26, Open 18). ChemDraw has no multiple-charge symbol: charges_lewis_x\*' Fe²⁺ is typed into the label as a superscript; the user prefers our digit + drawn sign (2026-10-28) |
 | NH₃⁺ (H on the right) | ⊕ centered above the N: center − atom = (+0.03, −7.43). **Default 7.5** | 6.0 | 4.5 | labels_x1.0 | placement default (`charge.above_label`) |
 
 ## 3. Schemes (source: scheme_basic_x1.0 / x0.8 / x0.6, scheme_multi_x1.0 / x0.8 / x0.6)
@@ -591,21 +591,23 @@ Rules (M4; unmeasured, user decisions 2026-10-25, flagged at review):
     reference with a mechanism inside a bracket (curved arrows on contributors) would settle
     the bracket and gap rules.
 
-17. **Lewis structures** (§12): there is no ChemDraw Lewis reference. The lattice layout,
-    `lewis.bond_length` and the shared/assigned dot positions are unmeasured user decisions
-    (2026-10-26). A ChemDraw Lewis reference (CCl₄, CH₃OH, CO₂, HCN at three presets) would let
-    them be measured.
+17. **Lewis structures** (§12): ChemDraw has no Lewis tool, so no reference can measure them.
+    The lattice layout, `lewis.bond_length` (also the bond-line form's) and the shared/assigned
+    dot positions are user decisions (2026-10-26), approved unchanged in charges_lewis_x\*
+    (2026-10-28).
 
-18. **Charge clearance, circled signs, multiple charges** (§2.2): no reference has a circled
-    ⊕ / ⊖ or a "2+", and the push clear of lone pairs is a rule, not a measurement
-    (`charge.circle_radius`, `digit_scale`, `digit_gap`, `draw_mol.CHARGE_DOT_*`; user decision
-    2026-10-26). A ChemDraw reference at three presets with circled ⊕ / ⊖ and "2+" / "2−" on a
-    labeled atom, an unlabeled carbon, and an O⁻ with its lone pairs would let them be measured.
+18. **Charge clearance, circled signs, multiple charges** (§2.2): ~~no reference has a circled
+    ⊕ / ⊖~~ **ring measured in charges_lewis_x\* (2026-10-28)**: `charge.circle_radius` is
+    ChemDraw's. Still rules, not measurements: where a circled sign sits (the user placed them
+    by eye, inconsistently), the push clear of lone pairs (`draw_mol.CHARGE_DOT_*`), and the
+    digits of "2+" (`digit_scale`, `digit_gap`): ChemDraw has no multiple-charge symbol, and the
+    user prefers our digit + sign to its superscript label text.
 
 20. **CDXML** (§13): ~~what ChemDraw recomputes on open~~ **resolved by the gate,
-    2026-10-28:** it keeps our labels and boxes. Still unknown: whether `cdxml.charge_box_dx`
-    (the second BoundingBox point) matters, and what ChemDraw writes for circled signs, "2+"
-    and lone pairs (a reference with those would settle them; see Open 18).
+    2026-10-28:** it keeps our labels and boxes. ~~Still unknown: whether `cdxml.charge_box_dx`
+    (the second BoundingBox point) matters~~ **it does (charges_lewis_x\*, 2026-10-28):
+    ChemDraw sizes a symbol from it** (Electron dot radius = dx / 9; the user's CH₂ dots at
+    ×0.8 / ×0.6 came out larger for that reason). Circled signs, "2+" and Lewis: §13.4.
 
 ## 7. Design-brief (docs/design.md) discrepancies (references win)
 
@@ -708,18 +710,21 @@ Module `src/acs_chem_svg/draw_mol.py` unless noted.
 
 ## 12. Implemented as (Lewis)
 
-All unmeasured (Open 17): user decisions 2026-10-26, round defaults on the 0.5 pt grid.
+Unmeasured user decisions (2026-10-26), round defaults on the 0.5 pt grid, **approved by the user on 2026-10-28**: charges_lewis_x\* is the user's ChemDraw edit of our draft (`cdxml_spike.py --lewis-draft`), and it keeps every Lewis atom and dot where we put them (`tests/test_cdxml.py::test_charges_lewis_reference_keeps_our_lewis`). That approves the positions; it does not measure them (Open 17).
 
 | Rule | Value | Implementation |
 |---|---|---|
 | Layout: square lattice, one bond length at every order, tree center as root, largest branch straight, H last; non-bonded lattice neighbors avoided where possible | — | `chem.lewis_layout` |
 | `lewis.bond_length` (atom center to center) | 26.5 / 19.5 / 15.5: the smallest 0.5 pt value where 3 columns fit between two Cl or Br labels (first letter centered on both) with the inner dot edges ≥ 2 × `lone_pair.gap` from each element ink box (Br 26.31 / 19.18 / 15.35, Cl 25.50 / 18.53 / 14.86) | `presets/*.yaml` (`placement`, `nonlinear`); `tests/test_lewis.py` rederives it |
 | Shared pairs: `order` columns `dot_spacing` apart along the bond, centered in the gap between the ink boxes; each column two dots `dot_spacing` apart across it | lone_pair values | `draw_mol.Drawer.bond_dots` |
+| Bond lines (`bonds: lines`, shared only; user decision 2026-10-28) | the same lattice, labels and lone pairs; bonds drawn as in any labeled structure, no shared-pair dots | `chem.Molecule.lewis_lines`, `draw_mol.Drawer.draw` / `lewis_dot_sets` |
 | Assigned electrons (`formal_charge`, `oxidation_state`): columns from the owner's ink box, the first `lone_pair.gap` out, then every `dot_spacing`; an odd last electron on the axis | lone_pair values | `draw_mol.Drawer.bond_dots`; Pauling values in `chem.ELECTRONEGATIVITY` |
 | Lone pairs: every atom; sides facing a bond or a non-bonded lattice neighbor stay free | §4.2 rules | `draw_mol.Drawer.label_dots`, `lewis_facing` |
+| Oxidation-state view: each atom's nonzero oxidation state drawn as a charge text (`+`, `2−`, `4+`), display only (formal charges stay in the chemistry); formal-charge view: the formal charges, as on any species | formal charge + Σ over bonds (+order to a more electronegative partner, −order to a less) | `chem.oxidation_states`, `chem.from_smiles` (user decision 2026-10-28, as the user drew them in charges_lewis_x\*) |
+| Charges on a Lewis atom: the upper right corner first (every lattice bond is 45° from each corner, so only the 45° limit applies), then the clearance search | — | `draw_mol.Drawer.charge_center` (user review 2026-10-28: the user put every sign at the upper right, "aim for consistency") |
 | Checks: shared dots ≥ 2 × gap from labels; assigned dots on the owner's half; dot sets ≥ `dot_spacing` apart | — | `geometry_checks.check_lewis` |
 
-## 13. CDXML export (phase 1: M1 species, phase 2: M2 schemes §13.1, phase 3: M3 mechanisms §13.2, phase 4a: abbreviations, resonance, wrap §13.3; source: every reference's .cdxml)
+## 13. CDXML export (phase 1: M1 species, phase 2: M2 schemes §13.1, phase 3: M3 mechanisms §13.2, phase 4a: abbreviations, resonance, wrap §13.3, phase 4b: charges and Lewis §13.4; source: every reference's .cdxml)
 
 `acs_chem_svg.cdxml_writer` writes what ChemDraw writes for its own structures, so ChemDraw can
 edit a figure. These are file conventions, not drawn geometry. They are measured from the CDXML
@@ -901,10 +906,8 @@ Round trip, beyond the tolerances: resonance_x0.8 / x0.6's C+ signs on unlabeled
 1.52 pt below ChemDraw's (hand-placed, `charge.unlabeled_distance`), and resonance_x1.0's one
 mirrored sign box (dx −7.5, §13) is ChemDraw's.
 
-**Not written in phase 4a:** Lewis structures (refused, phase 4b); circled signs and
-`charge_labels` texts (a plain sign with the formal charge), 2+ / 2− (a plain sign with
-`Charge`), a second unpaired electron on an atom: each warns, until the charges_lewis_x\*
-reference (phase 4b).
+**Not written in phase 4a:** Lewis structures, circled signs, `charge_labels` texts, 2+ / 2−
+and a second unpaired electron: written since phase 4b (§13.4).
 
 **Gate (2026-10-28, `scripts/cdxml_spike.py --phase 4a --diff` on the user's ChemDraw 26
 re-saves of all eight files in `build/cdxml_spike/phase4a/`: the round trips of abbrev_x1.0,
@@ -923,3 +926,32 @@ and m2_sequence, x1.0):**
   above. Spec exports cite each caption on its own side and are unchanged.
 - Edit check (user): nicknames expand and contract, contributors drag and brackets move as with
   ChemDraw's own drawings; no problems reported.
+
+### 13.4 Charges and Lewis structures (phase 4b; source: charges_lewis_x1.0 / x0.8 / x0.6)
+
+charges_lewis_x\* is the user's ChemDraw 26 edit (2026-10-28) of `cdxml_spike.py
+--lewis-draft`. Row 1 drew our charge structures without charges, and the user added them with
+ChemDraw's tools. Rows 2–4 drew our Lewis structures in ChemDraw's objects, and the user kept
+them. Measured with `measure_refs.py --charges-lewis`.
+
+| Object | ChemDraw (charges_lewis_x\*) | Written |
+|---|---|---|
+| Circled ⊕ / ⊖ | `<graphic SymbolType="CirclePlus\|CircleMinus">`, `<represent attribute="Charge">`, BoundingBox (center, center x − 7.5 / 6.0 / 4.5, center y); drawn ring 3.59 / 2.89 / 2.24, bars 3.93 / 3.27 / 2.60 | the same; dx `cdxml.circled_box_dx` |
+| Symbol size | ChemDraw draws a symbol from its box dx: Plus / Minus bars 3.93 at dx 7.5, 3.27 at 6.0, 2.60 at 4.5, 2.73 at 4.8, 1.80 at 2.7; Electron dot radius dx / 9 (0.833, 0.667, 0.533, 0.5). A symbol the user adds gets 0.75 × LabelSize; m1_set_x\*'s and mech_basic_x\*'s have their own dx | plain signs and dots keep `charge_box_dx` / `electron_box_dx` (their drawn sizes match §2.2 and §4.2's dots) |
+| 2+ / 2− | no symbol: the user typed "Fe2+" into the label (superscript run, face 64; `Charge="2"` kept), but "O2−" lost the atom ("ChemDraw can't interpret this label": no Element, no Charge; RDKit reads C) | `Charge` ±2; a free Plus / Minus symbol (no `<represent>`) and a free `<t>` "2" at the drawn digits (user decision 2026-10-28) |
+| "+3" (charge_labels) | the user typed "Fe+2" into the label, `Charge="2"` | `Charge` from the SMILES; the sign free, the digits a free `<t>` |
+| Two unpaired electrons (CH₂) | two Electron symbols bound to the node; ChemDraw sets `Radical="Singlet"`; RDKit reads two radical electrons | the same |
+| Lewis, dots for bonds | bonds `Visible="no"`: ChemDraw hides them and keeps the chemistry. Shared pairs: free LonePair symbols, kept | the same |
+| Lewis, bond lines | ordinary bonds, lone pairs bound LonePairs | the same |
+| Assigned electrons | an Electron bound to its owner becomes a radical: ChemDraw set `Radical` on HCN's C (Singlet), N and H (Doublet), and RDKit reads `[H][C]#[N]` | free LonePair / Electron symbols |
+| Oxidation states | the user drew "+" with the charge tool (bound: every H got `Charge="1"`, RDKit reads `[H+]`) and "2−" as free text | free sign plus digits (§2.2); `Charge` unchanged |
+
+ChemDraw flags many Lewis atoms "This atom has an unusual number of lone pairs" (CO₂, nitrate,
+HCN, in both forms), but keeps them. Molecules RDKit reads from the reference (row 1, the user's
+charges): C[N+](=O)[O-], C[CH+]C, C=C[O-], [Fe+2] (twice), C (the broken O²⁻) and [CH2] with two
+radicals.
+
+**Gate (pending):** `scripts/cdxml_spike.py --phase 4b` writes render.py --cdxml's output for
+m1_charges, m1_lewis, m1_lewis_lines and m1_lewis_assigned (x1.0) to
+`build/cdxml_spike/phase4b/`. The user re-saves them in ChemDraw (CDXML and SVG), notes any
+warning, and drags a Lewis atom and a charged atom; `--diff` then compares.

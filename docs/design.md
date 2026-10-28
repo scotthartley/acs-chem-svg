@@ -323,8 +323,9 @@ M1 species, and phase 2, M2 schemes (arrows, conditions, plus signs, numbers, `<
 `<curve>`, lone-pair and radical dots as symbols, §13.2), passed its gate the same day. Phase
 4a, abbreviations (ChemDraw's nickname nodes), resonance ↔ arrows and brackets, and the wrapped
 and multi-row specs that use them (§13.3), is implemented and passed its ChemDraw gate (2026-10-28). Phase
-4b, Lewis structures and the remaining charge forms (circled signs, 2+ / 2−, `charge_labels`),
-waits for the charges_lewis_x\* reference.
+4b, Lewis structures (dots or bond lines) and the remaining charge forms (circled signs, 2+ / 2−,
+`charge_labels`, oxidation states, two unpaired electrons; §13.4, from the user's
+charges_lewis_x\* reference), is implemented; its ChemDraw gate is pending.
 
 ---
 

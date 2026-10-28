@@ -3,15 +3,17 @@ Phase 1: M1 species. Phase 2 (acs-style.md §13.1): M2 schemes, i.e. reaction an
 arrows, conditions, plus signs and compound numbers as captions, and <scheme><step>. Phase 3
 (acs-style.md §13.2): M3 mechanisms, i.e. curved arrows and lone-pair and radical dots. Phase 4a
 (acs-style.md §13.3): abbreviations as nickname nodes, resonance ↔ arrows and brackets, and so
-the wrapped and multi-row specs that use them.
+the wrapped and multi-row specs that use them. Phase 4b (acs-style.md §13.4, charges_lewis_x*):
+circled signs, 2+ / 2- and charge_labels texts, two unpaired electrons, Lewis structures.
 
 The header (root attributes, color and font tables, page) is presets/cdxml/<preset>.xml, and
 each abbreviation's group presets/cdxml/<preset>.nicknames.xml, both copied from the ChemDraw
 references by scripts/cdxml_headers.py; this module types no style numbers. Per species, one
 <fragment>:
 - <n> per atom at its drawn position: Element (atomic number; carbon has none), and on a labeled
-  atom NumHydrogens and NeedsClean="yes", as ChemDraw writes its own labeled atoms; Charge;
-  Radical="Doublet".
+  atom NumHydrogens and NeedsClean="yes", as ChemDraw writes its own labeled atoms; Charge (the
+  SMILES charge, whatever is drawn); Radical="Doublet", or "Singlet" for two unpaired electrons
+  (ChemDraw's own for two Electron dots, charges_lewis_x*' CH2; RDKit reads two radicals).
 - A labeled atom's <t>: the text in CDXML order (NH2 even when drawn H2N), one <s> in the
   header's label font, size and face. p: x is the element symbol's glyph origin, or for a
   right-justified label (H on the left) the end of its advance (labels_x1.0, clearance_x*: -Cl
@@ -30,14 +32,26 @@ references by scripts/cdxml_headers.py; this module types no style numbers. Per 
   <t> is the key text (OMe) in both forms, placed as a label: a right-justified one (drawn MeO)
   has p.x at the end of the drawn text's advance.
 - <b>: Order 2 / 3; wedges Display WedgeBegin / WedgedHashBegin with B at the narrow end
-  (Bond.a). No DoublePosition: ChemDraw places double bonds itself.
-- A charge: <graphic GraphicType="Symbol" SymbolType="Plus|Minus"> with
-  <represent attribute="Charge">, its BoundingBox the sign's center (Drawer.charge_center) and
-  (center x - cdxml.charge_box_dx, center y).
+  (Bond.a). No DoublePosition: ChemDraw places double bonds itself. A Lewis structure drawn with
+  dots for bonds: Visible="no" (ChemDraw hides it; the chemistry stays).
+- A charge (_Writer.charge): <graphic GraphicType="Symbol" SymbolType="Plus|Minus"> with
+  <represent attribute="Charge">, its BoundingBox the bars' center (Drawer.charge_center) and
+  (center x - cdxml.charge_box_dx, center y). Circled: CirclePlus / CircleMinus, dx
+  cdxml.circled_box_dx (ChemDraw sizes the drawn ring from the box). Digits (2+, a
+  charge_labels text such as +3, a Lewis oxidation state): the Plus / Minus symbol free (no
+  <represent>: bound, it would set the node's charge) and a free <t> with the digits at their
+  drawn origin and baseline, digit size, written after the fragments (user decision
+  2026-10-28; ChemDraw has no multiple-charge symbol, and "O2-" typed into a label loses the
+  atom).
 - Dots (phase 3, mech_basic_x*), each bound to its atom by <represent attribute="Radical">: a
   lone pair is <graphic SymbolType="LonePair"> with BoundingBox the two dot centers,
   counterclockwise on screen around the atom; a radical dot SymbolType="Electron", BoundingBox
   (dot center, center x - cdxml.electron_box_dx, center y), and the node keeps Radical.
+- Lewis structures (phase 4b): every atom labeled. A bond's electrons are free symbols: each
+  column of two dots across the bond a LonePair (shared pairs; assigned ones counterclockwise
+  around their owner), an odd assigned electron an Electron. Free, because ChemDraw makes a
+  bound Electron a radical of its atom (charges_lewis_x*' HCN). Bond lines (lewis_lines): plain
+  bonds and no shared pairs.
 
 Scheme objects (phase 2), from the neutral records CdxScheme / CdxArrow / CdxText / CdxStep
 (scheme_records builds them from a SchemeLayout; tests build them from a reference):
@@ -86,10 +100,8 @@ Scheme objects (phase 2), from the neutral records CdxScheme / CdxArrow / CdxTex
 Page order as in the references: fragments, captions, graphics (arrows, then brackets), curves,
 schemes, arrows.
 
-Not written: Lewis structures (CdxmlUnsupported, phase 4b), circled signs and charge_labels texts
-(a plain sign with the formal charge), 2+ / 2- (a plain sign with Charge), a second unpaired
-electron on an atom, atom maps. Each of the last ones warns, except maps in a mechanism
-(CdxScheme.warn_maps): its arrows need them, and the figure never shows them.
+Not written: atom maps. They warn, except in a mechanism (CdxScheme.warn_maps): its arrows
+need them, and the figure never shows them.
 
 Fragment BoundingBox: the drawn ink box (Drawer.draw: stroke widths, second lines, charge signs)
 with the stored label boxes and each dot center plus cdxml.lone_pair_box_reach /
@@ -260,30 +272,14 @@ class _Writer:
             ("regular", font_name), ("italic", f"{font_name} Oblique"), ("bold", f"{font_name} Bold"))}
         self.line_width = float(self.root.get("LineWidth"))
         self.preset_name = preset_name
+        self.digit_texts: list[etree._Element] = []  # charge digits' <t>s, written after the fragments
 
-    def check(self, mol: Molecule, d: Drawer) -> None:
-        name, msgs = mol.name, []
-        if mol.lewis:
-            raise CdxmlUnsupported(f"{name}: Lewis structures are not written to CDXML yet (phase 4b)")
-        if any(a.radicals > 1 for a in mol.atoms):
-            msgs.append(f"{name}: more than one unpaired electron on an atom is not written")
-        for a in mol.atoms:
-            sign = d.charge_sign(a.idx)
-            if sign is None:
-                continue
-            if a.charge_label is not None:
-                msgs.append(f"{name}: charge label {a.charge_label!r} written as the formal charge {a.charge:+d}")
-            elif sign.circled:
-                msgs.append(f"{name}: circled charge written as a plain sign")
-            elif sign.digits:
-                msgs.append(f"{name}: charge {a.charge:+d} written as a plain sign with Charge={a.charge}")
+    def check(self, mol: Molecule) -> None:
         if self.warn_maps and any(a.map for a in mol.atoms):
-            msgs.append(f"{name}: atom maps not written")
-        for m in dict.fromkeys(msgs):  # once per species
-            self.warn(m)
+            self.warn(f"{mol.name}: atom maps not written")
 
     def fragment(self, page, mol: Molecule, d: Drawer, off: Point) -> tuple:
-        self.check(mol, d)
+        self.check(mol)
         frag = etree.SubElement(page, "fragment", {"id": self.ids.new()})
         node_ids, label_boxes = {}, []
         for a in mol.atoms:
@@ -303,8 +299,8 @@ class _Writer:
                 attrs["NumHydrogens"] = str(a.num_h)
             if a.charge:
                 attrs["Charge"] = str(a.charge)
-            if a.radicals == 1:
-                attrs["Radical"] = "Doublet"
+            if a.radicals:  # two Electron symbols: ChemDraw writes Singlet (charges_lewis_x*' CH2)
+                attrs["Radical"] = "Doublet" if a.radicals == 1 else "Singlet"
             if lab is not None:
                 attrs["NeedsClean"] = "yes"
             n = etree.SubElement(frag, "n", attrs)
@@ -316,28 +312,53 @@ class _Writer:
                 attrs["Order"] = str(b.order)
             if b.stereo:
                 attrs["Display"] = {"wedge": "WedgeBegin", "hash": "WedgedHashBegin"}[b.stereo]
+            if mol.lewis and not mol.lewis_lines:  # the dots show the bond; the bond keeps the chemistry
+                attrs["Visible"] = "no"
             etree.SubElement(frag, "b", attrs)
         for a in mol.atoms:
-            sign = d.charge_sign(a.idx)
-            if sign is None:
-                continue
-            cx, cy = d.charge_center(a.idx)
-            cx, cy = cx + off[0], cy + off[1]
-            g = etree.SubElement(frag, "graphic", {
-                "id": self.ids.new(), "BoundingBox": pts(cx, cy, cx - self.preset.cdxml.charge_box_dx, cy),
-                "Z": self.ids.next_z(), "GraphicType": "Symbol", "SymbolType": "Plus" if sign.sign > 0 else "Minus"})
-            etree.SubElement(g, "represent", {"attribute": "Charge", "object": node_ids[a.idx]})
+            if d.charge_sign(a.idx) is not None:
+                self.charge(frag, d, a, off, node_ids[a.idx])
         dot_boxes = self.dots(frag, mol, d, off, node_ids)
         # ChemDraw's fragment box: the drawn ink (strokes, second lines, signs), the stored label
         # boxes, and each dot center plus cdxml.*_box_reach
         drawn = Group("ink", [g for g in d.draw(mol.name).children
-                              if not g.id.endswith(("-labels", "-lone-pairs", "-radicals"))])
+                              if not g.id.endswith(("-labels", "-lone-pairs", "-radicals", "-bonding-pairs", "-bond-electrons"))])
         b = drawn.ink_bbox()
         box = union_box(([(b[0] + off[0], b[1] + off[1], b[2] + off[0], b[3] + off[1])] if b else [])
                         + label_boxes + dot_boxes)
         frag.set("BoundingBox", pts(*box))
         frag.set("Z", self.ids.next_z())
         return box
+
+    def charge(self, frag, d: Drawer, a, off: Point, nid: str) -> None:
+        """Atom a's drawn charge (§13.4). A plain ±1 or circled sign is ChemDraw's symbol bound to
+        the node (<represent attribute="Charge">), box (center, center x - charge_box_dx /
+        circled_box_dx, center y). Digits (2+, charge_labels texts such as +3, oxidation states)
+        are a free Plus / Minus symbol at the bars plus a free <t> with the digits (user decision
+        2026-10-28): ChemDraw has no symbol for them, and a bound sign would set the node's
+        charge. The node's Charge stays the SMILES charge."""
+        sign, cx = d.charge_sign(a.idx), self.preset.cdxml
+        segs, run = sign._layout(d.charge_center(a.idx))
+        p, q = segs[0]
+        c = add(mul(add(p, q), 0.5), off)
+        if sign.circled:
+            sym, dx = ("CirclePlus" if sign.sign > 0 else "CircleMinus"), cx.circled_box_dx
+        else:
+            sym, dx = ("Plus" if sign.sign > 0 else "Minus"), cx.charge_box_dx
+        g = etree.SubElement(frag, "graphic", {"id": self.ids.new(), "BoundingBox": pts(c[0], c[1], c[0] - dx, c[1]),
+                                               "Z": self.ids.next_z(), "GraphicType": "Symbol", "SymbolType": sym})
+        if not sign.digits and a.charge_label is None:
+            etree.SubElement(g, "represent", {"attribute": "Charge", "object": nid})
+        if run is None:
+            return
+        x, y = run[0] + off[0], run[1] + off[1]
+        b = sign.face.text_ink_bounds(sign.digits, sign.size)
+        t = etree.Element("t", {"id": self.ids.new(), "p": pts(x, y),
+                                         "BoundingBox": pts(x + b[0], y - b[3], x + b[2], y - b[1]),
+                                         "Z": self.ids.next_z(), "LineHeight": "auto"})
+        etree.SubElement(t, "s", {"font": self.s_attrs["font"], "size": f"{sign.size:g}",
+                                  "color": self.s_attrs["color"]}).text = sign.digits
+        self.digit_texts.append(t)
 
     def dots(self, frag, mol: Molecule, d: Drawer, off: Point, node_ids: dict) -> list[tuple]:
         """Each atom's lone pairs (LonePair, the two dot centers counterclockwise on screen around
@@ -346,26 +367,45 @@ class _Writer:
         they add to the fragment's."""
         cx = self.preset.cdxml
         boxes = []
-        for i in sorted(d.dot_sets()):
-            a = mol.atoms[i]
-            for ds in d.dot_sets()[i]:
-                if ds.kind == "pair":
-                    p, q = (add(t, off) for t in ds.dots)
-                    u, v = sub(p, add(a.p, off)), sub(q, add(a.p, off))
-                    if u[0] * v[1] - u[1] * v[0] > 0:  # clockwise on screen (y down): swap
-                        p, q = q, p
-                    bb, sym, r = (*p, *q), "LonePair", cx.lone_pair_box_reach
-                    centers = [p, q]
-                elif ds.kind == "radical":
-                    p = add(ds.dots[0], off)
-                    bb, sym, r = (p[0], p[1], p[0] - cx.electron_box_dx, p[1]), "Electron", cx.electron_box_reach
-                    centers = [p]
-                else:
-                    raise CdxmlUnsupported(f"{mol.name}: {ds.kind} dots are Lewis only, not written to CDXML")
-                g = etree.SubElement(frag, "graphic", {"id": self.ids.new(), "BoundingBox": pts(*bb), "Z": self.ids.next_z(),
-                                                       "GraphicType": "Symbol", "SymbolType": sym})
-                etree.SubElement(g, "represent", {"attribute": "Radical", "object": node_ids[i]})
-                boxes += [(c[0] - r, c[1] - r, c[0] + r, c[1] + r) for c in centers]
+
+        def symbol(sym: str, bb: tuple, centers: list[Point], owner: int | None) -> None:
+            g = etree.SubElement(frag, "graphic", {"id": self.ids.new(), "BoundingBox": pts(*bb), "Z": self.ids.next_z(),
+                                                   "GraphicType": "Symbol", "SymbolType": sym})
+            if owner is not None:
+                etree.SubElement(g, "represent", {"attribute": "Radical", "object": node_ids[owner]})
+            r = cx.lone_pair_box_reach if sym == "LonePair" else cx.electron_box_reach
+            boxes.extend((c[0] - r, c[1] - r, c[0] + r, c[1] + r) for c in centers)
+
+        def pair(p: Point, q: Point, around: Point, owner: int | None) -> None:
+            u, v = sub(p, around), sub(q, around)
+            if u[0] * v[1] - u[1] * v[0] > 0:  # clockwise on screen (y down): swap
+                p, q = q, p
+            symbol("LonePair", (*p, *q), [p, q], owner)
+
+        def electron(p: Point, owner: int | None) -> None:
+            symbol("Electron", (p[0], p[1], p[0] - cx.electron_box_dx, p[1]), [p], owner)
+
+        sets = [ds for i in sorted(d.dot_sets()) for ds in d.dot_sets()[i]]
+        for ds in sets + (d.lewis_dot_sets() if mol.lewis else []):
+            i, a = ds.atom, mol.atoms[ds.atom]
+            dots = [add(t, off) for t in ds.dots]
+            if ds.kind == "pair":
+                pair(*dots, add(a.p, off), i)
+            elif ds.kind == "radical":
+                electron(dots[0], i)
+            elif ds.kind in ("shared", "assigned"):
+                # Lewis (§13.4): each column of two dots across the bond a LonePair, an odd
+                # last electron an Electron, all free: ChemDraw turns an Electron bound to a
+                # node into a radical (charges_lewis_x*' HCN)
+                b = mol.bonds[ds.bond]
+                mid = add(mul(add(mol.atoms[b.a].p, mol.atoms[b.b].p), 0.5), off)
+                around = add(a.p, off) if ds.kind == "assigned" else mid
+                for k in range(0, len(dots) - 1, 2):
+                    pair(dots[k], dots[k + 1], around, None)
+                if len(dots) % 2:
+                    electron(dots[-1], None)
+            else:
+                raise CdxmlUnsupported(f"{mol.name}: {ds.kind} dots are not written to CDXML")
         return boxes
 
     def nickname_template(self, mol: Molecule, a) -> etree._Element:
@@ -618,6 +658,7 @@ def to_cdxml(scheme: CdxScheme | list[tuple[Molecule, Drawer, Point]], preset_na
     for mol, d, off in scheme.species:
         boxes.append(w.fragment(page, mol, d, off))
         frag_ids.append(page[-1].get("id"))
+    page.extend(w.digit_texts)
     text_ids = []  # per CdxText, its <t> ids
     for t in scheme.texts:
         written = w.captions(page, t, scheme.offset)

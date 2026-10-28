@@ -68,15 +68,19 @@ they disagree, `acs-style.md` (the ChemDraw references) wins.
   (`examples/m2_*.yaml` … `examples/m4_*.yaml`) or M1 species (`examples/m1_smiles_x*.yaml`). `--crops` adds
   16 px/pt crops of curved arrows, charged or dotted labels, ↔ arrows, equilibrium arrow ends and bracket corners; `--maps` adds
   `<stem>_maps.png` with map numbers beside the atoms (preview only). It prints each curved arrow's bow.
-  `--cdxml` (every spec kind but Lewis structures) adds `<stem>.cdxml` for ChemDraw (`cdxml_writer`, acs-style.md §13).
+  `--cdxml` (every spec kind) adds `<stem>.cdxml` for ChemDraw (`cdxml_writer`, acs-style.md §13).
 - `uv run python scripts/cdxml_headers.py` regenerates the CDXML header templates `presets/cdxml/` from m1_set_x* (caption fonts from scheme_multi_x1.0)
   and the nickname templates `presets/cdxml/<preset>.nicknames.xml` from abbrev_x*.
 - `uv run python scripts/measure_refs.py --cdxml-symbols` prints the charge-symbol boxes per reference (acs-style.md §13),
   and on mech_basic_x* the LonePair / Electron boxes and each fragment box's reach beyond its dots (§13.2).
 - `uv run python scripts/measure_refs.py --cdxml-scheme` prints the CDXML caption, arrow, bracket and step conventions per scheme reference, resonance_x* included (acs-style.md §13.1, §13.3).
-- `uv run python scripts/cdxml_spike.py [--phase 2|3|4a] [--diff]` writes the CDXML gate files to `build/cdxml_spike/`
-  (`phase2/` for schemes, `phase3/` for mechanisms, `phase4a/` for abbreviations, resonance and wrap); `--diff` compares
-  ChemDraw's re-saves (`resaved/`) with them (acs-style.md §13–§13.3, gate).
+- `uv run python scripts/cdxml_spike.py [--phase 2|3|4a|4b] [--diff]` writes the CDXML gate files to `build/cdxml_spike/`
+  (`phase2/` for schemes, `phase3/` for mechanisms, `phase4a/` for abbreviations, resonance and wrap, `phase4b/` for
+  charges and Lewis); `--diff` compares ChemDraw's re-saves (`resaved/`) with them (acs-style.md §13–§13.4, gate).
+  `--lewis-draft` writes `build/cdxml_spike/lewis_draft/charges_lewis_draft_x*.cdxml`, the draft the user edited into
+  the charges_lewis_x* reference (never overwrites).
+- `uv run python scripts/measure_refs.py --charges-lewis` prints charges_lewis_x*'s circled signs, symbol sizes per box,
+  two-electron radicals and label texts (acs-style.md §2.2, §13.4).
 - `uv run python scripts/validate.py [--suggest] spec.yaml` checks schema, chemistry, electron bookkeeping, scheme
   overlaps and mechanism geometry, and prints paste-ready `suggested:` products on a mismatch (`--suggest`: for
   every step). `tests/broken/*.yaml` must each fail with their `# expect:` message.

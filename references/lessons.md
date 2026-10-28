@@ -548,3 +548,26 @@ removed renders pixel-identical to the approved `m4_nitration_x1.0`. Inbox triag
   aliases must expand them (`tests/test_cdxml.py` `_expand_aliases`), or the round trip compares
   O=C(O)… with COC(=O)….
 
+
+## 2026-10-28 (CDXML export, phase 4b: charges and Lewis structures)
+
+- **When ChemDraw has no tool for it, draft and let the user edit.** ChemDraw can't draw Lewis
+  structures, so there was nothing to measure. We wrote our own Lewis structures as ChemDraw
+  objects (`cdxml_spike.py --lewis-draft`); the user kept them, and the reference now approves
+  our positions (a test checks they still match). For anything ChemDraw's tools do place
+  (circled signs, radicals), the draft left the object out so the user's tool placed it:
+  otherwise we would have measured our own numbers back.
+- **The user saved the reference over the draft.** Copy it into `reference_renders/` at once;
+  the draft writer now refuses to overwrite.
+- **A symbol's CDXML box sets its drawn size.** ChemDraw draws Electron dots at radius dx / 9 and
+  sizes signs and rings from dx. The user's CH₂ dots came out larger at ×0.8 / ×0.6 because new
+  symbols get 0.75 × LabelSize. `cdxml.*_box_dx` is drawn geometry after all.
+- **Binding a symbol changes the chemistry.** ChemDraw turns an Electron bound to a node into a
+  radical, and a Plus bound to a node into a charge. Display-only electrons and signs (Lewis
+  bond electrons, oxidation states, "+3", the sign of "2+") must be free symbols, or RDKit reads
+  back a different molecule.
+- **Typing a charge into a label is fragile.** ChemDraw parsed "Fe2+" but not "O2−" (U+2212),
+  and the O atom lost its element.
+- **The user's by-eye placements aim at a rule, not at numbers.** They put every Lewis sign at
+  the upper right. The lattice puts every bond 45° from each corner, so our 60° corner test had
+  scattered the signs around.

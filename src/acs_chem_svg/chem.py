@@ -120,6 +120,7 @@ class Molecule:
     bonds: list[Bond]
     rings: list[list[int]] = field(default_factory=list)  # SSSR, atom indices in ring order
     lewis: str | None = None  # Lewis structure: "shared" | "formal_charge" | "oxidation_state" (draw_mol)
+    lewis_lines: bool = False  # Lewis structure with bond lines instead of shared-pair dots
     circled_charges: bool = False  # ±1 signs drawn in a ring (spec charges.circled / circled_charges)
 
     def neighbors(self, i: int) -> list[tuple[int, Bond]]:
@@ -459,9 +460,10 @@ def _orient_molfile(mol: Chem.Mol, rotate_deg, flip_h: bool, flip_v: bool) -> No
 
 def from_smiles(smiles: str, name: str, bond_length: float, kekule: list[str] | None = None,
                 rotate_deg: float | str | None = "auto", flip_h: bool = False, flip_v: bool = False,
-                abbreviate: list[str] | None = None, lewis: str | None = None) -> Molecule:
+                abbreviate: list[str] | None = None, lewis: str | None = None, lewis_lines: bool = False) -> Molecule:
     """`lewis` (a LEWIS_MODES value): a Lewis structure with every H an atom and every atom
-    labeled, laid out by lewis_layout with `bond_length` as the lattice step (lewis.bond_length)."""
+    labeled, laid out by lewis_layout with `bond_length` as the lattice step (lewis.bond_length);
+    `lewis_lines`: its bonds drawn as lines (shared only)."""
     if lewis is not None:
         mol = Chem.AddHs(parse_smiles(smiles))
         Chem.RemoveStereochemistry(mol)
@@ -471,7 +473,11 @@ def from_smiles(smiles: str, name: str, bond_length: float, kekule: list[str] | 
         m = to_molecule(mol, name, bond_length, scale=1.0)
         for a in m.atoms:
             a.show_label = True
-        m.lewis = lewis
+        m.lewis, m.lewis_lines = lewis, lewis_lines
+        if lewis == "oxidation_state":  # each nonzero oxidation state drawn as a charge text (display only)
+            for a, ox in zip(m.atoms, oxidation_states(m)):
+                if ox:
+                    a.charge_label = f"{abs(ox) if abs(ox) > 1 else ''}{'+' if ox > 0 else '-'}"
         return m
     mol = condense(parse_smiles(smiles, kekule), abbreviate, name)
     layout_2d(mol)
@@ -496,6 +502,26 @@ _RIGHT, _LEFT, _UP, _DOWN = (1, 0), (-1, 0), (0, -1), (0, 1)  # lattice steps, y
 def _atom_name(a: Chem.Atom) -> str:
     return f"{a.GetSymbol()} (map {a.GetAtomMapNum()})" if a.GetAtomMapNum() else \
         f"{a.GetSymbol()} (atom {a.GetIdx() + 1} in the SMILES)"
+
+
+def oxidation_states(m: Molecule) -> list[int]:
+    """Each atom's oxidation state: its formal charge plus, per bond, +order when the other atom
+    is more electronegative (ELECTRONEGATIVITY), -order when less, 0 when equal; the bookkeeping
+    of Lewis oxidation_state (draw_mol.Drawer.bond_dots: the more electronegative atom gets the
+    bond's electrons). User decision 2026-10-28: the oxidation_state view draws them."""
+    def en(a):
+        if a.element not in ELECTRONEGATIVITY:
+            raise ValueError(f"lewis oxidation_state: no electronegativity for {a.element} (atom {a.id}); "
+                             f"known: {', '.join(ELECTRONEGATIVITY)}")
+        return ELECTRONEGATIVITY[a.element]
+    out = [a.charge for a in m.atoms]
+    for b in m.bonds:
+        ea, eb = en(m.atoms[b.a]), en(m.atoms[b.b])
+        if ea != eb:
+            hi, lo = (b.a, b.b) if ea > eb else (b.b, b.a)
+            out[hi] -= b.order
+            out[lo] += b.order
+    return out
 
 
 def lewis_layout(mol: Chem.Mol, bond_length: float, name: str = "") -> None:

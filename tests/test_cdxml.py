@@ -173,19 +173,104 @@ def test_round_trip_sees_wedges():
     assert flipped == _canonical("C[C@H](N)C(=O)O")
 
 
-@pytest.mark.parametrize("spec", ["examples/m1_lewis_x1.0.yaml", "examples/m1_lewis_assigned_x1.0.yaml"])
-def test_unsupported_specs_are_refused(spec):
-    with pytest.raises(CdxmlUnsupported):
-        spec_cdxml(mr.REPO / spec, warn=lambda m: None)
+def test_only_atom_maps_warn():
+    """Since phase 4b every drawn charge, dot and Lewis bond is written; only atom maps warn."""
+    for spec in ("examples/m1_charges_x1.0.yaml", "examples/m1_lewis_assigned_x1.0.yaml"):
+        msgs = []
+        spec_cdxml(mr.REPO / spec, warn=msgs.append)
+        assert all(m.endswith("atom maps not written") for m in msgs), msgs
 
 
-def test_omissions_warn():
-    msgs = []
-    spec_cdxml(mr.REPO / "examples/m1_charges_x1.0.yaml", warn=msgs.append)
-    assert not any("dots" in m for m in msgs)  # written since phase 3
-    assert "nitromethane: circled charge written as a plain sign" in msgs
-    assert "iron_iii: charge label '+3' written as the formal charge +2" in msgs
-    assert len(msgs) == len(set(msgs))
+def _species_frags(text: str) -> list:
+    return etree.fromstring(text.encode()).find("page").findall("fragment")
+
+
+def _symbols(frag, kind=None) -> list:
+    return [g for g in frag.findall("graphic") if g.get("GraphicType") == "Symbol"
+            and (kind is None or g.get("SymbolType") == kind)]
+
+
+def test_charge_objects():
+    """§13.4 on m1_charges_x1.0: circled signs are ChemDraw's CirclePlus / CircleMinus bound to
+    the node, box dx cdxml.circled_box_dx; 2+ / 2- and the +3 label are a free sign plus a free
+    <t> with the digits, the node keeping its SMILES Charge; CH2's two unpaired electrons are two
+    bound Electron symbols with Radical="Singlet", as ChemDraw wrote them."""
+    text = exported("examples/m1_charges_x1.0.yaml")
+    root = etree.fromstring(text.encode())
+    frags = dict(zip(load_spec(mr.REPO / "examples/m1_charges_x1.0.yaml").species, _species_frags(text)))
+    cx = load_preset("acs1996").cdxml
+    nitro = _symbols(frags["nitromethane"])
+    assert sorted(g.get("SymbolType") for g in nitro) == ["CircleMinus", "CirclePlus"]
+    for g in nitro:
+        x0, _, x1, _ = _xy4(g.get("BoundingBox"))
+        assert round(x0 - x1, 3) == cx.circled_box_dx and g.find("represent").get("attribute") == "Charge"
+    assert [g.get("SymbolType") for g in _symbols(frags["plain"])] == ["Plus", "Minus"] or \
+        sorted(g.get("SymbolType") for g in _symbols(frags["plain"])) == ["Minus", "Plus"]
+    texts = ["".join(x.text for x in t.iter("s")) for t in root.find("page").findall("t")]
+    for name, charge, sym in (("iron", "2", "Plus"), ("oxide", "-2", "Minus"), ("iron_iii", "2", "Plus")):
+        (n,) = frags[name].findall("n")
+        assert n.get("Charge") == charge
+        (g,) = _symbols(frags[name])
+        assert g.get("SymbolType") == sym and g.find("represent") is None
+    assert sorted(texts) == ["2", "2", "3"]
+    (ch2,) = frags["methylene"].findall("n")
+    assert ch2.get("Radical") == "Singlet"
+    assert [g.find("represent").get("object") for g in _symbols(frags["methylene"], "Electron")] == [ch2.get("id")] * 2
+
+
+def test_lewis_objects():
+    """§13.4: every atom labeled; dots form: bonds Visible="no" and each shared column a free
+    LonePair; lines form: visible bonds, no shared pairs; assigned electrons free LonePair /
+    Electron symbols (a bound Electron becomes a radical in ChemDraw); oxidation states a free
+    sign plus digits, Charge unchanged."""
+    dots = _species_frags(exported("examples/m1_lewis_x1.0.yaml"))
+    lines = _species_frags(exported("examples/m1_lewis_lines_x1.0.yaml"))
+    for fd, fl in zip(dots, lines):
+        assert all(n.find("t") is not None for n in fd.findall("n"))
+        assert all(b.get("Visible") == "no" for b in fd.findall("b"))
+        assert all(b.get("Visible") is None for b in fl.findall("b"))
+        free = [g for g in _symbols(fd, "LonePair") if g.find("represent") is None]
+        assert len(free) == sum(int(b.get("Order", "1")) for b in fd.findall("b"))
+        assert all(g.find("represent") is not None for g in _symbols(fl))
+    assigned = etree.fromstring(exported("examples/m1_lewis_assigned_x1.0.yaml").encode())
+    frags = dict(zip(load_spec(mr.REPO / "examples/m1_lewis_assigned_x1.0.yaml").species,
+                     assigned.find("page").findall("fragment")))
+    assert all(n.get("Radical") is None for f in frags.values() for n in f.findall("n"))
+    assert all(g.find("represent") is None for g in _symbols(frags["hcn"], "Electron"))
+    assert all(n.get("Charge") is None for n in frags["methanol"].findall("n"))
+    signs = [g.get("SymbolType") for g in _symbols(frags["methanol"]) if g.get("SymbolType") in ("Plus", "Minus")]
+    assert sorted(signs) == ["Minus", "Minus", "Plus", "Plus", "Plus", "Plus"]  # C 2-, O 2-, four H +
+
+
+@needs_refs
+@pytest.mark.parametrize("scale", ["x1.0", "x0.8", "x0.6"])
+def test_charges_lewis_reference_keeps_our_lewis(scale, tmp_path):
+    """charges_lewis_x* is the user's edit of cdxml_spike.py --lewis-draft (2026-10-28): its Lewis
+    rows kept every atom and dot where the draft put them. Our draft today still puts them there
+    (nodes and LonePair / Electron dot centers within 0.015 pt, the files' two decimals), so the reference approves them."""
+    import cdxml_spike
+    ours = etree.parse(str(cdxml_spike.lewis_draft(tmp_path)[["x1.0", "x0.8", "x0.6"].index(scale)])).getroot()
+    ref = etree.parse(str(mr.REF_DIR / f"charges_lewis_{scale}.cdxml")).getroot()
+    skip = len(cdxml_spike.DRAFT_CHARGES)  # row 1: the user's charges
+
+    def items(root):  # per structure, nodes and dot centers relative to its node centroid (rows may shift)
+        out = []
+        for f in root.find("page").findall("fragment")[skip:]:
+            pts_ = [_xy(n.get("p")) for n in f.findall("n")]
+            o = (sum(q[0] for q in pts_) / len(pts_), sum(q[1] for q in pts_) / len(pts_))
+            for g in _symbols(f):
+                if g.get("SymbolType") == "LonePair":
+                    b = _xy4(g.get("BoundingBox"))
+                    pts_ += [b[:2], b[2:]]
+                elif g.get("SymbolType") == "Electron":
+                    pts_.append(_xy(g.get("BoundingBox")))
+            out.append([sub(q, o) for q in pts_])
+        return out
+    got_all, want_all = items(ours), items(ref)
+    assert len(got_all) == len(want_all)
+    for got, want in zip(got_all, want_all):
+        assert len(got) == len(want)
+        assert all(min(math.dist(w, g) for g in got) < 0.015 for w in want)
 
 
 # --------------------------------------------------------------------------- reference diff
@@ -1079,7 +1164,6 @@ RESONANCE_KNOWN = {
     ("resonance_x1.0", "charge box dx", "node 31"): 15.01,
 }
 ALL_SPECS = sorted(str(p.relative_to(mr.REPO)) for p in (mr.REPO / "examples").glob("*.yaml"))
-LEWIS_SPECS = [s for s in ALL_SPECS if "lewis" in s]  # phase 4b
 
 
 @needs_refs
@@ -1158,9 +1242,7 @@ def test_abbreviation_nodes():
 @needs_dtd
 @pytest.mark.parametrize("spec", ALL_SPECS)
 def test_all_spec_exports_validate(spec):
-    """Every example spec exports (phase 4b: Lewis) and passes the DTD, id and citation checks."""
-    if spec in LEWIS_SPECS:
-        pytest.skip("Lewis structures: phase 4b")
+    """Every example spec exports and passes the DTD, id and citation checks."""
     _check_structure(exported(spec))
 
 
@@ -1168,8 +1250,6 @@ def test_all_spec_exports_validate(spec):
 def test_all_spec_round_trips(spec):
     """Every example spec reads back with RDKit as its species (and steps) and raises no
     CdxmlUnsupported."""
-    if spec in LEWIS_SPECS:
-        pytest.skip("Lewis structures: phase 4b")
     if load_spec(mr.REPO / spec).steps:
         test_scheme_rdkit_round_trip(spec)
     else:
