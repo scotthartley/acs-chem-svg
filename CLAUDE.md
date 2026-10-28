@@ -15,7 +15,7 @@ they disagree, `acs-style.md` (the ChemDraw references) wins.
 - Use sessions run `uv run --project ~/Coding/productivity/acs-chem-svg ...`.
 
 - `reference_renders/`, `spike/` and `issues/` are local only (gitignored, not in the public
-  repo). Tests that need `reference_renders/` skip without it, and `scripts/gallery.py` leaves out
+  repo). `reference_renders/cdxml/CDXML.dtd` is Revvity's DTD: never commit it. Tests that need `reference_renders/` skip without it, and `scripts/gallery.py` leaves out
   the ChemDraw-reference cases; keep the folder here so those run before every commit.
 
 ## Rules
@@ -64,16 +64,21 @@ they disagree, `acs-style.md` (the ChemDraw references) wins.
   resonance_x* (with `examples/m4_resonance_x*.yaml`) and scheme_wrap_x* (`examples/m4_wrap_x*.yaml`) add
   bracket and row items. resonance_x* also gets our ↔ arrows and brackets on ChemDraw's. Arrows take the head
   variant of their CDXML HeadSize; equilibrium_x* and arrows_large_x* draw our arrows and captions only.
-- `uv run python scripts/render.py spec.yaml [--out DIR] [--crops] [--maps]` renders a spec: an M2–M4 scheme
+- `uv run python scripts/render.py spec.yaml [--out DIR] [--crops] [--maps] [--cdxml]` renders a spec: an M2–M4 scheme
   (`examples/m2_*.yaml` … `examples/m4_*.yaml`) or M1 species (`examples/m1_smiles_x*.yaml`). `--crops` adds
   16 px/pt crops of curved arrows, charged or dotted labels, ↔ arrows, equilibrium arrow ends and bracket corners; `--maps` adds
   `<stem>_maps.png` with map numbers beside the atoms (preview only). It prints each curved arrow's bow.
+  `--cdxml` (M1 species only) adds `<stem>.cdxml` for ChemDraw (`cdxml_writer`, acs-style.md §13).
+- `uv run python scripts/cdxml_headers.py` regenerates the CDXML header templates `presets/cdxml/` from m1_set_x*.
+- `uv run python scripts/measure_refs.py --cdxml-symbols` prints the charge-symbol boxes per reference (acs-style.md §13).
+- `uv run python scripts/cdxml_spike.py [--diff]` writes the CDXML gate files to `build/cdxml_spike/`; `--diff`
+  compares ChemDraw's re-saves (`build/cdxml_spike/resaved/`) with them (acs-style.md §13, gate).
 - `uv run python scripts/validate.py [--suggest] spec.yaml` checks schema, chemistry, electron bookkeeping, scheme
   overlaps and mechanism geometry, and prints paste-ready `suggested:` products on a mismatch (`--suggest`: for
   every step). `tests/broken/*.yaml` must each fail with their `# expect:` message.
 - `examples/benchmarks/prompts.yaml` holds the M5 one-sentence benchmark prompts with reference specs; its
   README says how a trial is run (frozen copy of the skill, fresh agent, `build/m5_trials/<round>/`).
-- The regression gallery is `tests/test_gallery.py` (part of `uv run pytest`). `scripts/gallery.py` reports which cases
+- The regression gallery is `tests/test_gallery.py` (part of `uv run pytest`), with CDXML text snapshots in `tests/gallery/cdxml/`. `scripts/gallery.py` reports which cases
   differ; `--review DIR` writes the new or changed renders for the user to look at. `--update` rewrites
   `tests/gallery/`; run it only after the user approves the new images.
 - uv commands (including `uv run pytest`) run inside the sandbox; `~/.cache/uv` and `~/.local/share/uv` are allowed.

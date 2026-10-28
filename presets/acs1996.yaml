@@ -35,6 +35,7 @@ nonlinear:
   - lone_pair.dot_spacing           # 3.75 / 2.40 / 2.40
   - lone_pair.gap                   # placement default, each preset from its own 2.14 / 2.29 / 1.06
   - lewis.bond_length               # placement default, each preset from its own lone_pair values (nonlinear)
+  - cdxml.charge_box_dx              # 7.5 / 4.8 / 2.7 (= 0.075 x LabelSize^2): CDXML data, not drawn
   - charge.unlabeled_distance       # placement default, each preset from its own 3.84 / 3.24 / 2.87 (resonance_x*)
 # Fitted or chosen, not measured per preset: kept at the x1.0 value.
 assumed_exempt:
@@ -204,3 +205,6 @@ scheme:                             # hand-placed in the references (measure_ref
   number_gap: 6.5                   # placement default (user decision 2026-10-24); row's lowest structure ink -> number ink top; measured scheme_*_x1.0 median 6.709 (n=11, 6.39-6.87)
   row_gap: 34.5                     # placement default (user decision 2026-10-25); row ink bottom (incl. numbers) -> next row ink top (incl. conditions); measured scheme_wrap_x1.0 34.73 (measure_refs.py --wrap)
   wrap_width: 504.0                 # user decision 2026-10-25 (7 in, ACS double column); rows break between steps to stay within it; layout.width overrides
+
+cdxml:                              # CDXML export only (acs-style.md §13); not drawn
+  charge_box_dx: 7.5                # charge <graphic> BoundingBox: second point = (center x - this, center y); m1_set_x1.0, labels_x1.0, mech_basic_x1.0, resonance_x1.0 (one of resonance_x1.0's three is -7.5) (measure_refs.py --cdxml-symbols)

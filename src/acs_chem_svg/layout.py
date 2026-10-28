@@ -143,17 +143,23 @@ def m1_drawers(spec: Spec, base_dir: Path) -> list[Drawer]:
             for sp, mol in zip(spec.species.values(), molecules(spec, base_dir))]
 
 
-def m1_row(spec: Spec, base_dir: Path, name: str) -> Group:
-    """M1: species side by side, centered vertically, plus_gap between ink boxes."""
+def m1_placed(spec: Spec, base_dir: Path) -> list[Placed]:
+    """M1: species side by side, centered vertically, plus_gap between ink boxes; each with
+    its offset and Drawer (cdxml_writer reads them)."""
     preset = load_preset(spec.preset)
-    groups, x = [], 0.0
-    for d in m1_drawers(spec, base_dir):
-        g = d.draw(d.mol.name)
-        x0, y0, x1, y1 = g.bbox()
-        g.translate(x - x0, -(y0 + y1) / 2)
+    out, x = [], 0.0
+    for name, d in zip(spec.species, m1_drawers(spec, base_dir)):
+        p = Placed(name, d.draw(d.mol.name), d.mol, _ring_centers(d.mol), drawer=d)
+        x0, y0, x1, y1 = p.group.bbox()
+        p.translate(x - x0, -(y0 + y1) / 2)
         x += (x1 - x0) + preset.scheme.plus_gap
-        groups.append(g)
-    return Group(name, groups)
+        out.append(p)
+    return out
+
+
+def m1_row(spec: Spec, base_dir: Path, name: str) -> Group:
+    """M1: the m1_placed species in one group."""
+    return Group(name, [p.group for p in m1_placed(spec, base_dir)])
 
 
 def _ring_centers(mol: Molecule) -> list[Point]:

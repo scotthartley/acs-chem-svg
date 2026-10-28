@@ -479,3 +479,47 @@ removed renders pixel-identical to the approved `m4_nitration_x1.0`. Inbox triag
 - **A reagent above the arrow and a target below the axis** make its curved arrow cross the
   reaction arrow (Perkin: acetate's O⁻ pointing down at the anhydride's lower H). Turning the
   reactant (`flip_v`) so the target faces up fixed both crossings; the validator reports them.
+
+## 2026-10-28 (inbox: cramped curved arrows at a nitro / ring junction)
+
+- **Triaged from issues/inbox.md** (a use session's SNAr Meisenheimer complex, DNFB + methoxide).
+  In the resonance step `lp(9) -> between(9,10)` and the next `bond(9=10) -> between(9,14)` the
+  arrows on the C(ring)–N(nitro) bond came out very short, and the lone-pair arrow nearly touched
+  its dots. Turning one to bow left crossed a ring bond and another arrow, which the validator
+  caught. The session kept the default bow there and set `bow: right, curvature: 0.8` on the
+  other arrow. It was readable but cramped.
+- **No fix yet:** the planner sizes an arrow by its chord, and a lone pair to its own bond, next
+  to a ring, leaves no room for a longer arc that stays clear. A planner change would need a rule
+  for these arrows; there is no ChemDraw reference with a nitro-group resonance arrow to measure
+  one from.
+- **For use sessions:** try `curvature` before `bow` on short arrows at a crowded junction, and
+  re-run validate.py after each override (crossings are reported). If the arrow stays cramped,
+  orient the species (`orientation: {rotate, flip_v}`) so the nitro group points away from
+  the ring's other substituents.
+
+## 2026-10-28 (CDXML export, phase 1 spike)
+
+- **Write what ChemDraw writes, then ask ChemDraw.** The reference CDXMLs show ChemDraw's file
+  conventions, not what it reads back. The writer copies them (acs-style.md §13), and the gate
+  (`scripts/cdxml_spike.py`, Open 20) shows what ChemDraw recomputes on open.
+- **ChemDraw's stored label p is not its drawn baseline.** p.y sits half the first glyph's ink
+  height below the atom: 3.68 for O at 10 pt, 3.59 for N. ChemDraw draws both at 3.585. The label
+  BoundingBox and the fragment box are in that stored frame too. Holding p to ChemDraw's within
+  0.1 pt needed this; the drawn baseline alone missed by 0.10–0.11 pt.
+- **Right-justified p is the end of the element's advance,** not the mirror of the left case.
+  They agree only for one-letter elements (–Cl: +1.11, not +3.61). A one-character label keeps
+  Left justification whichever way its bond points.
+- **The published DTD is from 2003.** libxml2 can't parse its `AS` enumeration as written, and
+  ChemDraw 26 writes two attributes it doesn't declare. Validate the references first, so a
+  failure is known to be ours.
+- **Font ids and object ids are separate namespaces** in ChemDraw's files (clearance_x1.0 has
+  font 21 and bond 21). A uniqueness check over every `id` reports a false duplicate.
+- **`Drawer.draw` shared the label TextRuns with `Drawer.labels`.** Translating the drawn group
+  moved the Drawer's runs but not its `elem_origin`, so a placed Drawer mixed two frames. It
+  now draws copies of the runs; the gallery is unchanged.
+- **Gate result (same day, the user's re-saves):** ChemDraw keeps everything we write, and
+  draws our files exactly as its own. The one label it changed exposed a bug in our SVG output:
+  `h_side` treated alanine's vertical C–OH (off by 1e-4 in the RDKit layout) as pointing right
+  and drew HO. A tie now allows 1e-3. ChemDraw also asked to expand a page that was too narrow,
+  so the writer now sizes the page in whole pages. Charges don't follow a dragged atom, but they
+  don't in ChemDraw's own files either.

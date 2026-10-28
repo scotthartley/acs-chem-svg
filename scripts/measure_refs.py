@@ -19,6 +19,7 @@ Usage:
     uv run python scripts/measure_refs.py --wrap          # multi-row scheme parameters per preset (§3.4)
     uv run python scripts/measure_refs.py --abbrev        # abbreviation labels per preset (§3.5)
     uv run python scripts/measure_refs.py --equilibrium   # equilibrium arrows, head variants (§3.1, §3.6)
+    uv run python scripts/measure_refs.py --cdxml-symbols # charge-symbol <graphic> boxes (§13, CDXML export)
 """
 
 from __future__ import annotations
@@ -1970,6 +1971,32 @@ def abbrev_summary(name: str) -> dict:
 # --------------------------------------------------------------------------- main
 
 
+CDXML_SYMBOL_REFS = ["labels_x1.0", "m1_set_x1.0", "m1_set_x0.8", "m1_set_x0.6",
+                     "mech_basic_x1.0", "mech_basic_x0.8", "mech_basic_x0.6",
+                     "resonance_x1.0", "resonance_x0.8", "resonance_x0.6"]
+
+
+def cdxml_symbols(name: str) -> dict:
+    """Charge symbols (<graphic GraphicType="Symbol" SymbolType="Plus|Minus">) of one reference
+    (§13): the BoundingBox's first point vs the drawn sign's center (_charges, SVG mapped to the
+    CDXML frame), and the second point as (first x - dx, first y + dy). dx_per_size2 is
+    dx / LabelSize^2. The scheme references draw no charges."""
+    doc = load(name)
+    root = etree.parse(str(REF_DIR / f"{name}.cdxml")).getroot()
+    size = float(root.get("LabelSize"))
+    drawn = [sub(c["center"], doc.offset) for c in measure(doc)["charges"]]
+    out = []
+    for g in root.iter("graphic"):
+        if g.get("GraphicType") != "Symbol" or g.get("SymbolType") not in ("Plus", "Minus"):
+            continue
+        x0, y0, x1, y1 = (float(v) for v in g.get("BoundingBox").split())
+        near = min(drawn, key=lambda c: length(sub(c, (x0, y0))), default=None)
+        out.append({"sign": g.get("SymbolType"), "first": (x0, y0),
+                    "first_minus_drawn_center": tuple(round(v, 3) for v in sub((x0, y0), near)) if near else None,
+                    "dx": round(x0 - x1, 3), "dy": round(y1 - y0, 3), "dx_per_size2": round((x0 - x1) / size ** 2, 4)})
+    return {"label_size": size, "symbols": out}
+
+
 def all_names():
     return sorted(p.stem for p in REF_DIR.glob("*.cdxml") if (REF_DIR / f"{p.stem}.svg").exists())
 
@@ -1987,7 +2014,12 @@ def main(argv=None) -> int:
     ap.add_argument("--abbrev", action="store_true", help="abbreviation label parameters per preset (§3.5)")
     ap.add_argument("--equilibrium", action="store_true",
                     help="equilibrium arrows and arrowhead variants per preset (§3.1, §3.6)")
+    ap.add_argument("--cdxml-symbols", action="store_true", help="charge-symbol <graphic> boxes per reference (§13)")
     args = ap.parse_args(argv)
+    if args.cdxml_symbols:
+        names = args.names or CDXML_SYMBOL_REFS
+        print(json.dumps({n: cdxml_symbols(n) for n in names}, indent=1, ensure_ascii=False))
+        return 0
     if args.equilibrium:
         refs = {k: n for k, n in EQUILIBRIUM_REFS.items() if not args.names or n in args.names}
         print(json.dumps({k: equilibrium_summary(n) for k, n in refs.items()}, indent=1, ensure_ascii=False))

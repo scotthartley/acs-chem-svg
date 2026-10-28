@@ -14,8 +14,11 @@ a copy of the SVG text, never into <stem>.svg.
 <marker> (Affinity drops markers on import), and bold/italic text as a bare face name
 ("Helvetica Bold"), which Affinity needs and Inkscape and Chrome can't resolve. The default
 output is for Inkscape and browsers; its markers follow edits.
+--cdxml also writes <stem>.cdxml for ChemDraw (acs_chem_svg.cdxml_writer, acs-style.md §13), in the
+SVG's coordinates. Phase 1: M1 species specs only; abbreviations and Lewis structures are refused,
+and what it leaves out (dots, circled signs, atom maps) is listed on stderr.
 
-Usage: uv run python scripts/render.py spec.yaml [--out DIR] [--px-per-pt 4] [--crops] [--maps] [--affinity]
+Usage: uv run python scripts/render.py spec.yaml [--out DIR] [--px-per-pt 4] [--crops] [--maps] [--affinity] [--cdxml]
 """
 
 from __future__ import annotations
@@ -25,8 +28,10 @@ import math
 import sys
 from pathlib import Path
 
+from acs_chem_svg.cdxml_writer import CdxmlUnsupported, placed_cdxml
 from acs_chem_svg.geometry import union_box
-from acs_chem_svg.layout import SchemeLayout, build_scheme, render_spec
+from acs_chem_svg.layout import SchemeLayout, build_scheme, m1_placed, render_spec
+from acs_chem_svg.scene import Group
 from acs_chem_svg.preview import crops, rasterize, rasterize_file
 from acs_chem_svg.spec import load_spec
 from acs_chem_svg.svg_writer import FONT_FAMILY, PADDING, faces_used, num, to_svg
@@ -108,11 +113,16 @@ def maps_svg(lay: SchemeLayout) -> str:
 
 
 def render(spec_path: Path, out_dir: Path | None = None, px_per_pt: float = 4.0,
-           with_crops: bool = False, with_maps: bool = False, affinity: bool = False) -> list[Path]:
+           with_crops: bool = False, with_maps: bool = False, affinity: bool = False,
+           with_cdxml: bool = False) -> list[Path]:
     spec = load_spec(spec_path)
+    if with_cdxml and spec.steps:
+        raise CdxmlUnsupported("CDXML export covers M1 species only (phase 1)")
     lay = build_scheme(spec, spec_path.parent, spec_path.stem) if spec.steps else None
-    root = lay.root if lay else render_spec(spec_path)
+    placed = m1_placed(spec, spec_path.parent) if with_cdxml else None
+    root = lay.root if lay else Group(spec_path.stem, [p.group for p in placed]) if placed else render_spec(spec_path)
     svg, offset = to_svg(root, affinity=affinity)
+    cdxml = placed_cdxml(placed, offset, spec.preset, f"{spec_path.stem}.cdxml") if placed else None
     out_dir = out_dir or spec_path.parent
     out_dir.mkdir(parents=True, exist_ok=True)
     svg_path = out_dir / f"{spec_path.stem}.svg"
@@ -127,6 +137,10 @@ def render(spec_path: Path, out_dir: Path | None = None, px_per_pt: float = 4.0,
         print(f"  curved arrow step {a.step} index {a.index} ({a.spec.from_} -> {a.spec.to}): bow {a.bow}",
               file=sys.stderr)
     paths = [svg_path, png_path]
+    if cdxml is not None:
+        cdxml_path = out_dir / f"{spec_path.stem}.cdxml"
+        cdxml_path.write_text(cdxml)
+        paths.append(cdxml_path)
     if with_crops and lay:
         paths += crops(svg, crop_boxes(lay, offset), out_dir, prefix=f"{spec_path.stem}_crop_")
     if with_maps and lay:
@@ -148,8 +162,14 @@ def main(argv=None) -> int:
                     help="also write <stem>_maps.png with each mapped atom's map number (preview only)")
     ap.add_argument("--affinity", action="store_true",
                     help="write for Affinity: arrowheads as separate shapes (it drops SVG markers), bold/italic as face names")
+    ap.add_argument("--cdxml", action="store_true", help="also write <stem>.cdxml for ChemDraw (M1 species only)")
     args = ap.parse_args(argv)
-    for p in render(args.spec, args.out, args.px_per_pt, args.crops, args.maps, args.affinity):
+    try:
+        paths = render(args.spec, args.out, args.px_per_pt, args.crops, args.maps, args.affinity, args.cdxml)
+    except CdxmlUnsupported as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 1
+    for p in paths:
         print(p)
     return 0
 

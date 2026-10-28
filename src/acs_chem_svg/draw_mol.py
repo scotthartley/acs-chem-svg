@@ -12,7 +12,7 @@ from __future__ import annotations
 import itertools
 import math
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 from . import richtext
 from .chem import ABBREVIATIONS_REVERSED, ELECTRONEGATIVITY, Bond, Molecule
@@ -26,6 +26,7 @@ COLLINEAR_DEG = 175.0  # a substituent this close to straight-through counts as 
 # §2.1: a bond this close to horizontal clips against the whole glyph outline, not the band.
 # Unmeasured threshold: the references have 0° (whole outline) and 30° (band) only.
 HORIZONTAL_CLIP_DEG = 15.0
+H_SIDE_TIE = 1e-3  # sum of bond unit-vector x below which h_side calls a tie (numerical, not a style value)
 # hash count step: 2 hashes at D/hash_spacing = 1.997 (m1_set_x0.8), 3 at 2.05 (m1_set_x1.0)
 HASH_COUNT_SHIFT = 0.025
 
@@ -67,12 +68,14 @@ def is_labeled(mol: Molecule, i: int) -> bool:
 
 
 def h_side(mol: Molecule, i: int) -> str:
-    """H goes opposite the mean bond direction in x; right on a tie (§2, H₂N vs NH₂).
+    """H goes opposite the mean bond direction in x; right on a tie (§2, H₂N vs NH₂). A tie is
+    within H_SIDE_TIE: RDKit layouts leave ~1e-4 on vertical bonds (alanine's OH), which ChemDraw,
+    holding coordinates to 0.01 pt, reads as vertical and draws OH (CDXML re-save, 2026-10-28).
     Drawer.flip_crowded_labels then swaps a shown CH₃ to the other side when this side runs into
     another label or bond: a deviation from ChemDraw's rule (a hand-placement choice, unmeasured)."""
     a = mol.atoms[i]
     sx = sum(unit(sub(mol.atoms[j].p, a.p))[0] for j, _ in mol.neighbors(i))
-    return "left" if sx > 1e-6 else "right"
+    return "left" if sx > H_SIDE_TIE else "right"
 
 
 def element_x(face: FontFace, element: str, size: float, side: str) -> float:
@@ -1009,7 +1012,8 @@ class Drawer:
             for uc, hl in g.hashes:
                 bonds.children.append(Polyline([g.frame.at(uc, hl), g.frame.at(uc, -hl)],
                                                 self.preset.lengths.hash_line_width, source=src))
-        labels = Group(f"species-{name}-labels", [r for i in sorted(self.labels) for r in self.labels[i].runs])
+        # copies, so moving the group (layout) leaves self.labels in molecule coordinates
+        labels = Group(f"species-{name}-labels", [replace(r) for i in sorted(self.labels) for r in self.labels[i].runs])
         charges = Group(f"species-{name}-charges", [p for i in range(len(self.mol.atoms)) if self.charge_sign(i)
                                                     for p in self.charge_parts(i)])
         r = self.preset.lone_pair.dot_radius

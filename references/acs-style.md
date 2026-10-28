@@ -601,6 +601,11 @@ Rules (M4; unmeasured, user decisions 2026-10-25, flagged at review):
     2026-10-26). A ChemDraw reference at three presets with circled ⊕ / ⊖ and "2+" / "2−" on a
     labeled atom, an unlabeled carbon, and an O⁻ with its lone pairs would let them be measured.
 
+20. **CDXML** (§13): ~~what ChemDraw recomputes on open~~ **resolved by the gate,
+    2026-10-28:** it keeps our labels and boxes. Still unknown: whether `cdxml.charge_box_dx`
+    (the second BoundingBox point) matters, and what ChemDraw writes for circled signs, "2+"
+    and lone pairs (a reference with those would settle them; see Open 18).
+
 ## 7. Design-brief (docs/design.md) discrepancies (references win)
 
 1. **Bond drawing.** design.md §3.3 says "stroked line, butt caps". ChemDraw draws filled polygons
@@ -712,3 +717,50 @@ All unmeasured (Open 17): user decisions 2026-10-26, round defaults on the 0.5 p
 | Assigned electrons (`formal_charge`, `oxidation_state`): columns from the owner's ink box, the first `lone_pair.gap` out, then every `dot_spacing`; an odd last electron on the axis | lone_pair values | `draw_mol.Drawer.bond_dots`; Pauling values in `chem.ELECTRONEGATIVITY` |
 | Lone pairs: every atom; sides facing a bond or a non-bonded lattice neighbor stay free | §4.2 rules | `draw_mol.Drawer.label_dots`, `lewis_facing` |
 | Checks: shared dots ≥ 2 × gap from labels; assigned dots on the owner's half; dot sets ≥ `dot_spacing` apart | — | `geometry_checks.check_lewis` |
+
+## 13. CDXML export (phase 1: M1 species; source: every reference's .cdxml)
+
+`acs_chem_svg.cdxml_writer` writes what ChemDraw writes for its own structures, so ChemDraw can
+edit a figure. These are file conventions, not drawn geometry. They are measured from the CDXML
+files with `measure_refs.py --cdxml-symbols` and `tests/test_cdxml.py` (reference diff).
+
+| Item | ChemDraw's files | Ours |
+|---|---|---|
+| Header: root attributes, color and font tables, page | the same at each scale in every reference (`test_header_matches_other_references`) | `presets/cdxml/<preset>.xml`, copied from m1_set_x\<k\> by `scripts/cdxml_headers.py` without CreationProgram, Name, BoundingBox and the page id |
+| CreationProgram | "ChemDraw 26.1.0.6801" | "acs-chem-svg \<version\>" (user decision 2026-10-28) |
+| Page | 540 × 720 per page; a drawing wider than that makes ChemDraw offer to expand, and the re-save has `BoundingBox="0 0 1080 720" WidthPages="2"` | whole pages, enough for the drawing |
+| Labeled atom | `Element` (none for C), `NumHydrogens` (also 0), `NeedsClean="yes"`; one `<s face="96">` with the text in CDXML order (NH2 even when drawn H₂N) | the same |
+| Label justification | `LabelJustification="Right"` + `Justification="Right"` when the bonds leave to the right and the text has two or more characters (H₂N, HO, –Cl, –Br); a one-character label (–F, –H, –I) stays Left | from `Label.h_side` and the text length |
+| `LabelAlignment` | on 140 of 144 labels of two or more characters, never on one character (the other 4: a charged O, in mech_basic and labels_x1.0) | on labels of two or more characters |
+| Label `<t p>` x | the element's glyph origin; right-justified, the end of the element's advance (–Cl: +1.11 at ×1.0 = half the l; H₂N: +3.61 = half the N) | the same, within 0.010 pt |
+| Label `<t p>` y | atom y + half the ink height of the element's first glyph: 0.3684 × size for O, C, S, Cl; 0.3586 for N, H, F, I, Br, B. The drawn baseline is 0.3585 × size for all, so for O the stored p sits 0.095 pt below the drawn text | the same, from the font's glyph box, within 0.010 pt |
+| Label BoundingBox | the label's ink box, offset by the same stored − drawn amount as p | the same, within 0.010 pt |
+| Fragment BoundingBox | the drawn ink (half line widths, second lines of double bonds, charge signs) with the stored label boxes | the same, within 0.010 pt (where a sign sets an edge, within our sign's placement, ≤ 0.39 pt) |
+| Double bonds | no `DoublePosition` in any reference: ChemDraw places them itself | none |
+| Charge | `<graphic GraphicType="Symbol" SymbolType="Plus|Minus">` + `<represent attribute="Charge" object=node>`; BoundingBox = (drawn sign center, center x − dx, center y), the center within 0.004 pt of the drawn bars | `cdxml.charge_box_dx` |
+| `cdxml.charge_box_dx` | 7.5 / 4.8 / 2.7 = 0.075 × LabelSize² in 19 of 20 symbols (labels_x1.0, m1_set_x\*, mech_basic_x\*, resonance_x\*); one in resonance_x1.0 is −7.5 | 7.5 / 4.8 / 2.7 (`nonlinear`) |
+| Ids | sequential; font ids are their own namespace (clearance_x1.0 has font 21 and bond 21) | sequential from 1 |
+
+**DTD:** `reference_renders/cdxml/CDXML.dtd`, Revvity's file, fetched from the DOCTYPE URL
+(2026-10-28; ChemDraw.app ships only hotkeys.dtd). It is local only and never committed (user
+decision 2026-10-28), so the DTD tests skip without it. It dates from 2003. libxml2 rejects one of its enumerations (`AS` lists
+`+ - ?`, which aren't name tokens), so `tests/test_cdxml.py` loosens it to CDATA. Every
+reference then fails on only two attributes the DTD doesn't declare: `ShowPrimeLabels` on
+`<CDXML>` and `IsNickname` on `<t>`. The test allows exactly those.
+
+**Not written in phase 1:** abbreviations and Lewis structures (refused), lone-pair and radical
+dots (the node keeps `Radical`), circled signs and `charge_labels` texts (a plain Plus/Minus with
+the formal charge), atom maps (no `AtomID`). Each is reported on stderr.
+
+**Gate (2026-10-28, `scripts/cdxml_spike.py --diff` on the user's ChemDraw 26 re-saves of all
+seven gate files):** ChemDraw opens them without warnings (apart from the page size, now fixed)
+and keeps our label p, justification, label and fragment boxes and charge boxes, all within
+0.01 pt. It draws the re-saved references with the same ink as its originals: baselines and
+anchors within 0.005 pt, bond ends at labels within 0.041. The charge centers are ours (up to
+0.9 pt from its originals: placement defaults). It adds only its own bookkeeping (AS, AtomID, BS,
+BondOrdering, BondCircularOrdering, Geometry) and no DoublePosition. It recomputed one label:
+alanine's OH on a bond vertical to 1e-4, which we had set HO (a tie-tolerance bug in
+`draw_mol.h_side`, fixed). Editing works: atoms drag, Clean Structure runs, and charges are
+recognized as charges (a charge moved too far from its atom raises ChemDraw's warning). The
+charge does not follow a dragged atom, as with ChemDraw's own. **Decision:** later phases write
+labels explicitly, as here.

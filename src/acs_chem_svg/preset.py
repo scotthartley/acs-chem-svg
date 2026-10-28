@@ -156,6 +156,10 @@ class Scheme(_Section):
     wrap_width: float
 
 
+class Cdxml(_Section):
+    charge_box_dx: float  # charge <graphic> BoundingBox second point, center x minus this (acs-style.md §13)
+
+
 class Preset(_Section):
     name: str
     scale: float
@@ -179,6 +183,7 @@ class Preset(_Section):
     bracket: Bracket
     resonance: Resonance
     scheme: Scheme
+    cdxml: Cdxml
 
     def head(self, variant: str | None = None) -> Head:
         """Reaction, equilibrium and ↔ arrowhead: `variant` ("standard" | "large"), or the
