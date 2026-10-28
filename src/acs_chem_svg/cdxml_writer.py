@@ -70,7 +70,8 @@ Page order as in the references: fragments, captions, graphics, curves, schemes,
 
 Not written: abbreviations and Lewis structures (CdxmlUnsupported), resonance steps and brackets
 (CdxmlUnsupported, phase 4), circled signs and charge_labels texts (a plain sign with the formal
-charge), a second unpaired electron on an atom, atom maps. Each of the last ones warns.
+charge), a second unpaired electron on an atom, atom maps. Each of the last ones warns, except
+maps in a mechanism (CdxScheme.warn_maps): its arrows need them, and the figure never shows them.
 
 Fragment BoundingBox: the drawn ink box (Drawer.draw: stroke widths, second lines, charge signs)
 with the stored label boxes and each dot center plus cdxml.lone_pair_box_reach /
@@ -160,6 +161,7 @@ class CdxScheme:
     schemes: list[list[CdxStep]] = field(default_factory=list)  # one <scheme> per drawn sequence
     curves: list[CdxCurve] = field(default_factory=list)
     offset: Point = (0.0, 0.0)  # added to the arrows, captions and curves
+    warn_maps: bool = True  # False for a mechanism: every species is mapped (user decision 2026-10-28)
 
 
 def f2(v: float) -> str:
@@ -202,6 +204,7 @@ class _Writer:
         self.root = header.getroot()
         self.preset = load_preset(preset_name)
         self.warn = warn
+        self.warn_maps = True
         self.ids = Ids()
         font_name = self.preset.font_family
         font = next((f for f in self.root.iter("font") if f.get("name") == font_name), None)
@@ -232,7 +235,7 @@ class _Writer:
                 msgs.append(f"{name}: circled charge written as a plain sign")
             elif sign.digits:
                 msgs.append(f"{name}: charge {a.charge:+d} written as a plain sign with Charge={a.charge}")
-        if any(a.map for a in mol.atoms):
+        if self.warn_maps and any(a.map for a in mol.atoms):
             msgs.append(f"{name}: atom maps not written")
         for m in dict.fromkeys(msgs):  # once per species
             self.warn(m)
@@ -512,6 +515,7 @@ def to_cdxml(scheme: CdxScheme | list[tuple[Molecule, Drawer, Point]], preset_na
         scheme = CdxScheme(list(scheme))
     header = load_header(preset_name)
     w = _Writer(header, preset_name, warn)
+    w.warn_maps = scheme.warn_maps
     root = w.root
     page = root.find("page")
     page.set("id", w.ids.new())
@@ -629,6 +633,7 @@ def scheme_records(lay: SchemeLayout, spec: Spec, svg_offset: Point = (0.0, 0.0)
     for n, runs in lay.numbers.items():
         out.texts.append(CdxText([_line(runs, richtext.parse(str(spec.numbers[n]), "bold"))]))
     out.curves = [CdxCurve(m.p0, m.c1, m.c2, m.p3, m.spec.type) for m in lay.curved]
+    out.warn_maps = not lay.curved
     return out
 
 

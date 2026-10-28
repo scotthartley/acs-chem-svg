@@ -947,6 +947,16 @@ def test_mech_objects():
                for n in root.iter("n") if n.get("id") == g.find("represent").get("object"))
 
 
+def test_mechanism_maps_do_not_warn():
+    """A mechanism's species are all mapped (its arrows need the maps), so the map warning is
+    silenced there (user decision 2026-10-28); M1 species still warn."""
+    msgs = []
+    spec_cdxml(mr.REPO / "examples/m3_carbonyl_addition_x1.0.yaml", warn=msgs.append)
+    assert msgs == []
+    spec_cdxml(mr.REPO / "examples/m1_charges_x1.0.yaml", warn=msgs.append)
+    assert any("atom maps not written" in m for m in msgs)
+
+
 def test_added_reactant_is_above_arrow():
     """m3_carbonyl_addition_x1.0 step 2: water, added by the mechanism step and drawn above its
     arrow, is cited in ReactionStepObjectsAboveArrow, not as a reactant (user decision 2026-10-28)."""

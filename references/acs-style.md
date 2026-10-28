@@ -852,7 +852,9 @@ out, are within 1.14 pt; mech_basic_x0.8 / x0.6 pad the arrow box 0.18, as schem
 and the Cl· typed as text (no face 96) has its label box 0.1 higher.
 
 **Not written in phase 3:** resonance steps and brackets (phase 4, refused); Lewis structures'
-shared and assigned electrons (refused); a second unpaired electron on an atom (warns).
+shared and assigned electrons (refused); a second unpaired electron on an atom (warns). Atom
+maps are not written either, but a mechanism doesn't warn about them: every species is mapped
+for its arrows (user decision 2026-10-28).
 
 **Gate (2026-10-28, `scripts/cdxml_spike.py --phase 3 --diff` on the user's ChemDraw 26 re-saves
 of all six files in `build/cdxml_spike/phase3/`):**
