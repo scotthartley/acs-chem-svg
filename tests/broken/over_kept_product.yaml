@@ -1,0 +1,20 @@
+# expect: over: methanol must be reactants this step adds
+preset: acs1996
+species:
+  bromide:   {smiles: "[Br-:3]"}
+  methanol:  {smiles: "[CH3:2][OH:1]"}
+  hydroxide: {smiles: "[OH-:1]"}
+  bromomethane: {smiles: "[CH3:2][Br:3]"}
+  b: {smiles: "[CH3:2][OH2+:1]"}
+  c: {smiles: "[OH2:4]"}
+steps:
+  - from: [hydroxide, bromomethane]
+    to: [methanol, bromide]
+    arrows:
+      - {from: "lp(1)", to: "atom(2)"}
+      - {from: "bond(2-3)", to: "atom(3)"}
+  - from: [methanol, bromide]
+    over: [methanol]
+    to: [b, c]
+    arrows:
+      - {from: "lp(1)", to: "atom(2)"}

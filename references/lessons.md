@@ -452,3 +452,30 @@ removed renders pixel-identical to the approved `m4_nitration_x1.0`. Inbox triag
   Workaround that worked: a molfile with the ring mirrored across the inter-ring bond (`molfile:`).
   Candidate feature: a per-species `flip_ring: <map number>` that mirrors the ring containing
   that atom across its bond to the rest.
+
+## 2026-10-28 (by-products and reagents in mechanisms: omit and over)
+
+- **Draw a mechanism the way a chemist would** (user feedback on the nitration and a Perkin
+  condensation). Every product of every step was drawn, so bisulfate, water and AcOH sat in the
+  scheme and were never seen again, and the first step's acid or base sat inline with "+". A
+  chemist draws a reagent that only gives or takes a proton above the arrow, omits products that
+  leave the story (writing "−H2O" / "−AcOH" / "−AcO⁻" on the arrow when the loss matters) and
+  omits the acid or base regenerated in the last step without comment.
+- **The bookkeeping still needs those products,** so the spec keeps them: `omit: [names]` leaves
+  products of `to` out of the drawing only, and `over: [names]` puts reactants above a mechanism
+  step's arrow (the first step's too). The chain runs on drawn products: a later step that names
+  an omitted product adds it as a reactant, drawn there for the first time (AcOH over the
+  Perkin's last arrow; bisulfate over the nitration's last arrow). Omitted products take no
+  occurrence (`name~k`), aren't aligned, and don't get the lone pairs they gain.
+- **No automatic "−X" text:** species names aren't formulas, so the author writes it.
+- **Not below ⇌, and not for the over-the-arrow reagent's conjugate** (user review of the Perkin,
+  same day). "−AcOH" under the first step's equilibrium arrow read as AcOH lost in the reverse
+  direction; and it wasn't needed: reagents written over an arrow aren't balanced, so the
+  conjugate acid of the acetate above it is omitted silently. A loss goes above ⇌ (or below →
+  when a reagent sits above it); the validator notes "−X" text below an equilibrium arrow.
+- **Catching the first draft:** `validate.py` prints a non-failing `note:` for each non-first
+  product of a mechanism step that is drawn and never used again, in schemes with two or more
+  mechanism steps (a one-step SN2 keeps its Br⁻).
+- **A reagent above the arrow and a target below the axis** make its curved arrow cross the
+  reaction arrow (Perkin: acetate's O⁻ pointing down at the anhydride's lower H). Turning the
+  reactant (`flip_v`) so the target faces up fixed both crossings; the validator reports them.

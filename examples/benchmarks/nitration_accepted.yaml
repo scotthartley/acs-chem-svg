@@ -1,6 +1,8 @@
 # M5 acceptance (2026-10-25): the spec a use session wrote from the one-sentence nitration
 # prompt (examples/benchmarks/prompts.yaml), approved by the user without edits. Its body is
 # examples/m4_nitration_x1.0.yaml: the session found and adapted the approved M4 example.
+# Revised 2026-10-28 with the M4 example (user-approved): H2SO4 over the first arrow, by-products
+# omitted ("−H2O" on the arrow), the regenerated H2SO4 omitted.
 preset: acs1996
 species:
   nitric:       {smiles: "[O:1]=[N+:2]([O-:3])[OH:4]", orientation: {flip_h: true}}
@@ -14,17 +16,20 @@ species:
   sigma_a:      {smiles: "[H:17][C:11]1([N+:2](=[O:3])[O-:1])[CH+:12][CH:13]=[CH:14][CH:15]=[CH:16]1"}
   sigma_b:      {smiles: "[H:17][C:11]1([N+:2](=[O:3])[O-:1])[CH:12]=[CH:13][CH+:14][CH:15]=[CH:16]1"}
   sigma_c:      {smiles: "[H:17][C:11]1([N+:2](=[O:3])[O-:1])[CH:12]=[CH:13][CH:14]=[CH:15][CH+:16]1"}
-  bisulfate_2:  {smiles: "[O:5]=[S:6](=[O:7])([OH:8])[O-:9]"}
   nitrobenzene: {smiles: "[O-:1][N+:2](=[O:3])[C:11]1=[CH:16][CH:15]=[CH:14][CH:13]=[CH:12]1"}
   sulfuric_2:   {smiles: "[O:5]=[S:6](=[O:7])([OH:8])[O:9][H:17]"}
 steps:
   - from: [nitric, sulfuric]
+    over: [sulfuric]
     to: [nitric_h, bisulfate]
+    omit: [bisulfate]
     arrows:
       - {from: "lp(4)", to: "between(4,10)"}
       - {from: "bond(9-10)", to: "atom(9)"}
   - from: nitric_h
     to: [nitronium, water]
+    omit: [water]
+    above: "−H2O"
     arrows:
       - {from: "lp(3)", to: "between(2,3)"}
       - {from: "bond(2-4)", to: "atom(4)"}
@@ -38,8 +43,9 @@ steps:
     arrows:
       - [{from: "bond(13=14)", to: "between(12,13)"}]
       - [{from: "bond(15=16)", to: "between(14,15)"}]
-  - from: [sigma_c, bisulfate_2]
+  - from: [sigma_c, bisulfate]
     to: [nitrobenzene, sulfuric_2]
+    omit: [sulfuric_2]
     arrows:
       - {from: "lp(9)", to: "between(9,17)"}
       - {from: "bond(11-17)", to: "between(11,16)"}

@@ -1,0 +1,8 @@
+# expect: over: reactants go over the arrow only in a mechanism step
+preset: acs1996
+species:
+  a: {smiles: "CCO"}
+  ox: {smiles: "O=[Cr](=O)=O"}
+  b: {smiles: "CC=O"}
+steps:
+  - {from: [a, ox], over: [ox], to: b}

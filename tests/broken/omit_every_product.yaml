@@ -1,0 +1,7 @@
+# expect: every product is omitted
+preset: acs1996
+species:
+  a: {smiles: "CCO"}
+  b: {smiles: "CC=O"}
+steps:
+  - {from: a, to: b, omit: [b], above: PCC}

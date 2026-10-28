@@ -25,8 +25,9 @@ align: auto                # or false: every species on its own layout
 
 | Key | Type | Meaning |
 |---|---|---|
-| `steps[].from` | name or list | Reactants. Required in the first step; later steps default to the previous step's `to`. It starts with the previous step's first product (then any more of its products, in order); the products it leaves out are by-products, left where they were drawn. Further names are added reactants (`[alcohol, X]` draws "+ X" before the arrow). |
+| `steps[].from` | name or list | Reactants. Required in the first step; later steps default to the previous step's `to`. It starts with the previous step's first drawn product (then any more of its drawn products, in order). Further names are added reactants (`[alcohol, X]` draws "+ X" before the arrow; above the arrow in a mechanism step). A product the next step doesn't take should be omitted (`omit`), not left drawn. |
 | `steps[].to` | name or list | Products (a list gets plus signs). |
+| `steps[].omit` | list of names | Products of `to` that the electron bookkeeping uses but the drawing leaves out (water lost, the conjugate acid/base of a reagent drawn over the arrow, the acid/base regenerated in the last step). At least one product stays drawn; no `numbers:` on them. Write a loss on the arrow yourself if it matters (`above: "−H2O"`; `below: "−AcO−"` under a → arrow with a reagent drawn above it). Never below an equilibrium arrow: text there reads as the reverse direction (the validator notes it). The conjugate of an `over` reagent needs no text: reagents over the arrow aren't balanced. A later step that names an omitted product adds it as a reactant (drawn there for the first time). |
 | `steps[].above` / `below` | string or list | Conditions, one string per line, centered on the arrow. |
 | `steps[].stages` | list of 1–2 strings | Numbered stages, left-justified: "1. …" above, "2. …" below. More than 2 is unmeasured. Exclusive with above/below. |
 | `steps[].arrow_type` | `forward` (default) \| `equilibrium` \| `equilibrium_products` \| `equilibrium_reactants` | The step's arrow: → , balanced ⇌, or unbalanced ⇌ with the long shaft pointing to the favored side (products: right; reactants: left). Equilibrium conditions sit above and below the outer shafts, centered on the arrow (acs-style.md §3.6). Not on resonance steps. Works with `stages` and curved `arrows` (a reversible proton transfer). |
@@ -152,19 +153,20 @@ starts from the default (`bow: left` when it already bows left changes nothing).
 ```yaml
 layout: {width: 504}                       # pt; default: the preset's scheme.wrap_width (504 = 7 in)
 steps:
-  - {from: [nitric, sulfuric], to: [nitric_h, bisulfate], arrows: [...]}
-  - {from: nitric_h, to: [nitronium, water], arrows: [...]}       # bisulfate: a by-product
+  - {from: [nitric, sulfuric], over: [sulfuric], to: [nitric_h, bisulfate], omit: [bisulfate], arrows: [...]}
+  - {from: nitric_h, to: [nitronium, water], omit: [water], above: "−H2O", arrows: [...]}
   - {new_row: true, from: [benzene, nitronium], to: sigma_a, arrows: [...]}  # nitronium again
   - resonance: [sigma_a, sigma_b, sigma_c]                        # first = the previous step's first product
     arrows:                                                       # one list per contributor but the last
       - [{from: "bond(13=14)", to: "between(12,13)"}]
       - [{from: "bond(15=16)", to: "between(14,15)"}]
-  - {from: [sigma_c, bisulfate], to: [nitrobenzene, sulfuric], arrows: [...]}
+  - {from: [sigma_c, bisulfate], to: [nitrobenzene, sulfuric], omit: [sulfuric], arrows: [...]}
 ```
 
 | Key | Type | Meaning |
 |---|---|---|
 | `steps[].new_row` | bool | Start a new sequence on a new row: `from` is required and the chain starts again. |
+| `steps[].over` | list of names | Reactants drawn above the arrow of a step with curved `arrows` (their arrows reach them there). Default: a later mechanism step's added reactants. Use it on the first step or a `new_row` step for an acid or base that only gives or takes a proton (`from: [nitric, sulfuric], over: [sulfuric]`). Names must be `from` names the step adds (not kept products); at least one reactant stays inline. |
 | repeated names | — | A species named again later in the scheme (in any step) is drawn again: occurrence k is a copy with the id `name~k`, aligned to its own predecessor like any product. `numbers:` apply to the first occurrence. To give a copy its own options, declare it: `species: {"nitronium~2": {smiles: ..., align: false}}`. A copy that is a product drops the original's `orientation` (it aligns). |
 | `steps[].resonance` | list of ≥ 2 names | Contributors in square brackets, joined by double-headed arrows. The first must be the previous step's first product (or the step is the first); that step's other products are drawn after the closing bracket ("] + HX"). The next step continues from the last contributor. No conditions. |
 | `steps[].arrows` (resonance) | list of lists | List k is drawn on contributor k and must give contributor k + 1. Omit `arrows` for none. `overrides.arrows[].index` counts across the lists in order. |
@@ -179,8 +181,10 @@ Drawing (acs-style.md §3.4, §4.3):
   curved arrows count). The arrow into the bracket stops `arrow_gap` before it. The next
   step's curved arrows may reach into the bracket.
 - **Added reactants in mechanisms:** in a step with curved arrows, the reactants it adds
-  (`from` names after the kept products, e.g. the base HSO₄⁻) are drawn above its arrow, not
-  as "+ X"; the arrow lengthens to fit them. Steps without curved arrows keep "+ X".
+  (`from` names after the kept products, e.g. the base HSO₄⁻), or its `over` names, are drawn
+  above its arrow, not as "+ X", side by side with "+" between them; the arrow lengthens to
+  fit them, and conditions above the arrow stack above them. Steps without curved arrows keep
+  "+ X". Omitted products are never drawn (nor their "+").
 - **Rows:** units (the opening reactants; each step's arrow, conditions and products, with a
   following bracket and the next step's added reactants) fill each row up to `layout.width`.
   A continuation row starts with the reaction arrow at the left margin, except after a step

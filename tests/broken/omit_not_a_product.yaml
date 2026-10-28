@@ -1,0 +1,8 @@
+# expect: omit: c not in this step's `to`
+preset: acs1996
+species:
+  a: {smiles: "CCO"}
+  b: {smiles: "CC=O"}
+  c: {smiles: "O"}
+steps:
+  - {from: a, to: b, omit: [c], above: PCC}

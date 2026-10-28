@@ -1,0 +1,9 @@
+# expect: omit: c has a compound number
+preset: acs1996
+species:
+  a: {smiles: "CCO"}
+  b: {smiles: "CC=O"}
+  c: {smiles: "O"}
+numbers: {b: 1, c: 2}
+steps:
+  - {from: a, to: [b, c], omit: [c], above: PCC}

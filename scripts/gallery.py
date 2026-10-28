@@ -14,7 +14,8 @@ Cases:
   ChemDraw's.
 - equilibrium_x<k>.png, arrows_large_x1.0.png: our equilibrium, forward and ↔ arrows on
   ChemDraw's, with the captions (no structures: the references' "B" is a stand-in atom).
-- m4_*.png: examples/m4_*.yaml with our own layout (m4_nitration_x<k>: the M4 acceptance).
+- m4_*.png: examples/m4_*.yaml with our own layout (m4_nitration_x<k>: the M4 acceptance;
+  m4_perkin_x1.0: omit / over).
 
 All are rendered at 4 px/pt with a transparent background. tests/test_gallery.py re-renders
 every case and compares pixels. Rewriting the gallery needs the user's approval of the new
@@ -64,6 +65,7 @@ SPECS = ["examples/m1_smiles_x1.0.yaml", "examples/m1_smiles_x0.8.yaml", "exampl
          "examples/m4_nitration_x1.0.yaml", "examples/m4_nitration_x0.8.yaml", "examples/m4_nitration_x0.6.yaml",
          "examples/m4_resonance_x1.0.yaml", "examples/m4_resonance_x0.8.yaml", "examples/m4_resonance_x0.6.yaml",
          "examples/m4_wrap_x1.0.yaml", "examples/m4_wrap_x0.8.yaml", "examples/m4_wrap_x0.6.yaml",
+         "examples/m4_perkin_x1.0.yaml",
          "examples/benchmarks/nitration_accepted.yaml"]
 
 

@@ -42,10 +42,12 @@ M4: resonance steps, several sequences, and wrapping into rows.
       - {from: [sigma_c, bisulfate], to: [nitrobenzene, acid]}
       - {new_row: true, from: [...], to: ...}     # a new sequence, on a new row
 
-A step's `from` starts with one or more of the previous step's products, in order; the rest
-of those products are by-products left behind, and further reactants are added ("+ X").
-A resonance step may follow a step with several products: the first product opens the bracket
-and the rest are drawn after it ("+ HX").
+A step's `from` starts with one or more of the previous step's drawn products, in order, and
+further reactants are added ("+ X"; above the arrow in a mechanism step). `omit: [names]` keeps
+products for the electron bookkeeping but leaves them out of the drawing (a later step that adds
+one draws it there); `over: [names]` puts added reactants above a mechanism step's arrow (the
+first step's or a new row's too). A resonance step may follow a step with several products: the
+first product opens the bracket and the rest are drawn after it ("+ HX").
 
 Arrows: a step's arrow_type is forward (default), equilibrium (⇌), equilibrium_products or
 equilibrium_reactants (unbalanced: the long shaft points to the favored side). arrow_head
@@ -295,6 +297,8 @@ class Step(BaseModel):
     stages: list[str] | None = None  # "1. ..." above and "2. ..." below, left-justified
     arrow_type: ArrowType = "forward"  # the step's arrow: forward, or equilibrium (balanced or favoring one side)
     arrows: list[CurvedArrow] = Field(default_factory=list)  # M3 curved arrows, drawn on the reactants
+    omit: list[str] = Field(default_factory=list)  # products the bookkeeping uses but the drawing leaves out
+    over: list[str] | None = None  # reactants drawn above the arrow (default: a later mechanism step's added ones)
 
     @model_validator(mode="before")
     @classmethod
@@ -316,6 +320,18 @@ class Step(BaseModel):
                                  "(more stages are unmeasured, acs-style.md §6 Open)")
         return self
 
+    @model_validator(mode="after")
+    def _omit_over(self):
+        bad = [n for n in self.omit if n not in self.products]
+        if bad:
+            raise ValueError(f"omit: {', '.join(bad)} not in this step's `to` {self.products}")
+        if self.omit and not self.drawn_products:
+            raise ValueError("omit: every product is omitted; at least one product must stay drawn")
+        if self.over is not None and not self.arrows:
+            raise ValueError("over: reactants go over the arrow only in a mechanism step (one with curved `arrows`); "
+                             "write a reagent with no arrows as text (above: ...)")
+        return self
+
     @property
     def sources(self) -> list[str]:
         return _names(self.from_)
@@ -323,6 +339,10 @@ class Step(BaseModel):
     @property
     def products(self) -> list[str]:
         return _names(self.to)
+
+    @property
+    def drawn_products(self) -> list[str]:
+        return [n for n in self.products if n not in self.omit]
 
     @property
     def arrow_lists(self) -> list[list[CurvedArrow]]:
@@ -370,6 +390,10 @@ class ResonanceStep(BaseModel):
         return self.resonance[-1:]
 
     @property
+    def drawn_products(self) -> list[str]:
+        return self.products
+
+    @property
     def arrow_lists(self) -> list[list[CurvedArrow]]:
         return self.arrows
 
@@ -402,7 +426,7 @@ class ArrowSet:
 
 
 def kept_products(src: list[str], prev: list[str]) -> int:
-    """How many of the previous step's products `src` starts with (the rest are by-products)."""
+    """How many of the previous step's (drawn) products `src` starts with."""
     k = 0
     while k < min(len(src), len(prev)) and src[k] == prev[k]:
         k += 1
@@ -454,7 +478,7 @@ class Spec(BaseModel):
             if self.overrides.arrows:
                 raise ValueError("overrides.arrows need steps with arrows")
             return self
-        prev: list[str] = []  # the previous step's products, as written
+        prev: list[str] = []  # the previous step's drawn products, as written
         prev_ids: list[str] = []  # ... and as occurrence ids
         seen: dict[str, int] = {}
 
@@ -497,16 +521,33 @@ class Spec(BaseModel):
             kept = 0 if st.new_row or not prev else kept_products(src, prev)
             if prev and not st.new_row and not kept:
                 raise ValueError(f"step {i}: `from` {src} must start with the previous step's first product "
-                                 f"{prev[0]!r} (then any more of {prev} in order; the rest are by-products): the steps "
-                                 "form one linear chain; start another with new_row: true")
+                                 f"{prev[0]!r} (then any more of {prev} in order; products it doesn't take should be "
+                                 "omitted, omit: [...]): the steps form one linear chain; start another with new_row: true")
             if not st.products:
                 raise ValueError(f"step {i}: `to` is empty")
+            numbered = [n for n in st.omit if n in (self.numbers or {})]
+            if numbered:
+                raise ValueError(f"step {i}: omit: {', '.join(numbered)} has a compound number, but an omitted "
+                                 "product is not drawn; drop it from `numbers:` or keep it drawn")
+            if st.over is not None:
+                bad = [n for n in st.over if n not in src[kept:]]
+                if bad:
+                    raise ValueError(f"step {i}: over: {', '.join(bad)} must be reactants this step adds "
+                                     f"({src[kept:] or 'none'}), not products of the previous step it keeps")
+                if not kept and set(src) <= set(st.over):
+                    raise ValueError(f"step {i}: over: every reactant is over the arrow; at least one must stay inline")
             written = st.products
-            st.from_ = prev_ids[:kept] + [occurrence(n, False) for n in src[kept:]]
-            st.to = [occurrence(n, True) for n in written]
-            prev, prev_ids = written, st.products
+            ids = prev_ids[:kept] + [occurrence(n, False) for n in src[kept:]]
+            if st.over is not None:
+                st.over = [ids[src.index(n)] for n in st.over]
+            st.from_ = ids
+            # omitted products take no occurrence (they're never drawn): a later step that adds one
+            # draws it there for the first time
+            st.to = [n if n in st.omit else occurrence(n, True) for n in written]
+            prev, prev_ids = [n for n in written if n not in st.omit], st.drawn_products
         order = self.order()
-        unused = sorted(names - set(order))
+        omitted = {n for st in self.steps if isinstance(st, Step) for n in st.omit}
+        unused = sorted(names - set(order) - omitted)
         if unused:
             raise ValueError(f"species not used in any step: {', '.join(unused)}")
         for o in self.overrides.arrows:
@@ -531,10 +572,10 @@ class Spec(BaseModel):
             if isinstance(st, ResonanceStep):
                 out += st.resonance[1:] if prev else st.resonance
             elif st.new_row or not prev:
-                out += st.sources + st.products
+                out += st.sources + st.drawn_products
             else:
-                out += st.sources[kept_products(st.sources, prev):] + st.products
-            prev = st.products
+                out += st.sources[kept_products(st.sources, prev):] + st.drawn_products
+            prev = st.drawn_products
         return out
 
     def kept(self, i: int) -> int:
@@ -543,7 +584,17 @@ class Spec(BaseModel):
         st = self.steps[i - 1]
         if i == 1 or isinstance(st, ResonanceStep) or st.new_row:
             return 0
-        return kept_products(st.sources, self.steps[i - 2].products)
+        return kept_products(st.sources, self.steps[i - 2].drawn_products)
+
+    def over_names(self, i: int) -> list[str]:
+        """Step i (1-based): the reactants drawn above its arrow: its `over`, else the reactants
+        a later mechanism step adds."""
+        st = self.steps[i - 1]
+        if isinstance(st, ResonanceStep):
+            return []
+        if st.over is not None:
+            return list(st.over)
+        return st.sources[self.kept(i):] if st.arrows and i > 1 and not st.new_row else []
 
     def arrow_sets(self) -> list[ArrowSet]:
         """Every set of curved arrows, in step order (ArrowSet)."""
@@ -661,7 +712,7 @@ def reference_for(spec: Spec, name: str) -> str | None:
         if isinstance(st, ResonanceStep):
             if name in st.resonance[1:]:
                 return st.resonance[st.resonance.index(name) - 1]
-        elif name in st.products:
+        elif name in st.drawn_products:
             return st.sources[0] if len(st.sources) == 1 else "|".join(st.sources)
     return None
 

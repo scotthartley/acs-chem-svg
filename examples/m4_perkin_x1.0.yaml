@@ -1,0 +1,91 @@
+# M4: Perkin condensation (acetate base, acetic anhydride, benzaldehyde), from a use session's spec,
+# revised with the user 2026-10-28: proton-only reagents over the arrows; their conjugates and the
+# regenerated acetate omitted without text; the acetate lost in the elimination as "−AcO−".
+preset: acs1996
+species:
+  acetate:
+    smiles: "[O-:1][C:10](=[O:11])[CH3:12]"
+    show_carbons: terminal
+  anhydride:
+    smiles: "[H:3][CH:2]([H:40])[C:4](=[O:5])[O:6][C:7](=[O:8])[CH3:9]"
+    show_carbons: terminal
+    orientation: {flip_v: true}   # the CH3 H's up, toward the acetate over the arrow
+  acetic_acid:
+    smiles: "[H:3][O:1][C:10](=[O:11])[CH3:12]"
+    show_carbons: terminal
+  enolate:
+    smiles: "[H:40][CH:2]=[C:4]([O-:5])[O:6][C:7](=[O:8])[CH3:9]"
+    show_carbons: terminal
+  benzaldehyde:
+    smiles: "[O:20]=[CH:21]c1ccccc1"
+  alkoxide:
+    smiles: "[O-:20][CH:21](c1ccccc1)[CH:2]([H:40])[C:4](=[O:5])[O:6][C:7](=[O:8])[CH3:9]"
+    show_carbons: terminal
+  tetrahedral:
+    smiles: "[O-:8][C:7]1([CH3:9])[O:20][CH:21](c2ccccc2)[CH:2]([H:40])[C:4](=[O:5])[O:6]1"
+    show_carbons: terminal
+    align: false
+  carboxylate:
+    smiles: "[O-:6][C:4](=[O:5])[CH:2]([H:40])[CH:21](c1ccccc1)[O:20][C:7](=[O:8])[CH3:9]"
+    show_carbons: terminal
+  acetate2:
+    smiles: "[O-:30][C:31](=[O:32])[CH3:33]"
+    show_carbons: terminal
+  cinnamate:
+    smiles: "[O-:6][C:4](=[O:5])/[CH:2]=[CH:21]/c1ccccc1"
+    align: false
+    orientation: {flip_v: true}   # the O- up, toward the AcOH over the arrow
+  acetic_acid2:
+    smiles: "[H:40][O:30][C:31](=[O:32])[CH3:33]"
+    show_carbons: terminal
+  acetate3:
+    smiles: "[O-:20][C:7](=[O:8])[CH3:9]"
+    show_carbons: terminal
+  cinnamic_acid:
+    smiles: "[H:40][O:6][C:4](=[O:5])/[CH:2]=[CH:21]/c1ccccc1"
+  acetate4:
+    smiles: "[O-:30][C:31](=[O:32])[CH3:33]"
+    show_carbons: terminal
+steps:
+  - from: [acetate, anhydride]
+    over: [acetate]
+    to: [enolate, acetic_acid]
+    omit: [acetic_acid]               # the conjugate acid of the acetate over the arrow: no text
+    arrow_type: equilibrium
+    arrows:
+      - {from: "lp(1)", to: "between(1,3)"}
+      - {from: "bond(2-3)", to: "between(2,4)"}
+      - {from: "bond(4=5)", to: "atom(5)"}
+  - from: [enolate, benzaldehyde]
+    to: alkoxide
+    arrow_type: equilibrium
+    arrows:
+      - {from: "lp(5)", to: "between(4,5)"}
+      - {from: "bond(2=4)", to: "between(2,21)"}
+      - {from: "bond(21=20)", to: "atom(20)"}
+  - from: alkoxide
+    to: tetrahedral
+    arrow_type: equilibrium
+    arrows:
+      - {from: "lp(20)", to: "between(20,7)"}
+      - {from: "bond(7=8)", to: "atom(8)"}
+  - from: tetrahedral
+    to: carboxylate
+    arrows:
+      - {from: "lp(8)", to: "between(8,7)"}
+      - {from: "bond(7-6)", to: "atom(6)"}
+  - from: [carboxylate, acetate2]
+    to: [cinnamate, acetic_acid2, acetate3]
+    omit: [acetic_acid2, acetate3]
+    below: "−AcO−"
+    arrows:
+      - {from: "lp(30)", to: "between(30,40)"}
+      - {from: "bond(2-40)", to: "between(2,21)"}
+      - {from: "bond(21-20)", to: "atom(20)"}
+  - from: [cinnamate, acetic_acid2]
+    to: [cinnamic_acid, acetate4]
+    omit: [acetate4]
+    arrow_type: equilibrium
+    arrows:
+      - {from: "lp(6)", to: "between(6,40)"}
+      - {from: "bond(40-30)", to: "atom(30)"}

@@ -60,8 +60,7 @@ Run every command as `uv run --project <repo> python <repo>/scripts/<script> ...
 5. **Adjust** the spec only (orientation, abbreviations, line breaks, `align`, `overrides`),
    never the SVG. Stop after about 5 visual iterations and report what is left.
 6. **Deliver** `.svg` (editable text, named groups; verified in Inkscape; `--affinity` for
-   Affinity, which drops marker arrowheads), `.yaml`, `.png`.
-   Mention it if stderr warned that the fallback font was used for metrics.
+   Affinity, which drops marker arrowheads), `.yaml`, `.png`. Mention a fallback-font warning.
 
 ## From a request (mechanisms)
 
@@ -71,11 +70,14 @@ Worked example and common mistakes: `references/workflow.md`.
    for the whole scheme. Map the H atoms that move as atoms (`[H:17]`).
 3. Write the reactants and each step's arrows.
 4. Write rough products, run `validate.py --suggest`, and paste the `suggested:` lines.
-5. Render with `--maps` from the first render (map numbers beside the atoms, preview only):
-   it shows which end of each species faces its partner.
-6. Orient, render, inspect. Reuse a species by name when it appears again (`nitronium` in
-   both rows): each later occurrence is drawn as its own copy. Keep the user's preset
-   (default acs1996): a long mechanism wrapping to three rows is expected.
+5. **Account for every product.** An acid/base that only gives or takes a proton goes `over:`
+   the arrow; its conjugate (AcOH from AcO−) and the acid/base regenerated last are `omit:`ted
+   without text. Omit other products the next step doesn't use, a loss worth noting written on
+   the arrow ("−H2O", "−AcO−"): `above:`, or `below:` a → with a structure over it; never below ⇌.
+6. Render with `--maps` (map numbers beside the atoms, preview only): it shows which end of
+   each species faces its partner.
+7. Orient, render, inspect. Reuse a species by name when it appears again: each later
+   occurrence is its own copy. Keep the user's preset (default acs1996); three rows is fine.
 
 ## Mechanisms (curved arrows)
 
@@ -110,8 +112,6 @@ overrides:
   `overrides` (the other `bow`, `curvature`, `tail_side`), or turn a
   species (`orientation`) so the atoms face each other. Order the reactants so partners sit
   side by side (`from: [mebr, hydroxide]` swaps them).
-- The bookkeeping proves internal consistency, **not** mechanistic correctness: say so, and ask
-  the user to check research-level mechanisms.
 
 ## Resonance, sequences, rows
 
@@ -121,13 +121,13 @@ steps:
   - {from: [benzene, nitronium], to: sigma_a, arrows: [...]}
   - resonance: [sigma_a, sigma_b, sigma_c]            # first = the previous step's first product
     arrows: [[{from: "bond(13=14)", to: "between(12,13)"}], [...]]   # list k: contributor k -> k+1
-  - {from: [sigma_c, bisulfate], to: [nitrobenzene, sulfuric], arrows: [...]}
+  - {from: [sigma_c, bisulfate], to: [nitrobenzene, sulfuric], omit: [sulfuric], arrows: [...]}
   - {new_row: true, from: [a, b], to: c}             # another sequence, on a new row
 ```
 - Contributors keep their atom maps and connectivity; give them the same orientation by
   aligning (the default) and orient only the first.
-- `from` may keep just the first products of the previous step; the others stay as by-products.
-  In a step with curved arrows, the reactants it adds (a base) are drawn above its arrow.
+- `omit:` products stay in the bookkeeping, out of the drawing; a later step that names one
+  adds it. A mechanism step's added reactants (a base) and its `over:` sit above its arrow.
 - Rows break only between steps; a continuation row starts with an arrow, or, after a
   mechanism step's arrow, with its products. If a step plus a
   bracket can't fit, raise `layout.width`. Full rules: `references/scheme-schema.md` (M4).

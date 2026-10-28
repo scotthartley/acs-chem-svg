@@ -450,12 +450,14 @@ def check_spec(spec: Spec, base_dir: Path) -> list[StepCheck]:
 
 def lone_pair_atoms(spec: Spec, checks: list[StepCheck]) -> dict[str, set[int]]:
     """species -> map numbers whose lone pairs are drawn: lp-tail and arrow-target atoms on the
-    species an arrow set is drawn on, atoms that gain a lone pair on its products, and each
-    species' show_lone_pairs."""
+    species an arrow set is drawn on, atoms that gain a lone pair on its drawn products, and
+    each species' show_lone_pairs. (An omitted product keeps its name, which may be drawn
+    elsewhere: its gained pairs belong to this step only.)"""
     out = {n: set(sp.show_lone_pairs) for n, sp in spec.species.items()}
     for c in checks:
         for n in c.sources:
             out[n] |= c.lp_tails | c.targets
         for n in c.products:
-            out[n] |= c.gained_lone_pairs
+            if n not in getattr(spec.steps[c.step - 1], "omit", ()):
+                out[n] |= c.gained_lone_pairs
     return out

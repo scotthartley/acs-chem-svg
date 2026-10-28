@@ -1,5 +1,6 @@
-# M5: m4_nitration_x1.0 with species reused by name (nitronium, bisulfate and sulfuric appear
-# twice) and nitronium without `align: false`; must render the same pixels as the original.
+# M5: m4_nitration_x1.0 with species reused by name (nitronium is drawn twice, sulfuric is
+# reused for the omitted product of step 5) and nitronium without `align: false`; must render the
+# same pixels as the original.
 preset: acs1996
 species:
   nitric:       {smiles: "[O:1]=[N+:2]([O-:3])[OH:4]", orientation: {flip_h: true}}
@@ -15,12 +16,16 @@ species:
   nitrobenzene: {smiles: "[O-:1][N+:2](=[O:3])[C:11]1=[CH:16][CH:15]=[CH:14][CH:13]=[CH:12]1"}
 steps:
   - from: [nitric, sulfuric]
+    over: [sulfuric]
     to: [nitric_h, bisulfate]
+    omit: [bisulfate]
     arrows:
       - {from: "lp(4)", to: "between(4,10)"}
       - {from: "bond(9-10)", to: "atom(9)"}
   - from: nitric_h
     to: [nitronium, water]
+    omit: [water]
+    above: "−H2O"
     arrows:
       - {from: "lp(3)", to: "between(2,3)"}
       - {from: "bond(2-4)", to: "atom(4)"}
@@ -36,6 +41,7 @@ steps:
       - [{from: "bond(15=16)", to: "between(14,15)"}]
   - from: [sigma_c, bisulfate]
     to: [nitrobenzene, sulfuric]
+    omit: [sulfuric]
     arrows:
       - {from: "lp(9)", to: "between(9,17)"}
       - {from: "bond(11-17)", to: "between(11,16)"}

@@ -202,7 +202,7 @@ species:
   benzene:     {smiles: "[CH:11]1=[CH:12][CH:13]=[CH:14][CH:15]=[CH:16]1", orientation: {rotate: 180}}
   nitronium_2: {smiles: "[O:1]=[N+:2]=[O:3]"}
   sigma_a:     {smiles: "[H:17][C:11]1([N+:2](=[O:3])[O-:1])[CH+:12][CH:13]=[CH:14][CH:15]=[CH:16]1"}
-  # sigma_b, sigma_c, bisulfate_2, nitrobenzene, sulfuric_2 ... (examples/m4_nitration_x1.0.yaml)
+  # sigma_b, sigma_c, bisulfate, nitrobenzene, sulfuric_2 ... (examples/m4_nitration_x1.0.yaml)
 steps:
   # row A (nitronium formation) first; then a second sequence on a new row:
   - new_row: true
@@ -215,8 +215,9 @@ steps:
     arrows:                                     # list k turns contributor k into k + 1
       - [{from: "bond(13=14)", to: "between(12,13)"}]
       - [{from: "bond(15=16)", to: "between(14,15)"}]
-  - from: [sigma_c, bisulfate_2]                # the base sits right of the bracket
+  - from: [sigma_c, bisulfate]                  # the base sits above the arrow
     to: [nitrobenzene, sulfuric_2]
+    omit: [sulfuric_2]                          # regenerated: in the bookkeeping, not drawn
     arrows:
       - {from: "lp(9)", to: "between(9,17)"}
       - {from: "bond(11-17)", to: "between(11,16)"}

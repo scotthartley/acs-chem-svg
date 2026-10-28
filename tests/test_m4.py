@@ -203,6 +203,6 @@ def test_a_step_after_a_bracket_reaches_into_it():
 
 
 @pytest.mark.parametrize("stem", ["m4_nitration_x1.0", "m4_nitration_x0.8", "m4_nitration_x0.6",
-                                  "m4_resonance_x1.0", "m4_wrap_x1.0"])
+                                  "m4_resonance_x1.0", "m4_wrap_x1.0", "m4_perkin_x1.0"])
 def test_m4_examples_validate(stem):
     assert validate(EX / f"{stem}.yaml") == []

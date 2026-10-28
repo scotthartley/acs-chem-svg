@@ -332,20 +332,20 @@ def _place(spec: Spec, out: SchemeLayout, breaks: set[tuple[str, int]], rings: d
                 put_bracket(1)
                 after_bracket = True
             continue  # otherwise drawn with the step before it
+        # a mechanism step's arrow stays with its reactants (its curved arrows are drawn on them),
+        # and the reactants it adds (or its `over`) sit above it
+        over = spec.over_names(i)
         if i == 1 or st.new_row:
             unit("reactants", i, 0.0, new_row=i > 1)
-            put_species(st.sources)
+            put_species([n for n in st.sources if n not in over])
         else:
-            extra = st.sources[spec.kept(i):]
-            if extra and not st.arrows:  # more reactants join the previous products: "+ X" (after a bracket, no plus)
+            extra = [n for n in st.sources[spec.kept(i):] if n not in over]
+            if extra:  # more reactants join the previous products: "+ X" (after a bracket, no plus)
                 if after_bracket:
                     x += s.plus_gap
                 else:
                     plus()
                 put_species(extra)
-        # a mechanism step's arrow stays with its reactants (its curved arrows are drawn on them),
-        # and the reactants it adds sit above it
-        over = st.sources[spec.kept(i):] if st.arrows and i > 1 and not st.new_row else []
         unit("step", i, s.arrow_gap, glue=bool(st.arrows))
         staged = bool(st.stages)
         above, below, need = _conditions(st.lines(), staged, preset, i)
@@ -373,13 +373,13 @@ def _place(spec: Spec, out: SchemeLayout, breaks: set[tuple[str, int]], rings: d
             unit("products", i, s.arrow_gap)
         x += s.arrow_gap
         if i < len(spec.steps) and isinstance(spec.steps[i], ResonanceStep):
-            put_bracket(i + 1)  # opens with the first product; by-products follow the bracket ("+ HX")
-            after_bracket = len(st.products) == 1
+            put_bracket(i + 1)  # opens with the first product; the other drawn products follow the bracket ("+ HX")
+            after_bracket = len(st.drawn_products) == 1
             if not after_bracket:
                 plus()
-                put_species(st.products[1:])
+                put_species(st.drawn_products[1:])
         else:
-            put_species(st.products)
+            put_species(st.drawn_products)
             after_bracket = False
     units[-1].x1 = x
     return units

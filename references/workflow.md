@@ -36,14 +36,27 @@ species:
   benzene:  {smiles: "[CH:11]1=[CH:12][CH:13]=[CH:14][CH:15]=[CH:16]1"}
 steps:
   - from: [nitric, sulfuric]
+    over: [sulfuric]                  # only gives a proton: drawn above the arrow
     to: [nitric_h, bisulfate]
+    omit: [bisulfate]                 # the next step doesn't take it
     arrows:
       - {from: "lp(4)", to: "between(4,10)"}
       - {from: "bond(9-10)", to: "atom(9)"}
+  - from: nitric_h
+    to: [nitronium, water]
+    omit: [water]
+    above: "−H2O"                     # a loss worth noting (below: under a → with a reagent above it)
+    arrows: [...]
   ...
 ```
 
 Benzene needs no `[H:17]`: the H appears in the sigma complex, where it is written as an atom.
+
+Account for every product: the bookkeeping needs all of them in `to`, but a chemist draws only
+the ones the story continues with. A product no later step takes is omitted; the acid or base
+regenerated in the last step (`sulfuric` after the deprotonation) is omitted without text.
+`validate.py` prints a `note:` for each product of a multi-step mechanism that is drawn and
+never used again.
 
 ## 4. Rough products, then paste the suggestions
 
@@ -73,8 +86,9 @@ steps:
   - new_row: true                                          # row B: a new sequence
     from: [benzene, nitronium]                             # nitronium again: drawn as a copy
     ...
-  - from: [sigma_c, bisulfate]                             # bisulfate again
-    to: [nitrobenzene, sulfuric]                           # sulfuric again
+  - from: [sigma_c, bisulfate]                             # omitted in step 1: drawn here, over the arrow
+    to: [nitrobenzene, sulfuric]                           # sulfuric again: regenerated
+    omit: [sulfuric]
 ```
 
 Orient only the first species of each sequence and separate reactants; products follow their
@@ -99,11 +113,13 @@ that is expected.
 - **A partner on the far side.** If an arrow arcs over a whole molecule, swap the reactants
   (`from: [b, a]`) or flip the species (`orientation: {flip_h: true}`) so the reacting atoms
   face each other, and check with `--maps`.
-- **Arrows that pass a by-product.** When a step continues a row, the previous step's
-  by-products stay between the species and the next arrow, and a reactant the step adds is
-  drawn above its arrow. If the curved arrows of that step have to reach across a by-product
-  (radical propagation: HBr between t-Bu• and Br2), start the step on its own row
-  (`new_row: true`, `from: [tbu, br2]`).
+- **A product that disappears.** A product the next step doesn't take (water, HSO4⁻, AcOH)
+  drawn and never used again leaves the reader looking for it, and the next step's curved
+  arrows have to reach across it. Omit it (`omit: [water]`) and, if the loss matters, write it
+  on the arrow (`above: "−H2O"`; never below ⇌, where it reads as the reverse direction). The
+  conjugate acid/base of a reagent over the arrow needs no text. If a later step uses it again, name it there: it is added as
+  a reactant (above that step's arrow). An acid or base that only gives or takes a proton goes
+  `over:` the arrow, not inline with "+".
 - **Pasting a suggestion that looks wrong.** The suggestions are what the arrows give. If
   they show odd charges (`[OH+:1]`, `[CH3-:2]`), the arrows are wrong, not the products: a
   new bond is `to: between(a,b)`, while `to: atom(b)` makes a lone pair on b.

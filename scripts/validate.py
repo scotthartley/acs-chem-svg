@@ -7,6 +7,11 @@ one `suggested: <name>: {smiles: "..."}` line per molecule, ready to paste into 
 (name "?": a molecule no declared product shares atoms with). --suggest prints these for every
 step with arrows, passing or not.
 
+In a mechanism of two or more steps with curved arrows, it also prints a `note:` (not a problem)
+for each extra product of a mechanism step that is drawn and never used again: a chemist omits it
+(omit: [...]) and, if the loss matters, writes it on the arrow ("−H2O"). It also notes a loss
+("−X") written below an equilibrium arrow, where it reads as the reverse direction.
+
 Usage: uv run python scripts/validate.py [--suggest] spec.yaml [...]
 """
 
@@ -21,7 +26,7 @@ from pydantic import ValidationError
 from acs_chem_svg.electrons import StepCheck, check_spec
 from acs_chem_svg.geometry_checks import check_labels, check_lewis, check_mechanism, check_scheme
 from acs_chem_svg.layout import build_scheme, m1_drawers
-from acs_chem_svg.spec import load_spec
+from acs_chem_svg.spec import ResonanceStep, Spec, load_spec
 
 
 def validate(path: Path) -> list[str]:
@@ -49,6 +54,34 @@ def checked(path: Path) -> tuple[list[str], list[StepCheck]]:
     except (ValueError, NotImplementedError, RuntimeError, FileNotFoundError) as e:
         return electrons + [f"chemistry/layout: {e}"], checks
     return electrons + [f"geometry: {p}" for p in check_scheme(lay) + check_mechanism(lay)], checks
+
+
+def notes(spec: Spec) -> list[str]:
+    """A loss ("−X") written below an equilibrium arrow; drawn products after the first of a
+    mechanism step that no later step takes, in a scheme with two or more mechanism steps (a
+    one-step mechanism's leaving group stays)."""
+    steps = spec.steps or []
+    out = []
+    for i, st in enumerate(steps, 1):
+        if isinstance(st, ResonanceStep) or st.arrow_type == "forward":
+            continue
+        for ln in st.lines()[1]:
+            if ln.startswith(("−", "-")):
+                out.append(f"note: step {i}: {ln!r} below an equilibrium arrow reads as lost in the reverse "
+                           "direction; write it above, or leave it out if it is the conjugate of a reagent "
+                           "drawn over the arrow")
+    mech = [i for i, st in enumerate(steps, 1) if not isinstance(st, ResonanceStep) and st.arrows]
+    if len(mech) < 2:
+        return out
+    for i in mech:
+        st = steps[i - 1]
+        later = {n for s in steps[i:] for n in (s.resonance if isinstance(s, ResonanceStep) else s.sources)}
+        side = "below" if spec.over_names(i) and st.arrow_type == "forward" else "above"
+        for n in st.drawn_products[1:]:
+            if n not in later:
+                out.append(f"note: step {i}: {n} is drawn and never used again; omit it (omit: [{n}]) and, if the "
+                           f"loss matters, write it on the arrow ({side}: \"−<formula>\", e.g. \"−H2O\")")
+    return out
 
 
 def suggestions(checks: list[StepCheck], every: bool = False) -> list[str]:
@@ -79,6 +112,9 @@ def main(argv=None) -> int:
         print(f"{p}: {'OK' if not problems else f'{len(problems)} problem(s)'}")
         for msg in problems:
             print(f"  {msg}")
+        if not problems:
+            for msg in notes(load_spec(p)):
+                print(f"  {msg}")
         for line in suggestions(checks, args.suggest):
             print(f"  {line}")
     return 1 if bad else 0
