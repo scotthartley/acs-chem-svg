@@ -20,11 +20,13 @@ Usage:
     uv run python scripts/measure_refs.py --abbrev        # abbreviation labels per preset (§3.5)
     uv run python scripts/measure_refs.py --equilibrium   # equilibrium arrows, head variants (§3.1, §3.6)
     uv run python scripts/measure_refs.py --cdxml-symbols # charge-symbol <graphic> boxes (§13, CDXML export)
+    uv run python scripts/measure_refs.py --cdxml-scheme  # CDXML captions, arrows and steps (§13.1)
 """
 
 from __future__ import annotations
 
 import argparse
+import itertools
 import json
 import math
 import re
@@ -1997,6 +1999,101 @@ def cdxml_symbols(name: str) -> dict:
     return {"label_size": size, "symbols": out}
 
 
+CDXML_SCHEME_REFS = [f"{k}_x{s}" for k in ("scheme_basic", "scheme_multi", "scheme_wrap", "equilibrium")
+                     for s in ("1.0", "0.8", "0.6")] + ["arrows_large_x1.0"]
+
+
+def _cdxml_caption(doc: Doc, cap: dict, t) -> dict:
+    """One caption <t> (or a formula fragment's label) against its drawn glyphs, CDXML frame."""
+    glyphs = _caption_glyphs(doc, cap)
+    lines = text_lines(glyphs)
+    first = lines[0]
+    center = (first["x0"] + first["x1"]) / 2
+    ink = union(g.box for g in glyphs)
+    bb = cap["bbox"]
+    rec = {"text": cap["text"], "justification": cap["justification"] or "Left", "formula_fragment": cap["formula"],
+           "p_minus_first_origin": (round(cap["p"][0] - first["x0"], 3), round(cap["p"][1] - first["base"], 3)),
+           "p_x_minus_first_line_center": round(cap["p"][0] - center, 3),
+           "line_centers_minus_first": [round((ln["x0"] + ln["x1"]) / 2 - center, 3) for ln in lines],
+           "box_minus_ink": [round(a - b, 3) for a, b in zip(bb, ink)],
+           "line_pitch": [round(b["base"] - a["base"], 3) for a, b in zip(lines, lines[1:])],
+           "runs": [(r[0], r[2]) for r in cap["runs"]],
+           "attrs": {k: t.get(k) for k in ("Warning", "LineHeight", "LineStarts", "CaptionJustification",
+                                           "InterpretChemically") if t.get(k) is not None}}
+    if len(lines) > 1:
+        rec["box_right_minus_line_ends"] = [round(bb[2] - ln["x1"], 3) for ln in lines]
+        rec["box_right_minus_line_ink"] = [round(bb[2] - ln["ink"][2], 3) for ln in lines]
+    return rec
+
+
+def _cdxml_arrow(a, lw: float) -> dict:
+    """One <arrow>: the axis points against Head3D / Tail3D, and its BoundingBox against the
+    ends and the half width from its attributes (ArrowheadWidth x LineWidth / 100, plus half the
+    ArrowShaftSpacing x LineWidth / 100)."""
+    def v(k):
+        return [float(x) for x in a.get(k).split()]
+    h, t, c, M, m, bb = v("Head3D"), v("Tail3D"), v("Center3D"), v("MajorAxisEnd3D"), v("MinorAxisEnd3D"), v("BoundingBox")
+    d = (h[0] - t[0], h[1] - t[1])
+    half = int(a.get("ArrowheadWidth")) * lw / 100 + int(a.get("ArrowShaftSpacing") or 0) * lw / 200
+    return {
+        "attrs": {k: a.get(k) for k in ("HeadSize", "ArrowheadCenterSize", "ArrowheadWidth", "ArrowheadHead",
+                                        "ArrowheadTail", "ArrowShaftSpacing", "ArrowEquilibriumRatio") if a.get(k)},
+        "head3d_right_of_tail3d": h[0] > t[0], "length": round(math.hypot(*d), 3),
+        "center_minus_mid": (round(c[0] - (h[0] + t[0]) / 2, 3), round(c[1] - (h[1] + t[1]) / 2, 3)),
+        "major_minus_(center + head - tail)": (round(M[0] - c[0] - d[0], 3), round(M[1] - c[1] - d[1], 3)),
+        "minor_minus_(center + rot90(head - tail))": (round(m[0] - c[0] + d[1], 3), round(m[1] - c[1] - d[0], 3)),
+        "box_x_minus_ends": (round(bb[0] - min(h[0], t[0]), 3), round(bb[2] - max(h[0], t[0]), 3)),
+        "half_width_from_attrs": round(half, 3),
+        "box_pad (top, bottom)": (round(h[1] - bb[1] - half, 3), round(bb[3] - h[1] - half, 3)),
+    }
+
+
+def cdxml_scheme(name: str) -> dict:
+    """CDXML conventions of a scheme reference (§13.1): captions (<t> on the page and formula
+    fragments, _cdxml_caption), arrows (_cdxml_arrow, with the legacy <graphic> each supersedes),
+    and the <scheme><step> structure: what kind of object each step cites, and the page order."""
+    doc = load(name)
+    off = doc.offset
+    root = etree.parse(str(REF_DIR / f"{name}.cdxml")).getroot()
+    page = root.find("page")
+    lw = float(root.get("LineWidth"))
+    texts = [t for t in page.iter("t") if t.getparent().tag != "n" or t.getparent().get("NodeType") in ("Fragment", "Nickname")]
+    caps = []
+    for cap in doc.captions:
+        if not _caption_glyphs(doc, cap):
+            continue
+        p = sub(cap["p"], off)
+        t = min(texts, key=lambda t: length(sub(tuple(float(x) for x in t.get("p").split()), p)))
+        caps.append(_cdxml_caption(doc, cap, t))
+    by_id = {el.get("id"): el for el in page.iter() if el.get("id")}
+    arrows = []
+    for a in page.iter("arrow"):
+        rec = _cdxml_arrow(a, lw)
+        g = next((g for g in page.iter("graphic") if g.get("SupersededBy") == a.get("id")), None)
+        rec["graphic"] = None if g is None else {
+            "ArrowType": g.get("ArrowType"), "HeadSize": g.get("HeadSize"), "same_Z": g.get("Z") == a.get("Z"),
+            "box_is_head3d_tail3d": [float(x) for x in g.get("BoundingBox").split()]
+            == [float(x) for x in a.get("Head3D").split()[:2] + a.get("Tail3D").split()[:2]]}
+        arrows.append(rec)
+
+    def kind(i):
+        el = by_id.get(i)
+        if el is None:
+            return "missing"
+        if el.tag == "fragment" and el.find("n") is not None and el.find("n").get("NodeType") in ("Fragment", "Nickname"):
+            return "fragment (formula)"
+        return el.tag
+    schemes = []
+    for sch in page.iter("scheme"):
+        schemes.append([{k.replace("ReactionStep", ""): [kind(i) for i in st.get(k).split()]
+                         for k in ("ReactionStepReactants", "ReactionStepProducts", "ReactionStepArrows",
+                                   "ReactionStepObjectsAboveArrow", "ReactionStepObjectsBelowArrow") if st.get(k)}
+                        for st in sch.findall("step")])
+    order = [el.tag for el in page]
+    return {"line_width": lw, "caption_size": float(root.get("CaptionSize")), "captions": caps, "arrows": arrows,
+            "schemes": schemes, "page_order": [k for k, _ in itertools.groupby(order)]}
+
+
 def all_names():
     return sorted(p.stem for p in REF_DIR.glob("*.cdxml") if (REF_DIR / f"{p.stem}.svg").exists())
 
@@ -2015,7 +2112,12 @@ def main(argv=None) -> int:
     ap.add_argument("--equilibrium", action="store_true",
                     help="equilibrium arrows and arrowhead variants per preset (§3.1, §3.6)")
     ap.add_argument("--cdxml-symbols", action="store_true", help="charge-symbol <graphic> boxes per reference (§13)")
+    ap.add_argument("--cdxml-scheme", action="store_true", help="CDXML captions, arrows and steps per reference (§13.1)")
     args = ap.parse_args(argv)
+    if args.cdxml_scheme:
+        names = args.names or CDXML_SCHEME_REFS
+        print(json.dumps({n: cdxml_scheme(n) for n in names}, indent=1, ensure_ascii=False))
+        return 0
     if args.cdxml_symbols:
         names = args.names or CDXML_SYMBOL_REFS
         print(json.dumps({n: cdxml_symbols(n) for n in names}, indent=1, ensure_ascii=False))

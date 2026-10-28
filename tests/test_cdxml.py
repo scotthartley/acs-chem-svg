@@ -1,4 +1,4 @@
-"""CDXML export, phase 1 (acs-style.md §13): M1 species.
+"""CDXML export (acs-style.md §13): phase 1, M1 species; phase 2 (§13.1), M2 schemes.
 
 - DTD: reference_renders/cdxml/CDXML.dtd (Revvity's file, fetched once from the DOCTYPE URL;
   ChemDraw.app doesn't ship it). Local only, like the references: those tests skip without it. It dates from 2003, so libxml2 needs one enumeration loosened (AS lists +, - and ?, which
@@ -13,6 +13,15 @@
   be within CHARGE_TOL of ChemDraw's.
 - Header templates (presets/cdxml/, scripts/cdxml_headers.py) against the presets and the other
   references at each scale.
+- Phase 2, scheme round trip: each scheme reference rebuilt as a CdxScheme at ChemDraw's
+  coordinates (templates; arrows from its Head3D / Tail3D; captions set by richtext at its glyph
+  origins; formula fragments such as K2CO3 as captions; its steps) and compared with its file:
+  arrow points, boxes and head attributes, caption p, box, LineStarts and text, and step
+  membership by paired ids, all within 0.1 pt except KNOWN. Abbreviated species (scheme_multi's
+  OMe / OBn) aren't written in phase 2: they're left out of the export and of the step check.
+  equilibrium_x*'s A and B (no templates) are one-atom stand-ins at their node positions.
+- Phase 2 specs: structure (DTD, ids, step citations), RDKit (species, each step's reactants and
+  products by fragment id, ReactionsFromCDXMLBlock on one-step specs) and refusals.
 """
 
 import io
@@ -21,15 +30,18 @@ from functools import lru_cache
 
 import pytest
 import yaml
-from compare import render_reference
+from compare import preset_for, reference_cdx_scheme, render_reference
 from lxml import etree
-from rdkit import Chem
+from rdkit import Chem, RDLogger
+from rdkit.Chem import rdChemReactions
 from test_m1_vs_chemdraw import REFS
 
 import measure_refs as mr
 from acs_chem_svg.cdxml_writer import HEADER_DIR, CdxmlUnsupported, spec_cdxml, to_cdxml
 from acs_chem_svg.draw_mol import Drawer
+from acs_chem_svg.geometry import sub
 from acs_chem_svg.preset import load_preset
+from acs_chem_svg.spec import load_spec, resolve_molfile
 
 DTD_PATH = mr.REPO / "reference_renders" / "cdxml" / "CDXML.dtd"  # Revvity's: local only, never committed
 DTD_GAPS = {"No declaration for attribute ShowPrimeLabels of element CDXML",
@@ -85,10 +97,15 @@ def test_chemdraw_references_validate(ref):
     assert dtd_errors(etree.parse(str(mr.REF_DIR / f"{ref}.cdxml"), PARSER)) == []
 
 
+STEP_KINDS = {"ReactionStepReactants": "fragment", "ReactionStepProducts": "fragment", "ReactionStepArrows": "graphic",
+              "ReactionStepObjectsAboveArrow": "t", "ReactionStepObjectsBelowArrow": "t"}
+
+
 def _check_structure(text: str) -> None:
     root = etree.fromstring(text.encode(), PARSER)
     assert dtd_errors(root) == []
     # object ids; font ids are their own namespace (clearance_x1.0 has font 21 and bond 21)
+    els = {el.get("id"): el for el in root.find("page").iter() if el.get("id")}
     ids = [el.get("id") for el in root.find("page").iter() if el.get("id")]
     assert len(ids) == len(set(ids)), "duplicate ids"
     nodes = {n.get("id") for n in root.iter("n")}
@@ -96,6 +113,18 @@ def _check_structure(text: str) -> None:
         assert {b.get("B"), b.get("E")} <= nodes, f"bond {b.get('id')} points to a missing node"
     for r in root.iter("represent"):
         assert r.get("object") in nodes, f"represent points to missing node {r.get('object')}"
+    for st in root.iter("step"):  # every id a step cites exists and is of the right kind
+        for attr, tag in STEP_KINDS.items():
+            for i in (st.get(attr) or "").split():
+                assert i in els and els[i].tag == tag, f"step {st.get('id')} {attr}: {i} is not a <{tag}>"
+    for g in root.iter("graphic"):
+        if g.get("SupersededBy"):
+            a = els.get(g.get("SupersededBy"))
+            assert a is not None and a.tag == "arrow" and a.get("Z") == g.get("Z")
+    page = root.find("page")  # the references' page order
+    order = ["fragment", "t", "graphic", "scheme", "arrow"]
+    tags = [order.index(el.tag) for el in page]
+    assert tags == sorted(tags)
 
 
 @needs_dtd
@@ -137,7 +166,9 @@ def test_round_trip_sees_wedges():
 
 
 @pytest.mark.parametrize("spec", ["examples/m1_abbrev_x1.0.yaml", "examples/m1_lewis_x1.0.yaml",
-                                  "examples/m2_suzuki_x1.0.yaml"])
+                                  "examples/m2_scheme_multi_x1.0.yaml", "examples/m2_sequence_x1.0.yaml",
+                                  "examples/m4_wrap_x1.0.yaml", "examples/m3_sn2_x1.0.yaml",
+                                  "examples/m4_resonance_x1.0.yaml"])
 def test_unsupported_specs_are_refused(spec):
     with pytest.raises(CdxmlUnsupported):
         spec_cdxml(mr.REPO / spec, warn=lambda m: None)
@@ -192,10 +223,11 @@ def _text(t):
     return "".join(s.text or "" for s in t.iter("s"))
 
 
-def reference_pairs(ref: str) -> tuple[list[str], list[tuple[str, str, float, float]]]:
-    """(mismatches, [(category, key, ChemDraw, ours)] for numbers)."""
+def reference_pairs(ref: str, text: str | None = None) -> tuple[list[str], list[tuple[str, str, float, float]]]:
+    """(mismatches, [(category, key, ChemDraw, ours)] for numbers); `text` defaults to
+    reference_export(ref)."""
     theirs = etree.parse(str(mr.REF_DIR / f"{ref}.cdxml"), PARSER).getroot()
-    ours = etree.fromstring(reference_export(ref).encode(), PARSER)
+    ours = etree.fromstring((text or reference_export(ref)).encode(), PARSER)
     tn, on = _nodes(theirs), _nodes(ours)
     to_ref = {}
     bad, nums = [], []
@@ -345,3 +377,330 @@ def test_vertical_bond_label_is_left_justified():
     alanine = root.find("page").findall("fragment")[2]
     oh = [t for t in alanine.iter("t") if _text(t) == "OH"]
     assert len(oh) == 1 and oh[0].get("LabelJustification") == "Left"
+
+
+# --------------------------------------------------------------------------- phase 2: schemes
+
+SCHEME_REFS = [f"{k}_x{s}" for k in ("scheme_basic", "scheme_multi", "equilibrium") for s in ("1.0", "0.8", "0.6")]
+SCHEME_SPECS = ([f"examples/m2_{k}_x{s}.yaml" for k in ("scheme_basic", "equilibrium") for s in ("1.0", "0.8", "0.6")]
+                + ["examples/m2_stages_x1.0.yaml", "examples/m2_stages3_x1.0.yaml", "examples/m2_suzuki_x1.0.yaml"])
+# ChemDraw values the rules (acs-style.md §13.1) don't reproduce, with their measured size
+KNOWN = {
+    ("scheme_basic_x0.6", "arrow box", 1): 0.35,  # pad above the axis 0.18, not 0.5 (scheme_wrap_x0.6 too)
+    ("*", "stacked caption box", 3): 0.35,  # bottom of a caption of 2+ lines: 0.04-0.32 below the ink, unexplained
+    ("*", "formula superscript box", 1): 3.6,  # H3O+ (face 96): box top 0.354 x size above the drawn "+"
+}
+
+
+def _floats(s):
+    return [float(v) for v in s.split()]
+
+
+@lru_cache(maxsize=None)
+def reference_scheme_export(ref: str) -> str:
+    """compare.reference_cdx_scheme written out."""
+    return to_cdxml(reference_cdx_scheme(ref), preset_for(ref), f"{ref}.cdxml", warn=lambda m: None)
+
+
+def _near(p, q, tol=PAIR_TOL):
+    return max(abs(a - b) for a, b in zip(p, q)) < tol
+
+
+def scheme_pairs(ref: str) -> tuple[list[str], list[tuple[str, str, float, float]]]:
+    """(mismatches, [(category, key, ChemDraw, ours)]) for the scheme objects."""
+    theirs = etree.parse(str(mr.REF_DIR / f"{ref}.cdxml"), PARSER).getroot().find("page")
+    ours = etree.fromstring(reference_scheme_export(ref).encode(), PARSER).find("page")
+    bad, nums = [], []
+    # arrows, paired by Head3D
+    o2t = {}
+    t_arrows = list(theirs.iter("arrow"))
+    for oa in ours.iter("arrow"):
+        m = [ta for ta in t_arrows if _near(_floats(ta.get("Head3D")), _floats(oa.get("Head3D")))]
+        if len(m) != 1:
+            bad.append(f"arrow at {oa.get('Head3D')}: {len(m)} ChemDraw arrows")
+            continue
+        ta = m[0]
+        og = next(g for g in ours.iter("graphic") if g.get("SupersededBy") == oa.get("id"))
+        tg = next(g for g in theirs.iter("graphic") if g.get("SupersededBy") == ta.get("id"))
+        o2t[og.get("id")] = tg.get("id")
+        key = f"arrow {ta.get('id')}"
+        for attr in ("FillType", "ArrowheadHead", "ArrowheadTail", "ArrowheadType", "HeadSize", "ArrowheadCenterSize",
+                     "ArrowheadWidth", "ArrowShaftSpacing", "ArrowEquilibriumRatio"):
+            if oa.get(attr) != ta.get(attr):
+                bad.append(f"{key} {attr}: ChemDraw {ta.get(attr)} ours {oa.get(attr)}")
+        for attr in ("ArrowType", "HeadSize"):
+            if og.get(attr) != tg.get(attr):
+                bad.append(f"{key} graphic {attr}: ChemDraw {tg.get(attr)} ours {og.get(attr)}")
+        for attr in ("Head3D", "Tail3D", "Center3D", "MajorAxisEnd3D", "MinorAxisEnd3D", "BoundingBox"):
+            cat = "arrow box" if attr == "BoundingBox" else "arrow points"
+            for k, (a, b) in enumerate(zip(_floats(ta.get(attr)), _floats(oa.get(attr)))):
+                nums.append((cat, (k, f"{key} {attr}[{k}]"), a, b))
+        for k, (a, b) in enumerate(zip(_floats(tg.get("BoundingBox")), _floats(og.get("BoundingBox")))):
+            nums.append(("arrow points", (k, f"{key} graphic box[{k}]"), a, b))
+    # captions, paired by p: their <t> or formula fragment (text frags by drawn origin: the label's p)
+    doc = mr.load(ref)
+    tobj = {t.get("id"): t for t in theirs.findall("t")}
+    for f in theirs.findall("fragment"):
+        if f.get("id") in doc.text_frags:
+            tobj[f.get("id")] = f.find("n").find("t")
+    # the lines of their stacked captions as drawn: we write one <t> per line where a line has a
+    # sub- or superscript (acs-style.md §13.1), each paired with its line: p on its drawn
+    # baseline, box its ink
+    their_lines = {}
+    for cap in doc.captions:
+        if "\n" not in cap["text"]:
+            continue
+        p = sub(cap["p"], doc.offset)
+        tid = next(i for i, t in tobj.items() if _near(_floats(t.get("p")), p))
+        for k, ln in enumerate(mr.text_lines(mr._caption_glyphs(doc, cap))):
+            ink = (*sub(ln["ink"][:2], doc.offset), *sub(ln["ink"][2:], doc.offset))
+            their_lines[(tid, k)] = ((p[0], ln["base"] - doc.offset[1]), ink, cap["text"].split("\n")[k])
+    split = {}
+    for ot in ours.findall("t"):
+        m = [i for i, t in tobj.items() if _near(_floats(t.get("p")), _floats(ot.get("p")))]
+        if len(m) == 1 and "\n" in _text(tobj[m[0]]) and "\n" not in _text(ot):
+            m = []  # the first line of a split caption: paired with its line below
+        if not m:
+            lm = [k for k, (q, _, _) in their_lines.items() if _near(q, _floats(ot.get("p")))]
+            if len(lm) == 1:
+                (tid, k), (q, ink, text) = lm[0], their_lines[lm[0]]
+                o2t[ot.get("id")] = tid
+                split.setdefault(tid, []).append(k)
+                key = f"caption {tid} line {k + 1} {text!r}"
+                if _text(ot) != text:
+                    bad.append(f"{key} text: ours {_text(ot)!r}")
+                if ot.get("Justification") != tobj[tid].get("Justification"):
+                    bad.append(f"{key} Justification: ChemDraw {tobj[tid].get('Justification')} ours {ot.get('Justification')}")
+                for j, (a, b) in enumerate(zip(q, _floats(ot.get("p")))):
+                    nums.append(("caption p", (j, f"{key} p[{j}]"), a, b))
+                for j, (a, b) in enumerate(zip(ink, _floats(ot.get("BoundingBox")))):
+                    nums.append(("caption box", (j, f"{key} box[{j}]"), a, b))
+                continue
+        if len(m) != 1:
+            bad.append(f"caption {_text(ot)!r} at {ot.get('p')}: {len(m)} ChemDraw captions")
+            continue
+        tt = tobj[m[0]]
+        o2t[ot.get("id")] = m[0]
+        key = f"caption {m[0]} {_text(tt)!r}"
+        if _text(ot) != _text(tt):
+            bad.append(f"{key} text: ours {_text(ot)!r}")
+        for attr in ("Justification", "CaptionJustification", "LineStarts"):
+            if ot.get(attr) != tt.get(attr):
+                bad.append(f"{key} {attr}: ChemDraw {tt.get(attr)} ours {ot.get(attr)}")
+        for k, (a, b) in enumerate(zip(_floats(tt.get("p")), _floats(ot.get("p")))):
+            nums.append(("caption p", (k, f"{key} p[{k}]"), a, b))
+        stacked = "\n" in _text(tt)
+        formula_sup = any(s.get("face") == "96" and re.search(r"[A-Za-z0-9)][+\u2212-]$", s.text or "")
+                          for s in tt.iter("s"))
+        cat = "stacked caption box" if stacked else "formula superscript box" if formula_sup else "caption box"
+        for k, (a, b) in enumerate(zip(_floats(tt.get("BoundingBox")), _floats(ot.get("BoundingBox")))):
+            nums.append((cat, (k, f"{key} box[{k}]"), a, b))
+    for tid, ks in split.items():
+        if sorted(ks) != list(range(len(_text(tobj[tid]).split("\n")))):
+            bad.append(f"caption {tid}: lines {sorted(ks)} written, ChemDraw has {_text(tobj[tid]).count(chr(10)) + 1}")
+    # fragments, paired by their first node
+    tnodes = {tuple(_floats(n.get("p"))[:2]): f.get("id") for f in theirs.findall("fragment") for n in f.findall("n")}
+    for f in ours.findall("fragment"):
+        p = _floats(f.find("n").get("p"))
+        m = [i for q, i in tnodes.items() if _near(q, p)]
+        if len(m) == 1:
+            o2t[f.get("id")] = m[0]
+        else:
+            bad.append(f"fragment {f.get('id')}: {len(m)} ChemDraw fragments")
+    written = set(o2t.values())
+    # steps, paired by arrow; their ids we didn't write (abbreviated species) are left out
+    tsteps = {st.get("ReactionStepArrows"): st for st in theirs.iter("step")}
+    osteps = list(ours.iter("step"))
+    if len(osteps) != len(tsteps):
+        bad.append(f"{len(osteps)} steps, ChemDraw {len(tsteps)}")
+    for st in osteps:
+        tst = tsteps.get(o2t.get(st.get("ReactionStepArrows")))
+        if tst is None:
+            bad.append(f"step {st.get('id')}: no ChemDraw step with its arrow")
+            continue
+        for attr in STEP_KINDS:
+            got = sorted({o2t.get(i, f"?{i}") for i in (st.get(attr) or "").split()})  # split lines: one id
+            want = sorted(i for i in (tst.get(attr) or "").split() if i in written)
+            if got != want:
+                bad.append(f"step {tst.get('id')} {attr}: ChemDraw {want} ours {got}")
+    # the steps sit in the same <scheme>s
+    group = [sorted(o2t.get(st.get("ReactionStepArrows")) for st in sch.findall("step")) for sch in ours.iter("scheme")]
+    tgroup = [sorted(st.get("ReactionStepArrows") for st in sch.findall("step")) for sch in theirs.iter("scheme")]
+    if sorted(group) != sorted(tgroup):
+        bad.append(f"schemes: ChemDraw {tgroup} ours {group}")
+    return bad, nums
+
+
+@needs_refs
+@pytest.mark.parametrize("ref", SCHEME_REFS)
+def test_scheme_reference_diff(ref):
+    bad, nums = scheme_pairs(ref)
+    for cat, (k, key), a, b in nums:
+        tol = KNOWN.get((ref, cat, k), KNOWN.get(("*", cat, k), TOL))
+        if abs(b - a) > tol:
+            bad.append(f"{cat} {key}: ChemDraw {a} ours {b} (diff {b - a:+.3f})")
+    assert not bad, "\n".join(bad)
+    assert any(c == "arrow points" for c, *_ in nums) and any(c == "caption p" for c, *_ in nums)
+
+
+@needs_refs
+@pytest.mark.parametrize("ref", ["scheme_basic_x1.0", "scheme_multi_x1.0", "equilibrium_x1.0"])
+def test_scheme_reference_nodes(ref):
+    """Phase 1's node and label checks on the scheme references' written species."""
+    if ref.startswith("equilibrium_"):
+        pytest.skip("stand-in species")
+    bad, nums = reference_pairs(ref, reference_scheme_export(ref))
+    bad += [f"{c} [{k}]: ChemDraw {a} ours {b}" for c, k, a, b in nums if abs(b - a) > TOL]
+    assert not bad, "\n".join(bad)
+
+
+@needs_dtd
+@pytest.mark.parametrize("ref", SCHEME_REFS)
+def test_scheme_reference_exports_validate(ref):
+    _check_structure(reference_scheme_export(ref))
+
+
+@needs_dtd
+@pytest.mark.parametrize("spec", SCHEME_SPECS)
+def test_scheme_spec_exports_validate(spec):
+    _check_structure(exported(spec))
+
+
+def _spec_smiles(spec_path) -> dict[str, str]:
+    """name -> canonical SMILES (no maps) of each species as the spec gives it."""
+    spec = load_spec(spec_path)
+    out = {}
+    for name, sp in spec.species.items():
+        m = (Chem.MolFromSmiles(sp.smiles) if sp.smiles
+             else Chem.MolFromMolFile(str(resolve_molfile(sp.molfile, spec_path.parent))))
+        for a in m.GetAtoms():
+            a.SetAtomMapNum(0)
+        out[name] = Chem.MolToSmiles(m)
+    return out
+
+
+@pytest.mark.parametrize("spec", SCHEME_SPECS)
+def test_scheme_rdkit_round_trip(spec):
+    """Every species reads back as its spec's; each step's reactants and products, by fragment
+    id, are the spec step's (reversed for an arrow favoring reactants, as ChemDraw stores it)."""
+    path = mr.REPO / spec
+    text = exported(spec)
+    smiles = _spec_smiles(path)
+    root = etree.fromstring(text.encode(), PARSER)
+    frags = [f.get("id") for f in root.find("page").findall("fragment")]
+    got = dict(zip(frags, (Chem.MolToSmiles(m) for m in Chem.MolsFromCDXML(text))))
+    s = load_spec(path)
+    drawn = [n for st in s.steps for n in st.sources + st.drawn_products]
+    assert sorted(got.values()) == sorted(smiles[n] for n in dict.fromkeys(drawn))
+    steps = list(root.iter("step"))
+    assert len(steps) == len(s.steps)
+    for st, el in zip(s.steps, steps):
+        want = ([smiles[n] for n in st.sources], [smiles[n] for n in st.drawn_products])
+        if st.arrow_type == "equilibrium_reactants":
+            want = want[::-1]
+        have = tuple([got[i] for i in el.get(k).split()] for k in ("ReactionStepReactants", "ReactionStepProducts"))
+        assert have == want
+    if len(s.steps) == 1:
+        RDLogger.DisableLog("rdApp.*")  # RDKit looks for the <t> conditions among its fragments
+        try:
+            rxns = rdChemReactions.ReactionsFromCDXMLBlock(text)
+        finally:
+            RDLogger.EnableLog("rdApp.*")
+        assert len(rxns) == 1
+        r, p = rdChemReactions.ReactionToSmiles(rxns[0]).split(">>")
+        assert sorted(r.split(".")) == sorted(want[0]) and sorted(p.split(".")) == sorted(want[1])
+
+
+def test_scheme_objects():
+    """m2_scheme_basic_x1.0: the conditions are one centered <t> per side (two lines below, with
+    LineStarts), the plus and numbers Left; the step cites them and the arrow's <graphic>."""
+    root = etree.fromstring(exported("examples/m2_scheme_basic_x1.0.yaml").encode(), PARSER)
+    texts = {_text(t): t for t in root.find("page").findall("t")}
+    assert set(texts) == {"+", "K2CO3", "Acetone, reflux\n65%", "1", "2", "3"}
+    below = texts["Acetone, reflux\n65%"]
+    assert below.get("Justification") == "Center" and below.get("LineStarts") == "16 19"
+    assert texts["+"].get("Justification") is None
+    assert [s.get("face") for s in texts["K2CO3"].iter("s")] == [None, "32", None, "32"]
+    assert all(s.get("font") == "310" and s.get("face") == "1" for n in "123" for s in texts[n].iter("s"))
+    step = root.find(".//step")
+    assert step.get("ReactionStepObjectsAboveArrow") == texts["K2CO3"].get("id")
+    assert step.get("ReactionStepObjectsBelowArrow") == below.get("id")
+    assert root.find(".//graphic").get("id") == step.get("ReactionStepArrows")
+
+
+def test_stage_lines_are_left_captions():
+    """m2_stages3_x1.0: one Left <t> per stage, two above and one below; *n* italic."""
+    root = etree.fromstring(exported("examples/m2_stages3_x1.0.yaml").encode(), PARSER)
+    page = root.find("page")
+    step = root.find(".//step")
+    above = [page.find(f"t[@id='{i}']") for i in step.get("ReactionStepObjectsAboveArrow").split()]
+    below = [page.find(f"t[@id='{i}']") for i in step.get("ReactionStepObjectsBelowArrow").split()]
+    assert [_text(t) for t in above] == ["1. n-BuLi, THF, \u221278 \u00b0C", "2. B(OMe)3"]
+    assert [_text(t) for t in below] == ["3. H3O+"]
+    assert all(t.get("Justification") is None for t in above + below)
+    assert [(s.text, s.get("font"), s.get("face")) for s in above[0].iter("s")][1] == ("n", "307", "2")
+    assert [s.get("face") for s in below[0].iter("s")][-1] == "64"
+
+
+def test_new_row_starts_a_scheme():
+    """m2_equilibrium_x1.0: three sequences, three <scheme>s; the arrow favoring reactants has
+    Head3D on the left and its step reads right to left, as in equilibrium_x1.0."""
+    root = etree.fromstring(exported("examples/m2_equilibrium_x1.0.yaml").encode(), PARSER)
+    assert [len(s.findall("step")) for s in root.iter("scheme")] == [1, 1, 1]
+    arrows = list(root.iter("arrow"))
+    assert [a.get("ArrowEquilibriumRatio") for a in arrows] == [None, "300", "300"]
+    h, t = (_floats(arrows[2].get(k))[0] for k in ("Head3D", "Tail3D"))
+    assert h < t
+
+
+def test_cdxml_head_attrs_match_preset_heads():
+    """cdxml.arrow_heads against the drawn heads: HeadSize and ArrowheadCenterSize x LineWidth /
+    100 are head_length and head_inset; ArrowShaftSpacing and ArrowEquilibriumRatio follow the
+    preset as the writer derives them (300 and 300 in every reference)."""
+    for name in ("acs1996", "acs1996_x0.8", "acs1996_x0.6"):
+        p = load_preset(name)
+        lw = p.lengths.line_width
+        for variant, (size, center, _) in p.cdxml.arrow_heads.items():
+            h = p.head(variant)
+            assert size * lw / 100 == pytest.approx(h.head_length, abs=0.03)
+            assert center * lw / 100 == pytest.approx(h.head_inset, abs=0.03)
+        assert round(p.equilibrium.shaft_spacing / lw * 100) == 300
+        assert round(p.ratios.equilibrium_long_per_short * 100) == 300
+
+
+@needs_refs
+def test_cdxml_arrow_conventions_hold_in_references():
+    """The rules the writer applies (acs-style.md §13.1), on every scheme reference's arrows:
+    Center3D the midpoint, MajorAxisEnd3D = center + (head - tail), MinorAxisEnd3D turned 90°,
+    the box's half width from ArrowheadWidth / ArrowShaftSpacing, and the pad, all to 0.02 pt,
+    except arrows_large_x1.0's balanced arrow (minor axis 28.8 long, a copied arrow's) and the
+    x0.6 forward arrows padded 0.18 (scheme_basic_x0.6, scheme_wrap_x0.6)."""
+    pad = 0.5
+    for ref in mr.CDXML_SCHEME_REFS:
+        for k, a in enumerate(mr.cdxml_scheme(ref)["arrows"]):
+            assert max(map(abs, a["center_minus_mid"] + a["major_minus_(center + head - tail)"])) < 0.02, ref
+            if not (ref == "arrows_large_x1.0" and k == 0):
+                assert max(map(abs, a["minor_minus_(center + rot90(head - tail))"])) < 0.02, ref
+            top, bottom = a["box_pad (top, bottom)"]
+            eq = "ArrowShaftSpacing" in a["attrs"]
+            both = a["attrs"].get("ArrowheadTail") == "Full"
+            want = ((pad, pad) if a["head3d_right_of_tail3d"] else (0, 0)) if eq else (pad, pad if both else 0)
+            if ref in ("scheme_basic_x0.6", "scheme_wrap_x0.6"):
+                want = (0.175, 0)
+            assert top == pytest.approx(want[0], abs=0.02) and bottom == pytest.approx(want[1], abs=0.02), (ref, k)
+
+
+def test_stacked_scripts_are_split():
+    """m2_suzuki_x1.0: its stacked conditions have subscripts, so each line is its own centered
+    <t> (ChemDraw sets a stack of explicit script runs 11.775 apart: gate 2026-10-28), on our
+    baselines; the step cites every line. A plain stack (m2_scheme_basic) stays one <t>."""
+    root = etree.fromstring(exported("examples/m2_suzuki_x1.0.yaml").encode(), PARSER)
+    page = root.find("page")
+    step = root.find(".//step")
+    for attr, want in (("ReactionStepObjectsAboveArrow", ["PhB(OH)2", "Pd(PPh3)4"]),
+                       ("ReactionStepObjectsBelowArrow", ["1,4-dioxane/H2O (4:1)", "90 °C, 12 h"])):
+        ts = [page.find(f"t[@id='{i}']") for i in step.get(attr).split()]
+        assert [_text(t) for t in ts] == want
+        assert all(t.get("Justification") == "Center" and t.get("LineStarts") is None for t in ts)
+        (x0, y0), (x1, y1) = (_floats(t.get("p")) for t in ts)
+        assert x0 == pytest.approx(x1, abs=0.01) and y1 > y0

@@ -42,6 +42,8 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+from lxml import etree
+
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import measure_refs as mr  # noqa: E402
 from cdxml_to_molfile import fragments, template_path  # noqa: E402
@@ -49,6 +51,7 @@ from cdxml_to_molfile import fragments, template_path  # noqa: E402
 from acs_chem_svg import chem, richtext  # noqa: E402
 from acs_chem_svg.arrows import equilibrium_arrow, reaction_arrow, resonance_arrow  # noqa: E402
 from acs_chem_svg.brackets import square_bracket  # noqa: E402
+from acs_chem_svg.cdxml_writer import CdxArrow, CdxScheme, CdxStep, CdxText  # noqa: E402
 from acs_chem_svg.draw_mol import Drawer  # noqa: E402
 from acs_chem_svg.preset import Preset, load_preset  # noqa: E402
 from acs_chem_svg.preview import compare_png, rasterize_file, zoom_crops  # noqa: E402
@@ -189,6 +192,113 @@ def scheme_captions(ref: mr.Doc, preset: Preset) -> list[Group]:
                                         style="bold" if cap["bold"] else "regular")
             runs += laid.runs
         out.append(Group(f"caption-{k}", runs))
+    return out
+
+
+# --------------------------------------------------------------------------- CDXML round trip (§13.1)
+
+
+CDXML_PARSER = etree.XMLParser(load_dtd=False, no_network=True)
+
+
+def floats(s: str) -> list[float]:
+    return [float(v) for v in s.split()]
+
+
+def _near(p, q, tol: float = 0.01) -> bool:
+    return max(abs(a - b) for a, b in zip(p, q)) < tol
+
+
+def caption_lines(cap: dict, ref: mr.Doc, preset) -> list[richtext.Line]:
+    """A reference caption set by richtext, one line per CDXML line, at ChemDraw's glyph origins
+    (compare.scheme_captions), in the SVG frame."""
+    lines = mr.text_lines(mr._caption_glyphs(ref, cap))
+    src = richtext_source(cap["runs"]).split("\n")
+    assert len(src) == len(lines), cap["text"]
+    return [richtext.layout_line(t, ln["x0"], ln["base"], ln["size"], preset, style="bold" if cap["bold"] else "regular")
+            for t, ln in zip(src, lines)]
+
+
+def stand_in(n) -> chem.Molecule:
+    """A one-atom boron fragment at node n (CDXML frame) for equilibrium_x*'s A and B."""
+    x, y = floats(n.get("p"))[:2]
+    return chem.Molecule(f"node{n.get('id')}", [chem.Atom(0, "1", "B", x, y)], [])
+
+
+def cdx_ref_arrow(a: dict, preset) -> CdxArrow:
+    """Our drawn arrow on a CDXML arrow (compare.ref_arrow's ends)."""
+    variant = ARROW_HEADS[a["attrs"]["HeadSize"]]
+    tail, head = a["tail"], a["head"]
+    if not a.get("equilibrium"):
+        return CdxArrow(tail, head, "forward", variant)
+    if not a["attrs"].get("ArrowEquilibriumRatio"):
+        d = mul(unit(sub(head, tail)), preset.equilibrium.stagger)
+        return CdxArrow(sub(tail, d), add(head, d), "equilibrium", variant)
+    if head[0] > tail[0]:
+        return CdxArrow(tail, head, "equilibrium_products", variant)
+    return CdxArrow(head, tail, "equilibrium_reactants", variant)
+
+
+def reference_cdx_scheme(ref: str) -> CdxScheme:
+    """A scheme reference as cdxml_writer records, at ChemDraw's CDXML coordinates (tests/
+    test_cdxml.py, cdxml_spike.py): the templates (abbreviated ones left out: not written in
+    phase 2); equilibrium_*'s A and B as one-atom stand-ins at their nodes; its arrows
+    (cdx_ref_arrow); every caption and formula fragment (K2CO3) set by richtext at ChemDraw's
+    glyph origins, with its justification; its steps, minus the species left out. Every
+    object a step cites is paired with ChemDraw's by its p."""
+    r = render_reference(ref)
+    doc, preset = r.ref, r.preset
+    page = etree.parse(str(mr.REF_DIR / f"{ref}.cdxml"), CDXML_PARSER).getroot().find("page")
+    steps = [sch.findall("step") for sch in page.iter("scheme")]
+
+    def cited(st, attr):
+        return (st.get(attr) or "").split()
+    species = {i for sch in steps for st in sch for k in ("ReactionStepReactants", "ReactionStepProducts")
+               for i in cited(st, k)}
+    out = CdxScheme([], offset=(-doc.offset[0], -doc.offset[1]))
+    frag_idx, skip_p = {}, []
+    if ref.startswith("equilibrium_"):  # stand-ins, already in the CDXML frame
+        for f in page.findall("fragment"):
+            if f.get("id") in species:
+                n = f.find("n")
+                m = stand_in(n)
+                frag_idx[f.get("id")] = len(out.species)
+                out.species.append((m, Drawer(m, preset), (0.0, 0.0)))
+                skip_p.append(floats(n.find("t").get("p")))
+    else:
+        for (_, fid, _), m in zip(fragments(doc), r.molecules):
+            if any(a.abbrev for a in m.atoms):
+                continue  # abbreviations: not written in phase 2
+            frag_idx[fid] = len(out.species)
+            out.species.append((m, Drawer(m, preset), out.offset))
+    # captions: their <t> ids, or the formula fragment's id, paired by p
+    objs = {t.get("id"): floats(t.get("p")) for t in page.findall("t")}
+    for f in page.findall("fragment"):
+        if f.get("id") in doc.text_frags:
+            objs[f.get("id")] = floats(f.find("n").find("t").get("p"))
+    text_idx = {}
+    for cap in doc.captions:
+        if not mr._caption_glyphs(doc, cap):
+            continue
+        p = sub(cap["p"], doc.offset)
+        if any(_near(p, q) for q in skip_p):
+            continue  # a stand-in's own label
+        tid = next(i for i, q in objs.items() if _near(p, q))
+        text_idx[tid] = len(out.texts)
+        out.texts.append(CdxText(caption_lines(cap, doc, preset),
+                                 "Center" if cap["justification"] == "Center" else "Left"))
+    arrow_idx = {}
+    for el, a in zip(page.iter("arrow"), doc.arrows):
+        g = next(g for g in page.iter("graphic") if g.get("SupersededBy") == el.get("id"))
+        arrow_idx[g.get("id")] = len(out.arrows)
+        out.arrows.append(cdx_ref_arrow(a, preset))
+    for sch in steps:
+        out.schemes.append([CdxStep([frag_idx[i] for i in cited(st, "ReactionStepReactants") if i in frag_idx],
+                                    [frag_idx[i] for i in cited(st, "ReactionStepProducts") if i in frag_idx],
+                                    arrow_idx[st.get("ReactionStepArrows")],
+                                    [text_idx[i] for i in cited(st, "ReactionStepObjectsAboveArrow")],
+                                    [text_idx[i] for i in cited(st, "ReactionStepObjectsBelowArrow")])
+                            for st in sch])
     return out
 
 

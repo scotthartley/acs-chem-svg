@@ -28,6 +28,7 @@ exempt:
   - curved_arrow.fishhook_barb      # 1.739 / 1.734
   - curved_arrow.fishhook_offset    # 0.240 / 0.241 in mech_basic_x0.8/x0.6
   - bracket.stroke_width            # 0.60 in resonance_x0.8/x0.6
+  - cdxml.arrow_box_pad             # 0.50 in scheme_*_x0.8/x0.6 and equilibrium_x0.8/x0.6 (CDXML data, not drawn)
 # Measured at every scale but not proportional to k. (ChemDraw's charge bars, 3.935 / 2.733 /
 # 1.798, shrink faster than k too; by user decision 2026-10-24 we scale them with k.)
 nonlinear:
@@ -208,3 +209,7 @@ scheme:                             # hand-placed in the references (measure_ref
 
 cdxml:                              # CDXML export only (acs-style.md §13); not drawn
   charge_box_dx: 4.8                # charge <graphic> BoundingBox: second point = (center x - this, center y); m1_set_x0.8, mech_basic_x0.8, resonance_x0.8 (measure_refs.py --cdxml-symbols)
+  arrow_heads:                      # <arrow> HeadSize / ArrowheadCenterSize / ArrowheadWidth per arrow.heads variant (scheme_*_x0.8, equilibrium_x0.8; large: arrows_large_x1.0; measure_refs.py --cdxml-scheme)
+    standard: [1000, 875, 250]      # = head_length / head_inset / 1.5 pt half width at LineWidth 0.6, x 100 / LineWidth
+    large: [1500, 1313, 375]        # arrows_large_x1.0 (the only large-head reference)
+  arrow_box_pad: 0.5                # <arrow> BoundingBox beyond the head's half width: a forward arrow's top, both sides of a left-to-right equilibrium arrow, none when Head3D is left of Tail3D (all scheme_* and equilibrium_* but scheme_basic_x0.6 / scheme_wrap_x0.6: 0.18) (measure_refs.py --cdxml-scheme)

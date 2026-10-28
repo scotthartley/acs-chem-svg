@@ -27,6 +27,9 @@ COLLINEAR_DEG = 175.0  # a substituent this close to straight-through counts as 
 # Unmeasured threshold: the references have 0° (whole outline) and 30° (band) only.
 HORIZONTAL_CLIP_DEG = 15.0
 H_SIDE_TIE = 1e-3  # sum of bond unit-vector x below which h_side calls a tie (numerical, not a style value)
+# A lone atom with H drawn H-first: ChemDraw 26 re-justified our bondless OH2 to H2O (CDXML gate,
+# m2_equilibrium_x1.0 re-save, 2026-10-28). Measured for O only; other elements keep the tie rule.
+LONE_H_LEFT = {"O"}
 # hash count step: 2 hashes at D/hash_spacing = 1.997 (m1_set_x0.8), 3 at 2.05 (m1_set_x1.0)
 HASH_COUNT_SHIFT = 0.025
 
@@ -68,12 +71,15 @@ def is_labeled(mol: Molecule, i: int) -> bool:
 
 
 def h_side(mol: Molecule, i: int) -> str:
-    """H goes opposite the mean bond direction in x; right on a tie (§2, H₂N vs NH₂). A tie is
+    """H goes opposite the mean bond direction in x; right on a tie (§2, H₂N vs NH₂), but left on
+    a lone O (H₂O, LONE_H_LEFT). A tie is
     within H_SIDE_TIE: RDKit layouts leave ~1e-4 on vertical bonds (alanine's OH), which ChemDraw,
     holding coordinates to 0.01 pt, reads as vertical and draws OH (CDXML re-save, 2026-10-28).
     Drawer.flip_crowded_labels then swaps a shown CH₃ to the other side when this side runs into
     another label or bond: a deviation from ChemDraw's rule (a hand-placement choice, unmeasured)."""
     a = mol.atoms[i]
+    if not mol.neighbors(i) and a.element in LONE_H_LEFT:
+        return "left"  # H2O
     sx = sum(unit(sub(mol.atoms[j].p, a.p))[0] for j, _ in mol.neighbors(i))
     return "left" if sx > H_SIDE_TIE else "right"
 

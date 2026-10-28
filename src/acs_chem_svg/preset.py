@@ -158,6 +158,8 @@ class Scheme(_Section):
 
 class Cdxml(_Section):
     charge_box_dx: float  # charge <graphic> BoundingBox second point, center x minus this (acs-style.md §13)
+    arrow_heads: dict[str, tuple[int, int, int]]  # head variant -> HeadSize, ArrowheadCenterSize, ArrowheadWidth (§13.1)
+    arrow_box_pad: float  # <arrow> BoundingBox: extra on the sides ChemDraw pads (acs-style.md §13.1)
 
 
 class Preset(_Section):

@@ -1,0 +1,226 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE CDXML SYSTEM "https://static.chemistry.revvitycloud.com/cdxml/CDXML.dtd">
+<CDXML CreationProgram="acs-chem-svg 0.3.0" Name="m2_equilibrium_x1.0.cdxml" BoundingBox="2.45 2.10 338.57 184.94" WindowPosition="0 0" WindowSize="0 0" FractionalWidths="yes" InterpretChemically="yes" ShowAtomQuery="yes" ShowAtomStereo="no" ShowAtomEnhancedStereo="yes" ShowAtomNumber="no" ShowResidueID="no" ShowBondQuery="yes" ShowBondRxn="yes" ShowBondStereo="no" ShowTerminalCarbonLabels="no" ShowNonTerminalCarbonLabels="no" HideImplicitHydrogens="no" Magnification="250" LabelFont="21" LabelSize="10" LabelFace="96" CaptionFont="21" CaptionSize="10" HashSpacing="2.50" MarginWidth="1.60" LineWidth="0.60" BoldWidth="2" BondLength="14.40" BondSpacing="18" ChainAngle="120" LabelJustification="Auto" CaptionJustification="Left" AminoAcidTermini="HOH" ShowSequenceTermini="yes" ShowSequenceBonds="yes" ShowSequenceUnlinkedBranches="no" ShowPrimeLabels="no" ResidueWrapCount="40" PrintMargins="36 36 36 36" MacPrintInfo="0003000000480048000000000300024CFFF4FFF4030C02580367052803FB0002000000480048000000000300024C000100000064000000010001010100000001270F000100010000000000000000000000000002001901900000000000400000000000000000000100000000000000000000000000000000" ChemPropName="" ChemPropFormula="Chemical formula: " ChemPropExactMass="Exact mass: " ChemPropMolWt="Molecular weight: " ChemPropMOverZ="m/z: " ChemPropAnalysis="Elemental analysis: " ChemPropBoilingPt="Boiling point: " ChemPropMeltingPt="Melting point: " ChemPropCritTemp="Critical temp: " ChemPropCritPres="Critical pres: " ChemPropCritVol="Critical vol: " ChemPropGibbs="Gibbs energy: " ChemPropLogP="Log P: " ChemPropMR="MR: " ChemPropHenry="Henry's law: " ChemPropEForm="Heat of form: " ChemProptPSA="tPSA: " ChemPropID="" ChemPropFragmentLabel="" color="0" bgcolor="1" RxnAutonumberStart="1" RxnAutonumberConditions="no" RxnAutonumberStyle="Roman" RxnAutonumberFormat="(#)">
+  <colortable>
+    <color r="1" g="1" b="1"/>
+    <color r="0" g="0" b="0"/>
+    <color r="1" g="0" b="0"/>
+    <color r="1" g="1" b="0"/>
+    <color r="0" g="1" b="0"/>
+    <color r="0" g="1" b="1"/>
+    <color r="0" g="0" b="1"/>
+    <color r="1" g="0" b="1"/>
+  </colortable>
+  <fonttable>
+    <font id="21" charset="x-mac-roman" name="Helvetica"/>
+    <font id="307" charset="x-mac-roman" name="Helvetica Oblique"/>
+    <font id="310" charset="x-mac-roman" name="Helvetica Bold"/>
+  </fonttable>
+  <page id="1" BoundingBox="0 0 540 720" HeaderPosition="36" FooterPosition="36" PrintTrimMarks="yes" HeightPages="1" WidthPages="1">
+    <fragment id="2" BoundingBox="2.45 11.13 37.91 40.31" Z="8">
+      <n id="3" p="2.60 36.42" Z="1"/>
+      <n id="4" p="15.07 29.22" Z="2"/>
+      <n id="5" p="15.07 14.82" Z="3" Element="8" NumHydrogens="0" NeedsClean="yes">
+        <t p="11.18 18.50" BoundingBox="11.57 11.13 18.57 18.71" LabelJustification="Left">
+          <s font="21" size="10" color="0" face="96">O</s>
+        </t>
+      </n>
+      <n id="6" p="27.54 36.42" Z="4" Element="8" NumHydrogens="1" NeedsClean="yes">
+        <t p="23.65 40.10" BoundingBox="24.04 32.73 37.91 40.31" LabelJustification="Left" LabelAlignment="Left">
+          <s font="21" size="10" color="0" face="96">OH</s>
+        </t>
+      </n>
+      <b id="7" Z="5" B="3" E="4"/>
+      <b id="8" Z="6" B="4" E="5" Order="2"/>
+      <b id="9" Z="7" B="4" E="6"/>
+    </fragment>
+    <fragment id="10" BoundingBox="75.00 19.95 110.42 31.39" Z="14">
+      <n id="11" p="110.27 27.50" Z="9"/>
+      <n id="12" p="97.80 20.30" Z="10"/>
+      <n id="13" p="85.33 27.50" Z="11" Element="8" NumHydrogens="1" NeedsClean="yes">
+        <t p="89.22 31.18" BoundingBox="75.00 23.82 88.82 31.39" LabelJustification="Right" Justification="Right" LabelAlignment="Right">
+          <s font="21" size="10" color="0" face="96">OH</s>
+        </t>
+      </n>
+      <b id="14" Z="12" B="11" E="12"/>
+      <b id="15" Z="13" B="12" E="13"/>
+    </fragment>
+    <fragment id="16" BoundingBox="187.19 2.10 224.90 49.25" Z="26">
+      <n id="17" p="224.75 48.99" Z="15"/>
+      <n id="18" p="212.28 41.79" Z="16"/>
+      <n id="19" p="212.28 27.39" Z="17" Element="8" NumHydrogens="0" NeedsClean="yes">
+        <t p="208.39 31.07" BoundingBox="208.78 23.70 215.78 31.28" LabelJustification="Left">
+          <s font="21" size="10" color="0" face="96">O</s>
+        </t>
+      </n>
+      <n id="20" p="199.81 20.18" Z="18"/>
+      <n id="21" p="187.34 27.38" Z="19"/>
+      <n id="22" p="199.81 5.78" Z="20" Element="8" NumHydrogens="0" NeedsClean="yes">
+        <t p="195.92 9.47" BoundingBox="196.32 2.10 203.31 9.68" LabelJustification="Left">
+          <s font="21" size="10" color="0" face="96">O</s>
+        </t>
+      </n>
+      <b id="23" Z="21" B="17" E="18"/>
+      <b id="24" Z="22" B="18" E="19"/>
+      <b id="25" Z="23" B="19" E="20"/>
+      <b id="26" Z="24" B="20" E="21"/>
+      <b id="27" Z="25" B="20" E="22" Order="2"/>
+    </fragment>
+    <fragment id="28" BoundingBox="261.99 20.89 279.98 30.56" Z="28">
+      <n id="29" p="276.49 24.57" Z="27" Element="8" NumHydrogens="2" NeedsClean="yes">
+        <t p="280.38 28.26" BoundingBox="261.99 20.89 279.98 30.56" LabelJustification="Right" Justification="Right" LabelAlignment="Right">
+          <s font="21" size="10" color="0" face="96">OH2</s>
+        </t>
+      </n>
+    </fragment>
+    <fragment id="30" BoundingBox="2.45 87.41 43.66 120.24" Z="43">
+      <n id="31" p="5.95 91.10" Z="29" Element="8" NumHydrogens="0" NeedsClean="yes">
+        <t p="2.06 94.78" BoundingBox="2.45 87.41 9.44 94.99" LabelJustification="Left">
+          <s font="21" size="10" color="0" face="96">O</s>
+        </t>
+      </n>
+      <n id="32" p="18.42 98.30" Z="30"/>
+      <n id="33" p="18.42 112.70" Z="31"/>
+      <n id="34" p="30.89 119.90" Z="32"/>
+      <n id="35" p="43.36 112.70" Z="33"/>
+      <n id="36" p="43.36 98.30" Z="34"/>
+      <n id="37" p="30.89 91.10" Z="35"/>
+      <b id="38" Z="36" B="31" E="32" Order="2"/>
+      <b id="39" Z="37" B="32" E="33"/>
+      <b id="40" Z="38" B="33" E="34"/>
+      <b id="41" Z="39" B="34" E="35"/>
+      <b id="42" Z="40" B="35" E="36"/>
+      <b id="43" Z="41" B="36" E="37"/>
+      <b id="44" Z="42" B="37" E="32"/>
+    </fragment>
+    <fragment id="45" BoundingBox="80.75 96.49 138.86 111.27" Z="51">
+      <n id="46" p="128.49 100.17" Z="44" Element="8" NumHydrogens="1" NeedsClean="yes">
+        <t p="124.60 103.86" BoundingBox="124.99 96.49 138.86 104.07" LabelJustification="Left" LabelAlignment="Left">
+          <s font="21" size="10" color="0" face="96">OH</s>
+        </t>
+      </n>
+      <n id="47" p="116.02 107.37" Z="45"/>
+      <n id="48" p="103.55 100.17" Z="46"/>
+      <n id="49" p="91.08 107.37" Z="47" Element="8" NumHydrogens="1" NeedsClean="yes">
+        <t p="94.97 111.06" BoundingBox="80.75 103.69 94.57 111.27" LabelJustification="Right" Justification="Right" LabelAlignment="Right">
+          <s font="21" size="10" color="0" face="96">OH</s>
+        </t>
+      </n>
+      <b id="50" Z="48" B="46" E="47"/>
+      <b id="51" Z="49" B="47" E="48"/>
+      <b id="52" Z="50" B="48" E="49"/>
+    </fragment>
+    <fragment id="53" BoundingBox="235.08 83.75 283.48 123.91" Z="73">
+      <n id="54" p="235.38 91.30" Z="52"/>
+      <n id="55" p="235.38 105.70" Z="53"/>
+      <n id="56" p="247.85 112.89" Z="54"/>
+      <n id="57" p="260.32 105.69" Z="55"/>
+      <n id="58" p="260.32 91.29" Z="56"/>
+      <n id="59" p="247.85 84.09" Z="57"/>
+      <n id="60" p="261.83 120.02" Z="58" Element="8" NumHydrogens="0" NeedsClean="yes">
+        <t p="257.94 123.70" BoundingBox="258.33 116.33 265.32 123.91" LabelJustification="Left">
+          <s font="21" size="10" color="0" face="96">O</s>
+        </t>
+      </n>
+      <n id="61" p="275.92 123.01" Z="59"/>
+      <n id="62" p="283.12 110.54" Z="60"/>
+      <n id="63" p="273.48 99.84" Z="61" Element="8" NumHydrogens="0" NeedsClean="yes">
+        <t p="269.59 103.52" BoundingBox="269.98 96.15 276.97 103.73" LabelJustification="Left">
+          <s font="21" size="10" color="0" face="96">O</s>
+        </t>
+      </n>
+      <b id="64" Z="62" B="54" E="55"/>
+      <b id="65" Z="63" B="55" E="56"/>
+      <b id="66" Z="64" B="56" E="57"/>
+      <b id="67" Z="65" B="57" E="58"/>
+      <b id="68" Z="66" B="58" E="59"/>
+      <b id="69" Z="67" B="57" E="60"/>
+      <b id="70" Z="68" B="60" E="61"/>
+      <b id="71" Z="69" B="61" E="62"/>
+      <b id="72" Z="70" B="62" E="63"/>
+      <b id="73" Z="71" B="59" E="54"/>
+      <b id="74" Z="72" B="63" E="57"/>
+    </fragment>
+    <fragment id="75" BoundingBox="320.58 99.04 338.57 108.71" Z="75">
+      <n id="76" p="335.07 102.73" Z="74" Element="8" NumHydrogens="2" NeedsClean="yes">
+        <t p="338.96 106.41" BoundingBox="320.58 99.04 338.57 108.71" LabelJustification="Right" Justification="Right" LabelAlignment="Right">
+          <s font="21" size="10" color="0" face="96">OH2</s>
+        </t>
+      </n>
+    </fragment>
+    <fragment id="77" BoundingBox="2.45 159.40 27.69 184.94" Z="83">
+      <n id="78" p="27.54 184.68" Z="76"/>
+      <n id="79" p="15.07 177.49" Z="77"/>
+      <n id="80" p="2.60 184.68" Z="78"/>
+      <n id="81" p="15.07 163.08" Z="79" Element="8" NumHydrogens="0" NeedsClean="yes">
+        <t p="11.18 166.77" BoundingBox="11.57 159.40 18.57 166.98" LabelJustification="Left">
+          <s font="21" size="10" color="0" face="96">O</s>
+        </t>
+      </n>
+      <b id="82" Z="80" B="78" E="79"/>
+      <b id="83" Z="81" B="79" E="80"/>
+      <b id="84" Z="82" B="79" E="81" Order="2"/>
+    </fragment>
+    <fragment id="85" BoundingBox="98.00 159.42 133.46 184.92" Z="91">
+      <n id="86" p="110.62 159.42" Z="84"/>
+      <n id="87" p="110.62 173.82" Z="85"/>
+      <n id="88" p="98.15 181.02" Z="86"/>
+      <n id="89" p="123.09 181.03" Z="87" Element="8" NumHydrogens="1" NeedsClean="yes">
+        <t p="119.21 184.71" BoundingBox="119.60 177.34 133.46 184.92" LabelJustification="Left" LabelAlignment="Left">
+          <s font="21" size="10" color="0" face="96">OH</s>
+        </t>
+      </n>
+      <b id="90" Z="88" B="86" E="87" Order="2"/>
+      <b id="91" Z="89" B="87" E="88"/>
+      <b id="92" Z="90" B="87" E="89"/>
+    </fragment>
+    <t id="93" p="53.46 28.17" BoundingBox="53.91 23.07 59.00 28.17" Z="92" LineHeight="auto">
+      <s font="21" size="10" color="0">+</s>
+    </t>
+    <t id="94" p="240.45 28.17" BoundingBox="240.90 23.07 245.99 28.17" Z="93" LineHeight="auto">
+      <s font="21" size="10" color="0">+</s>
+    </t>
+    <t id="95" p="59.21 106.33" BoundingBox="59.66 101.23 64.75 106.33" Z="94" LineHeight="auto">
+      <s font="21" size="10" color="0">+</s>
+    </t>
+    <t id="96" p="299.04 106.33" BoundingBox="299.48 101.23 304.58 106.33" Z="95" LineHeight="auto">
+      <s font="21" size="10" color="0">+</s>
+    </t>
+    <t id="97" p="148.80 19.22" BoundingBox="134.58 11.86 163.56 21.52" Z="96" CaptionJustification="Center" Justification="Center" LineHeight="auto">
+      <s font="21" size="10" color="0">H</s>
+      <s font="21" size="10" color="0" face="32">2</s>
+      <s font="21" size="10" color="0">SO</s>
+      <s font="21" size="10" color="0" face="32">4</s>
+    </t>
+    <t id="98" p="148.80 38.02" BoundingBox="139.72 30.83 158.30 38.21" Z="97" CaptionJustification="Center" Justification="Center" LineHeight="auto">
+      <s font="21" size="10" color="0">heat</s>
+    </t>
+    <t id="99" p="186.97 97.38" BoundingBox="174.63 90.01 198.73 97.59" Z="98" CaptionJustification="Center" Justification="Center" LineHeight="auto">
+      <s font="21" size="10" color="0">TsOH</s>
+    </t>
+    <t id="100" p="186.97 116.18" BoundingBox="163.09 108.90 211.55 117.66" Z="99" CaptionJustification="Center" Justification="Center" LineHeight="auto">
+      <s font="21" size="10" color="0">PhH, reflux</s>
+    </t>
+    <t id="101" p="62.85 165.72" BoundingBox="51.86 158.31 74.40 168.17" Z="100" CaptionJustification="Center" Justification="Center" LineHeight="auto">
+      <s font="21" size="10" color="0">H</s>
+      <s font="21" size="10" color="0" face="32">3</s>
+      <s font="21" size="10" color="0">O</s>
+      <s font="21" size="10" color="0" face="64">+</s>
+    </t>
+    <graphic id="102" SupersededBy="103" BoundingBox="173.29 25.62 124.32 25.62" Z="101" GraphicType="Line" ArrowType="Equilibrium" HeadSize="1500"/>
+    <graphic id="104" SupersededBy="105" BoundingBox="222.08 103.78 151.86 103.78" Z="102" GraphicType="Line" ArrowType="Equilibrium" HeadSize="1500"/>
+    <graphic id="106" SupersededBy="107" BoundingBox="40.69 172.12 85.00 172.12" Z="103" GraphicType="Line" ArrowType="Equilibrium" HeadSize="1500"/>
+    <scheme id="108">
+      <step id="109" ReactionStepReactants="2 10" ReactionStepProducts="16 28" ReactionStepArrows="102" ReactionStepObjectsAboveArrow="97" ReactionStepObjectsBelowArrow="98"/>
+    </scheme>
+    <scheme id="110">
+      <step id="111" ReactionStepReactants="30 45" ReactionStepProducts="53 75" ReactionStepArrows="104" ReactionStepObjectsAboveArrow="99" ReactionStepObjectsBelowArrow="100"/>
+    </scheme>
+    <scheme id="112">
+      <step id="113" ReactionStepReactants="85" ReactionStepProducts="77" ReactionStepArrows="106" ReactionStepObjectsAboveArrow="101"/>
+    </scheme>
+    <arrow id="103" BoundingBox="123.42 21.97 174.19 29.27" Z="101" FillType="None" ArrowheadHead="HalfLeft" ArrowheadTail="HalfLeft" ArrowheadType="Solid" HeadSize="1500" ArrowheadCenterSize="1313" ArrowheadWidth="375" ArrowShaftSpacing="300" Head3D="173.29 25.62 0" Tail3D="124.32 25.62 0" Center3D="148.80 25.62 0" MajorAxisEnd3D="197.78 25.62 0" MinorAxisEnd3D="148.80 74.60 0"/>
+    <arrow id="105" BoundingBox="151.86 100.13 222.08 107.43" Z="102" FillType="None" ArrowheadHead="HalfLeft" ArrowheadTail="HalfLeft" ArrowheadType="Solid" HeadSize="1500" ArrowheadCenterSize="1313" ArrowheadWidth="375" ArrowShaftSpacing="300" ArrowEquilibriumRatio="300" Head3D="222.08 103.78 0" Tail3D="151.86 103.78 0" Center3D="186.97 103.78 0" MajorAxisEnd3D="257.19 103.78 0" MinorAxisEnd3D="186.97 174.00 0"/>
+    <arrow id="107" BoundingBox="40.69 168.97 85.00 175.27" Z="103" FillType="None" ArrowheadHead="HalfLeft" ArrowheadTail="HalfLeft" ArrowheadType="Solid" HeadSize="1500" ArrowheadCenterSize="1313" ArrowheadWidth="375" ArrowShaftSpacing="300" ArrowEquilibriumRatio="300" Head3D="40.69 172.12 0" Tail3D="85.00 172.12 0" Center3D="62.85 172.12 0" MajorAxisEnd3D="18.54 172.12 0" MinorAxisEnd3D="62.85 127.81 0"/>
+  </page>
+</CDXML>

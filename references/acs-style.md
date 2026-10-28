@@ -129,6 +129,7 @@ hash ends at the atom.
 | Baseline below atom center | 3.586 (3.582–3.591) | 2.869 | 2.156 | glyph baseline − atom y; = 0.3585 × size = cap height / 2 (Helvetica capHeight 1469/2048 = 0.7173 em) | exact |
 | H after element (NH₂, OH, NH₃, CH₃) | origin + advance(element) | | | dx of the H origin | exact |
 | Left-side labels (H₂N, HO, H₃C) | set right-to-left, contiguous: H₂N gives H at −11.393, 2 at −4.171 from the N origin | | | labels_x1.0, mech_basic_x1.0 | exact |
+| Lone atom with H (no bonds) | water is H₂O, right-justified (ChemDraw 26 re-justified our OH₂ on re-save, CDXML gate 2026-10-28); other elements unmeasured (they keep H on the right) | | | m2_equilibrium_x1.0 re-save | exact (O only) |
 | Subscript size | 0.75 × label size (7.5 / 6 / 4.5) | | | SVG font-size | exact |
 | Subscript baseline drop | 2.30 | 1.84 | 1.38 | = 0.23 × size | exact |
 | Terminal label on an offset double bond | moved bond_spacing/2 (1.30) perpendicular to the bond, toward the second line, so it sits centered between the lines; the lines don't move | | | double_bonds_2 acetaldehyde O at 90° and −30° (1.300, 1.377 perpendicular; ≤0.1 along) | exact (×1.0 only; assumed bond_spacing/2 at ×0.8/×0.6) |
@@ -718,7 +719,7 @@ All unmeasured (Open 17): user decisions 2026-10-26, round defaults on the 0.5 p
 | Lone pairs: every atom; sides facing a bond or a non-bonded lattice neighbor stay free | §4.2 rules | `draw_mol.Drawer.label_dots`, `lewis_facing` |
 | Checks: shared dots ≥ 2 × gap from labels; assigned dots on the owner's half; dot sets ≥ `dot_spacing` apart | — | `geometry_checks.check_lewis` |
 
-## 13. CDXML export (phase 1: M1 species; source: every reference's .cdxml)
+## 13. CDXML export (phase 1: M1 species, phase 2: M2 schemes §13.1; source: every reference's .cdxml)
 
 `acs_chem_svg.cdxml_writer` writes what ChemDraw writes for its own structures, so ChemDraw can
 edit a figure. These are file conventions, not drawn geometry. They are measured from the CDXML
@@ -764,3 +765,61 @@ alanine's OH on a bond vertical to 1e-4, which we had set HO (a tie-tolerance bu
 recognized as charges (a charge moved too far from its atom raises ChemDraw's warning). The
 charge does not follow a dragged atom, as with ChemDraw's own. **Decision:** later phases write
 labels explicitly, as here.
+
+### 13.1 Schemes (phase 2: M2; source: scheme_basic_x\*, scheme_multi_x\*, scheme_wrap_x\*, equilibrium_x\*, arrows_large_x1.0)
+
+Measured with `measure_refs.py --cdxml-scheme` (captions against the glyphs drawn in each
+reference SVG, `_caption_glyphs` / `text_lines`; arrows against Head3D / Tail3D) and held by
+`tests/test_cdxml.py` (`test_scheme_reference_diff`: the 9 scheme_basic / scheme_multi /
+equilibrium references rebuilt at ChemDraw's coordinates and compared object by object).
+
+| Item | ChemDraw's files | Ours |
+|---|---|---|
+| Page order | fragments, `<t>`, `<graphic>`, `<scheme>`, `<arrow>` (scheme_wrap_x\* also has the user's `<group>`s first) | the same, no groups |
+| Caption `<t p>`, Left | first glyph origin on the first baseline, within 0.005 pt (single lines, plus signs, numbers, stage lines; formula fragments' labels too) | the same, from the richtext runs |
+| Caption `<t p>`, Center | `CaptionJustification="Center" Justification="Center"`; p.x = the first line's advance center (every line's center is the same, within 0.005), p.y its baseline. ChemDraw centers only its stacked conditions | stacked or not, every `above:` / `below:` side is one centered `<t>`; stage lines are one Left `<t>` each (user decision 2026-10-28: every condition is a caption, including formulas ChemDraw stores as a one-node fragment) |
+| Caption BoundingBox | the ink box within 0.005 pt for one line. Stacked: the right edge is the advance end of the lines that end in a full-size glyph ("reflux", "(4:1)"), else the ink; the bottom is 0.04–0.32 below the ink (larger at ×0.6), unexplained | the ink, the stacked right-edge rule, ink bottom (`KNOWN`, 0.35) |
+| Formula-face superscript (`face="96"` "2. H₃O+") | box top 0.354 × size above the drawn "+" (3.54 / 2.83 / 2.12) | we write explicit runs (face 64): the ink (`KNOWN`) |
+| `<s>` runs | one per style: Helvetica (21, no face), Helvetica Oblique (307, face 2: *n*), Helvetica Bold (310, face 1: numbers); formulas as one run with face 96, which ChemDraw subscripts itself; size the nominal caption size | one per richtext run, face 1 / 2 plus 32 (sub) / 64 (sup), nominal size. The header lists fonts 307 and 310, copied from scheme_multi_x1.0 |
+| Lines | one `<t>` with `\n` between lines; `LineHeight="auto"`; `LineStarts` = each line's end offset in UTF-8 bytes with its newline ("…(4:1)\n90 °C, 12 h": 22 34, ° counting 2) | the same for a plain stack; a stack with a sub- or superscript is one `<t>` per line (gate below) |
+| Line pitch | drawn 10.05 (no subscripts), 10.825 (subscript in the upper line), 10.975 (both) at ×1.0, for its formula face. For explicit script runs (ours) ChemDraw sets 11.775 whatever the scripts (gate) | ours (`text.line_pitch_*`) are fit to its formula face, so script stacks are split |
+| `Warning` | "Chemical Interpretation is not possible…" / "ChemDraw can't interpret this label." on most captions | not written (ChemDraw's own note) |
+| Arrow | `<graphic GraphicType="Line" SupersededBy=arrow ArrowType="FullHead|Equilibrium" HeadSize>` (BoundingBox = Head3D, Tail3D) + `<arrow>` with the same Z; steps cite the `<graphic>` | the same |
+| Head attributes | `HeadSize / ArrowheadCenterSize / ArrowheadWidth` 1000 / 875 / 250 in every scheme and equilibrium reference at every scale, 1500 / 1313 / 375 in arrows_large_x1.0; ×LineWidth/100 = head_length and head_inset (`test_cdxml_head_attrs_match_preset_heads`) | `cdxml.arrow_heads` per `arrow.heads` variant |
+| Equilibrium | `ArrowheadHead="HalfLeft" ArrowheadTail="HalfLeft"`, `ArrowShaftSpacing="300"` (= shaft spacing / LineWidth × 100), unbalanced `ArrowEquilibriumRatio="300"` (= long / short × 100) | derived from `equilibrium.shaft_spacing` and `ratios.equilibrium_long_per_short` |
+| Head3D / Tail3D | forward: the drawn tip and tail. Balanced: our drawn ends moved in by `equilibrium.stagger` (box x reaches 0.90 beyond them). Favoring products: the ends. Favoring reactants: Head3D on the **left**, and the step's reactants are the species on the right | the same (the spec's `from` becomes ChemDraw's products there; the equilibrium is the same) |
+| Axis points | Center3D the midpoint; MajorAxisEnd3D = center + (Head3D − Tail3D); MinorAxisEnd3D = center + that turned 90° (y down), within 0.01 pt in every arrow but arrows_large_x1.0's balanced one (minor axis 28.8 long: a copied arrow's) | the same |
+| Arrow BoundingBox | x: the drawn ends. y: ± (ArrowheadWidth × LineWidth / 100, plus ArrowShaftSpacing × LineWidth / 200) with 0.5 more on the top of a forward arrow (both sides of ↔) and both sides of an equilibrium arrow whose Head3D is right, none when it is left; scheme_basic_x0.6 and scheme_wrap_x0.6 pad 0.18 instead | `cdxml.arrow_box_pad` 0.5 (`KNOWN` for scheme_basic_x0.6) |
+| `<scheme>` | one per drawn sequence (scheme_multi: 3, equilibrium: 3); a wrapped sequence stays one (scheme_wrap: 5 steps, 1 scheme) | one per `new_row` |
+| `<step>` | `ReactionStepReactants` / `Products` (fragment or group ids), `ReactionStepArrows` (the `<graphic>`), `ReactionStepObjectsAboveArrow` / `BelowArrow` (`<t>`, formula fragments, groups); empty lists left out | the same, with `<t>` for every condition; omitted products are not cited |
+
+**Not written in phase 2:** abbreviations, so `m2_scheme_multi_x*`, `m2_sequence_x*` and
+`m4_wrap_x*` are refused, and the scheme_multi_x\* round trip leaves out its OMe / OBn species
+(their steps are checked without them); Lewis structures; curved arrows, resonance steps and
+brackets (M3 / M4 specs with them are refused).
+
+**Gate (2026-10-28, `scripts/cdxml_spike.py --phase 2 --diff` on the user's ChemDraw 26 re-saves
+of all seven files in `build/cdxml_spike/phase2/`):**
+- ChemDraw opens every file and keeps every `<scheme>` and `<step>`, each citing the same
+  objects (it renumbers all ids, so `--diff` pairs objects by position). The exception is
+  scheme_multi_x1.0's first row, whose round-trip export leaves out the four abbreviated
+  structures (1, 3, 4, 5): with empty steps there, ChemDraw regroups that row into its own
+  schemes.
+- It keeps our arrows: every head and axis attribute, Head3D and Tail3D. It recomputes the
+  `<arrow>` BoundingBox top 0.24 lower (pad 0.26, not the 0.5 stored in its references), so the
+  box is bookkeeping it redoes.
+- It keeps our caption p, runs, faces and LineStarts, and adds its `Warning`. It reads formula
+  captions as chemistry: K₂CO₃, LiAlH₄, PCC, CH₂Cl₂ and H₂SO₄ become formula fragments, as in its
+  own files, and H₃O⁺ becomes a hydronium fragment; the steps cite them in place of our `<t>`.
+  It draws single lines exactly as its originals (glyph origins within 0.010 pt, sub- and
+  superscripts included: our face 32 / 64 runs draw like its formula face). A superscript gets
+  its 0.354 × size box top here too (3.54 on "3. H₃O+").
+- **Line pitch:** a plain stack keeps 10.05 ("Acetone, reflux / 65%"). Stacks with explicit
+  script runs are drawn 11.775 apart (PhB(OH)₂ / Pd(PPh₃)₄ 10.975, dioxane 10.825), 0.8–0.95 pt
+  off. By the user's rule (more than 0.1 pt: one `<t>` per line), the writer splits stacks with a
+  sub- or superscript into one `<t>` per line on our baselines; plain stacks stay one `<t>`.
+- It re-justified a lone water from OH₂ to H₂O (Right, p at the end of the O advance). The
+  renderer now draws a bondless O with H as H₂O (`draw_mol.LONE_H_LEFT`), and the export matches
+  the re-save within 0.01 pt.
+- Edit check (user): selecting an arrow does not show reactants and products, which is
+  ChemDraw's standard behavior, not a fault of the files.

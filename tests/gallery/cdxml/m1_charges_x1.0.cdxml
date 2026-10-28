@@ -13,6 +13,8 @@
   </colortable>
   <fonttable>
     <font id="21" charset="x-mac-roman" name="Helvetica"/>
+    <font id="307" charset="x-mac-roman" name="Helvetica Oblique"/>
+    <font id="310" charset="x-mac-roman" name="Helvetica Bold"/>
   </fonttable>
   <page id="1" BoundingBox="0 0 540 720" HeaderPosition="36" FooterPosition="36" PrintTrimMarks="yes" HeightPages="1" WidthPages="1">
     <fragment id="2" BoundingBox="2.15 2.10 37.27 31.28" Z="10">

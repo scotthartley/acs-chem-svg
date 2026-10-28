@@ -15,8 +15,10 @@ a copy of the SVG text, never into <stem>.svg.
 ("Helvetica Bold"), which Affinity needs and Inkscape and Chrome can't resolve. The default
 output is for Inkscape and browsers; its markers follow edits.
 --cdxml also writes <stem>.cdxml for ChemDraw (acs_chem_svg.cdxml_writer, acs-style.md §13), in the
-SVG's coordinates. Phase 1: M1 species specs only; abbreviations and Lewis structures are refused,
-and what it leaves out (dots, circled signs, atom maps) is listed on stderr.
+SVG's coordinates, from the same layout as the SVG: M1 species, or an M2 scheme (arrows,
+conditions, plus signs, numbers and <scheme><step>, §13.1). Abbreviations, Lewis structures,
+curved arrows and resonance brackets are refused; what it leaves out (dots, circled signs, atom
+maps) is listed on stderr.
 
 Usage: uv run python scripts/render.py spec.yaml [--out DIR] [--px-per-pt 4] [--crops] [--maps] [--affinity] [--cdxml]
 """
@@ -28,7 +30,7 @@ import math
 import sys
 from pathlib import Path
 
-from acs_chem_svg.cdxml_writer import CdxmlUnsupported, placed_cdxml
+from acs_chem_svg.cdxml_writer import CdxmlUnsupported, check_scheme, placed_cdxml, scheme_records, to_cdxml
 from acs_chem_svg.geometry import union_box
 from acs_chem_svg.layout import SchemeLayout, build_scheme, m1_placed, render_spec
 from acs_chem_svg.scene import Group
@@ -117,12 +119,16 @@ def render(spec_path: Path, out_dir: Path | None = None, px_per_pt: float = 4.0,
            with_cdxml: bool = False) -> list[Path]:
     spec = load_spec(spec_path)
     if with_cdxml and spec.steps:
-        raise CdxmlUnsupported("CDXML export covers M1 species only (phase 1)")
+        check_scheme(spec)
     lay = build_scheme(spec, spec_path.parent, spec_path.stem) if spec.steps else None
-    placed = m1_placed(spec, spec_path.parent) if with_cdxml else None
+    placed = m1_placed(spec, spec_path.parent) if with_cdxml and not lay else None
     root = lay.root if lay else Group(spec_path.stem, [p.group for p in placed]) if placed else render_spec(spec_path)
     svg, offset = to_svg(root, affinity=affinity)
-    cdxml = placed_cdxml(placed, offset, spec.preset, f"{spec_path.stem}.cdxml") if placed else None
+    cdxml = None
+    if with_cdxml:
+        name = f"{spec_path.stem}.cdxml"
+        cdxml = (to_cdxml(scheme_records(lay, spec, offset), spec.preset, name) if lay
+                 else placed_cdxml(placed, offset, spec.preset, name))
     out_dir = out_dir or spec_path.parent
     out_dir.mkdir(parents=True, exist_ok=True)
     svg_path = out_dir / f"{spec_path.stem}.svg"
@@ -162,7 +168,7 @@ def main(argv=None) -> int:
                     help="also write <stem>_maps.png with each mapped atom's map number (preview only)")
     ap.add_argument("--affinity", action="store_true",
                     help="write for Affinity: arrowheads as separate shapes (it drops SVG markers), bold/italic as face names")
-    ap.add_argument("--cdxml", action="store_true", help="also write <stem>.cdxml for ChemDraw (M1 species only)")
+    ap.add_argument("--cdxml", action="store_true", help="also write <stem>.cdxml for ChemDraw (M1 species, M2 schemes)")
     args = ap.parse_args(argv)
     try:
         paths = render(args.spec, args.out, args.px_per_pt, args.crops, args.maps, args.affinity, args.cdxml)

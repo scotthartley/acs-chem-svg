@@ -68,11 +68,12 @@ they disagree, `acs-style.md` (the ChemDraw references) wins.
   (`examples/m2_*.yaml` … `examples/m4_*.yaml`) or M1 species (`examples/m1_smiles_x*.yaml`). `--crops` adds
   16 px/pt crops of curved arrows, charged or dotted labels, ↔ arrows, equilibrium arrow ends and bracket corners; `--maps` adds
   `<stem>_maps.png` with map numbers beside the atoms (preview only). It prints each curved arrow's bow.
-  `--cdxml` (M1 species only) adds `<stem>.cdxml` for ChemDraw (`cdxml_writer`, acs-style.md §13).
-- `uv run python scripts/cdxml_headers.py` regenerates the CDXML header templates `presets/cdxml/` from m1_set_x*.
+  `--cdxml` (M1 species and M2 schemes) adds `<stem>.cdxml` for ChemDraw (`cdxml_writer`, acs-style.md §13).
+- `uv run python scripts/cdxml_headers.py` regenerates the CDXML header templates `presets/cdxml/` from m1_set_x* (caption fonts from scheme_multi_x1.0).
 - `uv run python scripts/measure_refs.py --cdxml-symbols` prints the charge-symbol boxes per reference (acs-style.md §13).
-- `uv run python scripts/cdxml_spike.py [--diff]` writes the CDXML gate files to `build/cdxml_spike/`; `--diff`
-  compares ChemDraw's re-saves (`build/cdxml_spike/resaved/`) with them (acs-style.md §13, gate).
+- `uv run python scripts/measure_refs.py --cdxml-scheme` prints the CDXML caption, arrow and step conventions per scheme reference (acs-style.md §13.1).
+- `uv run python scripts/cdxml_spike.py [--phase 2] [--diff]` writes the CDXML gate files to `build/cdxml_spike/`
+  (`phase2/` for schemes); `--diff` compares ChemDraw's re-saves (`resaved/`) with them (acs-style.md §13, §13.1, gate).
 - `uv run python scripts/validate.py [--suggest] spec.yaml` checks schema, chemistry, electron bookkeeping, scheme
   overlaps and mechanism geometry, and prints paste-ready `suggested:` products on a mismatch (`--suggest`: for
   every step). `tests/broken/*.yaml` must each fail with their `# expect:` message.

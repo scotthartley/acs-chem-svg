@@ -317,6 +317,11 @@ nitration prompt (`examples/benchmarks/prompts.yaml`) into `examples/benchmarks/
 approved without edits; fresh-agent trials of all six benchmark prompts are summarized in
 `references/lessons.md`.
 
+CDXML export (the "Later" backend, `render.py --cdxml`, `references/acs-style.md` §13): phase 1,
+M1 species, and phase 2, M2 schemes (arrows, conditions, plus signs, numbers, `<scheme><step>`,
+§13.1), both passed their ChemDraw gates on 2026-10-28. Abbreviations, curved arrows and
+brackets come later.
+
 ---
 
 ## 11. Sources
