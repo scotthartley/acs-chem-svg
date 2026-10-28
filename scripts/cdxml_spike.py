@@ -17,8 +17,8 @@ Step 3: --diff compares each re-saved file with our export, nodes paired by posi
   labels, charge centers. Equal ink means ChemDraw drew our file exactly as its own.
 
 Phase 2 (--phase 2, acs-style.md §13.1; files in build/cdxml_spike/phase2/): the scheme
-references' round-trip exports (compare.reference_cdx_scheme: scheme_multi_x1.0 without its
-abbreviated species) and render.py --cdxml's output for M2 specs. By hand in ChemDraw, besides the
+references' round-trip exports (compare.reference_cdx_scheme) and render.py --cdxml's output for
+M2 specs. By hand in ChemDraw, besides the
 re-saves: select each arrow (do the reaction tools see its reactants and products?), drag a
 reactant, and retype a condition (does it stay in the step?). --diff then reports, per file:
 1. whether every <scheme> and <step> survived with its ids and citations;
@@ -38,6 +38,16 @@ follow?), move a curve, and run Clean Structure on a copy. --diff reports, besid
 7. the re-saved SVG's ink: each curve's stroke end, head tip and barb side against our MechArrow
    (spec cases: tip and head polygon from the layout) or the original reference (reference
    cases), and the drawn dot centers against the centers our symbols declare.
+
+Phase 4a (--phase 4a, acs-style.md §13.3; files in build/cdxml_spike/phase4a/): round trips of
+abbrev_x1.0 (templates, as phase 1), resonance_x1.0 and scheme_wrap_x1.0 (as phase 2), and
+render.py --cdxml's output for m1_abbrev, m4_resonance, m4_wrap, m4_nitration and m2_sequence.
+By hand in ChemDraw, besides the re-saves (CDXML and SVG): expand and contract a nickname (Edit >
+Expand Label), drag a contributor (do the brackets and ↔ steps hold?), and move a bracket.
+--diff reports, besides phase 2's items:
+8. the nickname nodes: NodeType, IsNickname, inner atoms kept or moved, label <t> rewrites;
+9. the brackets: BoundingBox and LipSize (phase 2's <graphic> diff), and any <bracketedgroup>
+   or objecttag ChemDraw adds (new elements in the re-save).
 
 Usage: uv run python scripts/cdxml_spike.py [--phase N]          # write the gate files
        uv run python scripts/cdxml_spike.py [--phase N] --diff   # after the ChemDraw re-saves
@@ -73,36 +83,45 @@ PHASE2_SPECS = ["examples/m2_scheme_basic_x1.0.yaml", "examples/m2_stages3_x1.0.
 PHASE3_REFS = ["mech_basic_x1.0", "mech_basic_x0.6"]
 PHASE3_SPECS = ["examples/m3_sn2_x1.0.yaml", "examples/m3_radical_initiation_x1.0.yaml",
                 "examples/m3_radical_propagation_x1.0.yaml", "examples/m3_carbonyl_addition_x1.0.yaml"]
+PHASE4A_REFS = ["abbrev_x1.0", "resonance_x1.0", "scheme_wrap_x1.0"]
+PHASE4A_SPECS = ["examples/m1_abbrev_x1.0.yaml", "examples/m4_resonance_x1.0.yaml", "examples/m4_wrap_x1.0.yaml",
+                 "examples/m4_nitration_x1.0.yaml", "examples/m2_sequence_x1.0.yaml"]
+PHASES = {"2": (PHASE2_REFS, PHASE2_SPECS), "3": (PHASE3_REFS, PHASE3_SPECS), "4a": (PHASE4A_REFS, PHASE4A_SPECS)}
 PAIR_TOL = 0.05  # pt: node positions should survive a re-save unchanged
 NUM_TOL = 0.005
 PARSER = etree.XMLParser(load_dtd=False, no_network=True, remove_blank_text=True)
 
 
-def out_dir(phase: int) -> Path:
-    return OUT if phase == 1 else OUT / f"phase{phase}"
+def out_dir(phase: str) -> Path:
+    return OUT if phase == "1" else OUT / f"phase{phase}"
 
 
-def write(phase: int = 1) -> list[Path]:
+def species_reference(ref: str) -> str:
+    """An M1 reference's templates exported at ChemDraw's CDXML coordinates."""
+    r = render_reference(ref)
+    off = (-r.ref.offset[0], -r.ref.offset[1])  # templates hold its SVG frame: back to CDXML's
+    return to_cdxml([(m, Drawer(m, r.preset), off) for m in r.molecules], r.preset.name, f"{ref}.cdxml",
+                    warn=lambda m: None)
+
+
+def write(phase: str = "1") -> list[Path]:
     out = out_dir(phase)
     (out / "resaved").mkdir(parents=True, exist_ok=True)
-    if phase in (2, 3):
-        refs, specs = (PHASE2_REFS, PHASE2_SPECS) if phase == 2 else (PHASE3_REFS, PHASE3_SPECS)
+    if phase in PHASES:
+        refs, specs = PHASES[phase]
         paths = []
         for ref in refs:
             paths.append(out / f"{ref}.cdxml")
-            paths[-1].write_text(to_cdxml(reference_cdx_scheme(ref), preset_for(ref), f"{ref}.cdxml", warn=lambda m: None))
+            paths[-1].write_text(species_reference(ref) if ref.startswith("abbrev_") else
+                                 to_cdxml(reference_cdx_scheme(ref), preset_for(ref), f"{ref}.cdxml", warn=lambda m: None))
         for s in specs:
             paths.append(out / f"{Path(s).stem}.cdxml")
             paths[-1].write_text(spec_cdxml(mr.REPO / s, warn=lambda m: None))
         return paths
     paths = []
     for ref in REFS:
-        r = render_reference(ref)
-        off = (-r.ref.offset[0], -r.ref.offset[1])  # templates hold its SVG frame: back to CDXML's
-        text = to_cdxml([(m, Drawer(m, r.preset), off) for m in r.molecules], r.preset.name, f"{ref}.cdxml",
-                        warn=lambda m: None)
         paths.append(OUT / f"{ref}.cdxml")
-        paths[-1].write_text(text)
+        paths[-1].write_text(species_reference(ref))
     for s in SPECS:
         paths.append(OUT / f"{Path(s).stem}.cdxml")
         paths[-1].write_text(spec_cdxml(mr.REPO / s))
@@ -194,6 +213,8 @@ def attribute_diff(ours_root, theirs_root) -> list[str]:
     tid = {t.get("id"): o_id for o_id, t in pair.items()}
     tb = {frozenset((tid.get(b.get("B")), tid.get(b.get("E")))): b for b in theirs_root.iter("b")}
     for b in ours_root.iter("b"):
+        if b.getparent().getparent().tag == "n":
+            continue  # a nickname's inner bond: nickname_diff
         t = tb.get(frozenset((b.get("B"), b.get("E"))))
         if t is None:
             # a wedge whose ends ChemDraw swapped (WedgeEnd) shows up here
@@ -227,6 +248,48 @@ def attribute_diff(ours_root, theirs_root) -> list[str]:
                                 and el.tag not in [x.tag for x in ours_root.find("page").iter()])
     if extra:
         lines.append(f"  new elements in the re-save: {dict(extra)}")
+    return lines + ch.report()
+
+
+# --------------------------------------------------------------------------- phase 4a: nicknames
+
+
+def nickname_diff(ours_root, theirs_root) -> list[str]:
+    """What ChemDraw's re-save did to the nickname nodes (module docstring, item 8): each of ours
+    paired by p; NodeType and IsNickname kept, its inner fragment's atoms (by Element and
+    position) and bonds, and the largest inner atom move."""
+    lines, ch = [], Changes()
+    theirs = [n for n in _top_nodes(theirs_root)]
+    worst, kept = 0.0, 0
+    ours = [n for n in _top_nodes(ours_root) if n.find("fragment") is not None]
+    for o in ours:
+        m = [t for t in theirs if length(sub(_p(t), _p(o))) < PAIR_TOL]
+        if len(m) != 1:
+            lines.append(f"  nickname {_text(o.find('t'))} at {_p(o)}: {len(m)} nodes in the re-save")
+            continue
+        t = m[0]
+        key = f"nickname[{o.get('NodeType')}]"
+        for attr in ("NodeType", "Element", "NeedsClean"):
+            if o.get(attr) != t.get(attr):
+                ch.counts[(key, attr)]["changed"] += 1
+                ch.examples.setdefault((key, attr), f"{_text(o.find('t'))}: {o.get(attr)} -> {t.get(attr)}")
+        if (o.find("t") is None) == (t.find("t") is None) and o.find("t").get("IsNickname") != t.find("t").get("IsNickname"):
+            ch.counts[(key, "IsNickname")]["changed"] += 1
+        fi, ti = o.find("fragment"), t.find("fragment")
+        if ti is None:
+            ch.counts[(key, "inner <fragment>")]["removed"] += 1
+            continue
+        on_, tn_ = fi.findall("n"), ti.findall("n")
+        if sorted(n.get("Element", "6") for n in on_) != sorted(n.get("Element", "6") for n in tn_) or \
+                len(fi.findall("b")) != len(ti.findall("b")):
+            ch.counts[(key, "inner atoms or bonds")]["changed"] += 1
+            ch.examples.setdefault((key, "inner atoms or bonds"), _text(o.find("t")))
+            continue
+        kept += 1
+        for n in on_:
+            worst = max(worst, min(length(sub(_p(n), _p(x))) for x in tn_ if x.get("Element", "6") == n.get("Element", "6")))
+    lines.append(f"  nicknames: {len(ours)} ours, {kept} with the same inner atoms and bonds; "
+                 f"largest inner atom move {worst:.3f}")
     return lines + ch.report()
 
 
@@ -522,7 +585,7 @@ def ink_diff(ref: str) -> list[str]:
     return [f"  {k:45} {v:.3f}" for k, v in worst.items()] or ["  ink identical"]
 
 
-def diff(phase: int = 1) -> int:
+def diff(phase: str = "1") -> int:
     found = False
     out = out_dir(phase)
     resaved = out / "resaved"
@@ -532,7 +595,7 @@ def diff(phase: int = 1) -> int:
             print(f"{path.stem}: no re-save in {resaved.relative_to(mr.REPO)}")
             continue
         found = True
-        if phase in (2, 3):
+        if phase in PHASES:
             ours, theirs = (etree.parse(str(f), PARSER).getroot() for f in (path, saved))
             print(f"{path.stem}: scheme objects (ours -> ChemDraw's re-save)")
             for line in scheme_diff(ours, theirs):
@@ -540,7 +603,11 @@ def diff(phase: int = 1) -> int:
             print(f"{path.stem}: species attributes")
             for line in attribute_diff(ours, theirs):
                 print(line)
-            if phase == 3:
+            if phase == "4a":
+                print(f"{path.stem}: nicknames")
+                for line in nickname_diff(ours, theirs):
+                    print(line)
+            if phase == "3":
                 print(f"{path.stem}: curves and dots")
                 for line in mech_diff(ours, theirs):
                     print(line)
@@ -566,8 +633,8 @@ def diff(phase: int = 1) -> int:
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--diff", action="store_true", help="compare ChemDraw's re-saves with our exports")
-    ap.add_argument("--phase", type=int, choices=(1, 2, 3), default=1,
-                    help="1: M1 species; 2: M2 schemes; 3: M3 mechanisms")
+    ap.add_argument("--phase", choices=("1", "2", "3", "4a"), default="1",
+                    help="1: M1 species; 2: M2 schemes; 3: M3 mechanisms; 4a: abbreviations, resonance, wrap")
     args = ap.parse_args(argv)
     if args.diff:
         return diff(args.phase)

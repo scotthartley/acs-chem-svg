@@ -26,6 +26,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import copy
 import itertools
 import json
 import math
@@ -2051,7 +2052,7 @@ def _cdxml_dots(root, dots: list) -> dict:
     return {"lone_pairs": pairs, "electrons": electrons, "fragment_reach_beyond_dot_centers": reach}
 
 
-CDXML_SCHEME_REFS = [f"{k}_x{s}" for k in ("scheme_basic", "scheme_multi", "scheme_wrap", "equilibrium")
+CDXML_SCHEME_REFS = [f"{k}_x{s}" for k in ("scheme_basic", "scheme_multi", "scheme_wrap", "equilibrium", "resonance")
                      for s in ("1.0", "0.8", "0.6")] + ["arrows_large_x1.0"]
 
 
@@ -2143,7 +2144,32 @@ def cdxml_scheme(name: str) -> dict:
                         for st in sch.findall("step")])
     order = [el.tag for el in page]
     return {"line_width": lw, "caption_size": float(root.get("CaptionSize")), "captions": caps, "arrows": arrows,
-            "schemes": schemes, "page_order": [k for k, _ in itertools.groupby(order)]}
+            "brackets": _cdxml_brackets(doc, page, lw), "schemes": schemes,
+            "page_order": [k for k, _ in itertools.groupby(order)]}
+
+
+def _cdxml_brackets(doc, page, lw: float) -> list[dict]:
+    """Each <graphic GraphicType="Bracket"> (resonance_x*, §13.3) against the drawn bracket at
+    its x (_brackets, CDXML frame): its BoundingBox as (x, y, x, y') against the bar's ends,
+    which end it lists first, LipSize against the drawn lip length / LineWidth, and any
+    objecttag."""
+    drawn = _brackets(copy.deepcopy(doc))
+    out = []
+    for g in page.iter("graphic"):
+        if g.get("GraphicType") != "Bracket":
+            continue
+        bb = [float(x) for x in g.get("BoundingBox").split()]
+        d = min(drawn, key=lambda b: abs(b["x"] - doc.offset[0] - bb[0]))
+        top, bottom = d["y_top"] - doc.offset[1], d["y_bottom"] - doc.offset[1]
+        lip = d["lip_length"]["median"]
+        out.append({
+            "attrs": {k: g.get(k) for k in ("BracketType", "LipSize")},
+            "lips_point": d["lips_point"], "first_y_is": "top" if bb[1] < bb[3] else "bottom",
+            "x_minus_bar_x": round(bb[0] - (d["x"] - doc.offset[0]), 3),
+            "box_ys_minus_bar_ends": (round(min(bb[1], bb[3]) - top, 3), round(max(bb[1], bb[3]) - bottom, 3)),
+            "lip_length": lip, "lip_length_per_line_width_x100": round(lip / lw * 100, 1),
+            "objecttags": [t.get("Name") for t in g.findall("objecttag")]})
+    return out
 
 
 def all_names():

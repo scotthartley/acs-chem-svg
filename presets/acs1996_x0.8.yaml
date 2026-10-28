@@ -29,6 +29,7 @@ exempt:
   - curved_arrow.fishhook_offset    # 0.240 / 0.241 in mech_basic_x0.8/x0.6
   - bracket.stroke_width            # 0.60 in resonance_x0.8/x0.6
   - cdxml.arrow_box_pad             # 0.50 in scheme_*_x0.8/x0.6 and equilibrium_x0.8/x0.6 (CDXML data, not drawn)
+  - cdxml.bracket_lip_size          # 60 in resonance_x1.0/x0.8/x0.6 (CDXML data, not drawn)
 # Measured at every scale but not proportional to k. (ChemDraw's charge bars, 3.935 / 2.733 /
 # 1.798, shrink faster than k too; by user decision 2026-10-24 we scale them with k.)
 nonlinear:
@@ -55,6 +56,7 @@ assumed_exempt:
 approx:
   - text.line_pitch_sub_upper       # fitted from one pitch per preset (acs-style.md §3, Open 9)
   - text.line_pitch_sub_lower
+  - cdxml.resonance_box_pad         # 0.18 / 0.67 / 0.67 (resonance_x*), 0.5 on arrows_large_x1.0's ↔: CDXML data, not drawn
 
 # Hand-placed in the references: round user-chosen defaults on a 0.5 pt grid, each preset
 # rounded from its own measured value (kept in the comment). Not k-scaled exactly.
@@ -219,3 +221,5 @@ cdxml:                              # CDXML export only (acs-style.md §13); not
     standard: [1000, 875, 250]      # = head_length / head_inset / 1.5 pt half width at LineWidth 0.6, x 100 / LineWidth
     large: [1500, 1313, 375]        # arrows_large_x1.0 (the only large-head reference)
   arrow_box_pad: 0.5                # <arrow> BoundingBox beyond the head's half width: a forward arrow's top, both sides of a left-to-right equilibrium arrow, none when Head3D is left of Tail3D (all scheme_* and equilibrium_* but scheme_basic_x0.6 / scheme_wrap_x0.6: 0.18) (measure_refs.py --cdxml-scheme)
+  resonance_box_pad: 0.67             # ↔ <arrow> BoundingBox beyond the head's half width (ArrowheadWidth x LineWidth / 100), both sides; resonance_x0.8: 0.67 / 0.67 (measure_refs.py --cdxml-scheme)
+  bracket_lip_size: 60              # bracket <graphic> LipSize; 60 in resonance_x1.0/x0.8/x0.6, whose drawn lips are 4.01 / 3.21 / 2.42 (not lip_length / LineWidth x 100) (measure_refs.py --cdxml-scheme)

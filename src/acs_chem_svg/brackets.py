@@ -22,9 +22,14 @@ def square_bracket(x: float, top: float, bottom: float, side: str, preset: Prese
     return Group(name, [Polyline(pts, b.stroke_width, source=name)])
 
 
+def bracket_ys(box: tuple, preset: Preset) -> tuple[float, float]:
+    """The lips' stroke centers (top, bottom) of brackets around a content ink box."""
+    return box[1] - preset.bracket.gap_above, box[3] + preset.bracket.gap_below
+
+
 def bracket_pair(box: tuple, preset: Preset, name: str) -> tuple[Group, Group]:
     """Brackets around a content ink box (x0, y0, x1, y1): `<name>-left` and `<name>-right`."""
     b = preset.bracket
-    top, bottom = box[1] - b.gap_above, box[3] + b.gap_below
+    top, bottom = bracket_ys(box, preset)
     return (square_bracket(box[0] - b.gap_x, top, bottom, "left", preset, f"{name}-left"),
             square_bracket(box[2] + b.gap_x, top, bottom, "right", preset, f"{name}-right"))

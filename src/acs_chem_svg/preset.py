@@ -163,6 +163,8 @@ class Cdxml(_Section):
     electron_box_reach: float  # fragment BoundingBox beyond a radical dot center (§13.2)
     arrow_heads: dict[str, tuple[int, int, int]]  # head variant -> HeadSize, ArrowheadCenterSize, ArrowheadWidth (§13.1)
     arrow_box_pad: float  # <arrow> BoundingBox: extra on the sides ChemDraw pads (acs-style.md §13.1)
+    resonance_box_pad: float  # ↔ <arrow> BoundingBox: extra on both sides (§13.3)
+    bracket_lip_size: int  # bracket <graphic> LipSize (§13.3)
 
 
 class Preset(_Section):

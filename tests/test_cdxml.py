@@ -1,5 +1,8 @@
 """CDXML export (acs-style.md §13): phase 1, M1 species; phase 2 (§13.1), M2 schemes; phase 3
-(§13.2), M3 mechanisms (mech_basic_x* round trip: curves, dot symbols; M3 specs).
+(§13.2), M3 mechanisms (mech_basic_x* round trip: curves, dot symbols; M3 specs); phase 4a
+(§13.3), abbreviations (abbrev_x* round trip: nickname nodes, their inner fragments and labels),
+resonance arrows and brackets (resonance_x*), wrapped schemes (scheme_wrap_x*); every example
+spec (ALL_SPECS).
 
 - DTD: reference_renders/cdxml/CDXML.dtd (Revvity's file, fetched once from the DOCTYPE URL;
   ChemDraw.app doesn't ship it). Local only, like the references: those tests skip without it. It dates from 2003, so libxml2 needs one enumeration loosened (AS lists +, - and ?, which
@@ -18,9 +21,8 @@
   coordinates (templates; arrows from its Head3D / Tail3D; captions set by richtext at its glyph
   origins; formula fragments such as K2CO3 as captions; its steps) and compared with its file:
   arrow points, boxes and head attributes, caption p, box, LineStarts and text, and step
-  membership by paired ids, all within 0.1 pt except KNOWN. Abbreviated species (scheme_multi's
-  OMe / OBn) aren't written in phase 2: they're left out of the export and of the step check.
-  equilibrium_x*'s A and B (no templates) are one-atom stand-ins at their node positions.
+  membership by paired ids, all within 0.1 pt except KNOWN; brackets by x (BoundingBox,
+  LipSize). equilibrium_x*'s A and B (no templates) are one-atom stand-ins at their node positions.
 - Phase 2 specs: structure (DTD, ids, step citations), RDKit (species, each step's reactants and
   products by fragment id, ReactionsFromCDXMLBlock on one-step specs) and refusals.
 """
@@ -32,18 +34,19 @@ from functools import lru_cache
 
 import pytest
 import yaml
-from compare import preset_for, reference_cdx_scheme, render_reference
+from compare import cited_ids, preset_for, reference_cdx_scheme, render_reference
 from lxml import etree
 from rdkit import Chem, RDLogger
 from rdkit.Chem import rdChemReactions
 from test_m1_vs_chemdraw import REFS
 
 import measure_refs as mr
+from acs_chem_svg.chem import ABBREVIATIONS
 from acs_chem_svg.cdxml_writer import HEADER_DIR, CdxmlUnsupported, spec_cdxml, to_cdxml
 from acs_chem_svg.draw_mol import Drawer
 from acs_chem_svg.geometry import sub
 from acs_chem_svg.preset import load_preset
-from acs_chem_svg.spec import load_spec, resolve_molfile
+from acs_chem_svg.spec import ResonanceStep, load_spec, resolve_molfile
 
 DTD_PATH = mr.REPO / "reference_renders" / "cdxml" / "CDXML.dtd"  # Revvity's: local only, never committed
 DTD_GAPS = {"No declaration for attribute ShowPrimeLabels of element CDXML",
@@ -51,7 +54,9 @@ DTD_GAPS = {"No declaration for attribute ShowPrimeLabels of element CDXML",
 TOL = 0.1
 CHARGE_TOL = 1.0  # hand-placed sign centers (preset charge.labeled_offset_*: round defaults)
 PAIR_TOL = 0.01
+CAPTION_PAIR_TOL = 0.02  # a caption's p from its SVG glyph origin: scheme_wrap_x1.0's LiAlH4 is 97.305, stored 97.30
 SPECS = [f"examples/m1_{k}_x{s}.yaml" for k in ("smiles", "charges") for s in ("1.0", "0.8", "0.6")]
+ABBREV_REFS = [f"abbrev_x{s}" for s in ("1.0", "0.8", "0.6")]
 STYLE_ATTRS = ("BondLength", "LineWidth", "BoldWidth", "BondSpacing", "HashSpacing", "MarginWidth", "LabelSize",
                "CaptionSize", "LabelFont", "CaptionFont", "LabelFace", "ChainAngle")
 PARSER = etree.XMLParser(load_dtd=False, no_network=True)
@@ -137,7 +142,7 @@ def test_spec_exports_validate(spec):
 
 
 @needs_dtd
-@pytest.mark.parametrize("ref", REFS)
+@pytest.mark.parametrize("ref", REFS + ABBREV_REFS)
 def test_reference_exports_validate(ref):
     _check_structure(reference_export(ref))
 
@@ -168,9 +173,7 @@ def test_round_trip_sees_wedges():
     assert flipped == _canonical("C[C@H](N)C(=O)O")
 
 
-@pytest.mark.parametrize("spec", ["examples/m1_abbrev_x1.0.yaml", "examples/m1_lewis_x1.0.yaml",
-                                  "examples/m2_scheme_multi_x1.0.yaml", "examples/m2_sequence_x1.0.yaml",
-                                  "examples/m4_wrap_x1.0.yaml", "examples/m4_resonance_x1.0.yaml"])
+@pytest.mark.parametrize("spec", ["examples/m1_lewis_x1.0.yaml", "examples/m1_lewis_assigned_x1.0.yaml"])
 def test_unsupported_specs_are_refused(spec):
     with pytest.raises(CdxmlUnsupported):
         spec_cdxml(mr.REPO / spec, warn=lambda m: None)
@@ -225,6 +228,38 @@ def _text(t):
     return "".join(s.text or "" for s in t.iter("s"))
 
 
+INNER_ATTRS = ("Element", "Charge", "NodeType")  # and NumHydrogens on heteroatoms: a carbon's is optional
+
+
+def _inner_pairs(theirs, ours, key: str) -> tuple[list[str], list[tuple[str, str, float, float]]]:
+    """A nickname's inner fragment (ours None: not written): nodes paired by p (INNER_ATTRS
+    equal, p as "nickname atoms"), bonds by their paired ends. scheme_multi_x1.0's inner nodes
+    also carry Z, NeedsClean and ExternalConnectionNum, and its methyl carbons no
+    NumHydrogens="3", unlike abbrev_x*'s: ChemDraw's bookkeeping, not chemistry."""
+    if ours is None:
+        return [f"{key}: no inner fragment"], []
+    bad, nums, pair = [], [], {}
+    for o in ours.findall("n"):
+        m = [t for t in theirs.findall("n") if _near(_xy(t.get("p")), _xy(o.get("p")), TOL)]
+        if len(m) != 1:
+            bad.append(f"{key} inner node at {o.get('p')}: {len(m)} ChemDraw nodes")
+            continue
+        pair[o.get("id")] = m[0].get("id")
+        attrs = INNER_ATTRS + (("NumHydrogens",) if m[0].get("Element") else ())
+        if {k: o.get(k) for k in attrs} != {k: m[0].get(k) for k in attrs}:
+            bad.append(f"{key} inner node {m[0].get('id')}: ChemDraw {dict(m[0].attrib)} ours {dict(o.attrib)}")
+        for k, (a, b) in enumerate(zip(_xy(m[0].get("p")), _xy(o.get("p")))):
+            nums.append(("nickname atoms", f"{key} inner node {m[0].get('id')} {'xy'[k]}", a, b))
+    if len(pair) != len(theirs.findall("n")):
+        bad.append(f"{key}: {len(pair)} inner nodes paired, ChemDraw has {len(theirs.findall('n'))}")
+
+    def bonds(f, ids):
+        return {frozenset(ids.get(b.get(e), b.get(e)) for e in "BE"): b.get("Order", "1") for b in f.findall("b")}
+    if bonds(ours, pair) != bonds(theirs, {}):
+        bad.append(f"{key}: inner bonds differ")
+    return bad, nums
+
+
 def reference_pairs(ref: str, text: str | None = None) -> tuple[list[str], list[tuple[str, str, float, float]]]:
     """(mismatches, [(category, key, ChemDraw, ours)] for numbers); `text` defaults to
     reference_export(ref)."""
@@ -259,6 +294,14 @@ def reference_pairs(ref: str, text: str | None = None) -> tuple[list[str], list[
                 bad.append(f"{key} {attr}: ChemDraw {tt.get(attr)} ours {ot.get(attr)}")
         if _text(ot) != _text(tt):
             bad.append(f"{key} text: ChemDraw {_text(tt)} ours {_text(ot)}")
+        # LabelAlignment on multi-character labels only: 28 of ChemDraw's 282 one-glyph labels have it
+        for el, ref_el, attr in ((o, t, "NodeType"), (ot, tt, "IsNickname"), (ot, tt, "LabelAlignment")):
+            if el.get(attr) != ref_el.get(attr) and (attr != "LabelAlignment" or len(_text(tt)) > 1):
+                bad.append(f"{key} {attr}: ChemDraw {ref_el.get(attr)} ours {el.get(attr)}")
+        if t.find("fragment") is not None:
+            b2, n2 = _inner_pairs(t.find("fragment"), o.find("fragment"), f"{key} {_text(tt)}")
+            bad += b2
+            nums += n2
         for k, (a, b) in enumerate(zip(_xy(tt.get("p")), _xy(ot.get("p")))):
             nums.append(("label p", f"{key} {'xy'[k]} {_text(tt)}", a, b))
         for k, (a, b) in enumerate(zip(_xy4(tt.get("BoundingBox")), _xy4(ot.get("BoundingBox")))):
@@ -279,6 +322,8 @@ def reference_pairs(ref: str, text: str | None = None) -> tuple[list[str], list[
             bad.append(f"bond {sorted(tpair)}: ChemDraw {t_order} {t_disp} from {t_narrow}, "
                        f"ours {order} {disp} from {to_ref.get(narrow)}")
     for f in ours.iter("fragment"):  # the drawn ink box; a hand-placed charge sign or dot moves it
+        if f.getparent().tag == "n":  # a nickname's inner fragment: _inner_pairs
+            continue
         t = tn[to_ref[f.find("n").get("id")]].getparent()
         syms = {g.get("SymbolType") for g in f.findall("graphic")}
         cat = ("fragment box (with dots)" if syms & {"LonePair", "Electron"}
@@ -300,13 +345,15 @@ def reference_pairs(ref: str, text: str | None = None) -> tuple[list[str], list[
 
 
 @needs_refs
-@pytest.mark.parametrize("ref", REFS)
+@pytest.mark.parametrize("ref", REFS + ABBREV_REFS)
 def test_reference_diff(ref):
     bad, nums = reference_pairs(ref)
     tol = {"charge center": CHARGE_TOL, "fragment box (with a charge)": CHARGE_TOL}
     bad += [f"{c} [{k}]: ChemDraw {a} ours {b} (diff {b - a:+.3f})" for c, k, a, b in nums if abs(b - a) > tol.get(c, TOL)]
     assert not bad, "\n".join(bad)
     assert any(c == "label p" for c, *_ in nums) or ref == "double_bonds_x1.0"
+    if ref.startswith("abbrev_"):  # all 21 keys, both forms
+        assert sum(c == "nickname atoms" for c, *_ in nums) > 300
 
 
 # --------------------------------------------------------------------------- header templates
@@ -385,12 +432,14 @@ def test_vertical_bond_label_is_left_justified():
 
 # --------------------------------------------------------------------------- phase 2: schemes
 
-SCHEME_REFS = [f"{k}_x{s}" for k in ("scheme_basic", "scheme_multi", "equilibrium") for s in ("1.0", "0.8", "0.6")]
+SCHEME_REFS = [f"{k}_x{s}" for k in ("scheme_basic", "scheme_multi", "scheme_wrap", "equilibrium")
+               for s in ("1.0", "0.8", "0.6")]
 SCHEME_SPECS = ([f"examples/m2_{k}_x{s}.yaml" for k in ("scheme_basic", "equilibrium") for s in ("1.0", "0.8", "0.6")]
                 + ["examples/m2_stages_x1.0.yaml", "examples/m2_stages3_x1.0.yaml", "examples/m2_suzuki_x1.0.yaml"])
 # ChemDraw values the rules (acs-style.md §13.1) don't reproduce, with their measured size
 KNOWN = {
-    ("scheme_basic_x0.6", "arrow box", 1): 0.35,  # pad above the axis 0.18, not 0.5 (scheme_wrap_x0.6 too)
+    ("scheme_basic_x0.6", "arrow box", 1): 0.35,  # pad above the axis 0.18, not 0.5
+    ("scheme_wrap_x0.6", "arrow box", 1): 0.35,  # the same
     ("*", "stacked caption box", 3): 0.35,  # bottom of a caption of 2+ lines: 0.04-0.32 below the ink, unexplained
     ("*", "formula superscript box", 1): 3.6,  # H3O+ (face 96): box top 0.354 x size above the drawn "+"
 }
@@ -444,7 +493,7 @@ def scheme_pairs(ref: str) -> tuple[list[str], list[tuple[str, str, float, float
     # captions, paired by p: their <t> or formula fragment (text frags by drawn origin: the label's p)
     doc = mr.load(ref)
     tobj = {t.get("id"): t for t in theirs.iter("t") if t.getparent().tag != "n"}  # mech_basic: in <group>s
-    for f in theirs.findall("fragment"):
+    for f in theirs.iter("fragment"):  # scheme_wrap_x*: some in <group>s
         if f.get("id") in doc.text_frags:
             tobj[f.get("id")] = f.find("n").find("t")
     # the lines of their stacked captions as drawn: we write one <t> per line where a line has a
@@ -461,11 +510,11 @@ def scheme_pairs(ref: str) -> tuple[list[str], list[tuple[str, str, float, float
             their_lines[(tid, k)] = ((p[0], ln["base"] - doc.offset[1]), ink, cap["text"].split("\n")[k])
     split = {}
     for ot in ours.findall("t"):
-        m = [i for i, t in tobj.items() if _near(_floats(t.get("p")), _floats(ot.get("p")))]
+        m = [i for i, t in tobj.items() if _near(_floats(t.get("p")), _floats(ot.get("p")), CAPTION_PAIR_TOL)]
         if len(m) == 1 and "\n" in _text(tobj[m[0]]) and "\n" not in _text(ot):
             m = []  # the first line of a split caption: paired with its line below
         if not m:
-            lm = [k for k, (q, _, _) in their_lines.items() if _near(q, _floats(ot.get("p")))]
+            lm = [k for k, (q, _, _) in their_lines.items() if _near(q, _floats(ot.get("p")), CAPTION_PAIR_TOL)]
             if len(lm) == 1:
                 (tid, k), (q, ink, text) = lm[0], their_lines[lm[0]]
                 o2t[ot.get("id")] = tid
@@ -513,12 +562,10 @@ def scheme_pairs(ref: str) -> tuple[list[str], list[tuple[str, str, float, float
         else:
             bad.append(f"fragment {f.get('id')}: {len(m)} ChemDraw fragments")
     written = set(o2t.values())
-    # a step citing a <group> (mech_basic's tBu-Cl with its fishhooks) cites the fragment in it
-    in_group = {g.get("id"): [f.get("id") for f in g.iter("fragment")] for g in theirs.iter("group")}
 
-    def their_ids(st, attr):
-        return [j for i in (st.get(attr) or "").split() for j in in_group.get(i, [i])]
-    # steps, paired by arrow; their ids we didn't write (abbreviated species) are left out
+    def their_ids(st, attr):  # a cited <group>: what is in it (compare.cited_ids)
+        return cited_ids(theirs, st, attr)
+    # steps, paired by arrow; their ids we didn't write are left out
     tsteps = {st.get("ReactionStepArrows"): st for st in theirs.iter("step")}
     osteps = list(ours.iter("step"))
     if len(osteps) != len(tsteps):
@@ -533,6 +580,22 @@ def scheme_pairs(ref: str) -> tuple[list[str], list[tuple[str, str, float, float
             want = sorted(i for i in their_ids(tst, attr) if i in written)
             if got != want:
                 bad.append(f"step {tst.get('id')} {attr}: ChemDraw {want} ours {got}")
+    # brackets, paired by x
+    tb = [g for g in theirs.iter("graphic") if g.get("GraphicType") == "Bracket"]
+    ob = [g for g in ours.iter("graphic") if g.get("GraphicType") == "Bracket"]
+    if len(ob) != len(tb):
+        bad.append(f"{len(ob)} brackets, ChemDraw {len(tb)}")
+    for g in ob:
+        m = [t for t in tb if abs(_floats(t.get("BoundingBox"))[0] - _floats(g.get("BoundingBox"))[0]) < 1.0]
+        if len(m) != 1:
+            bad.append(f"bracket at {g.get('BoundingBox')}: {len(m)} ChemDraw brackets")
+            continue
+        key = f"bracket {m[0].get('id')}"
+        for attr in ("BracketType", "LipSize"):
+            if g.get(attr) != m[0].get(attr):
+                bad.append(f"{key} {attr}: ChemDraw {m[0].get(attr)} ours {g.get(attr)}")
+        for k, (a, b) in enumerate(zip(_floats(m[0].get("BoundingBox")), _floats(g.get("BoundingBox")))):
+            nums.append(("bracket box", (k, f"{key} box[{k}]"), a, b))
     # the steps sit in the same <scheme>s
     group = [sorted(o2t.get(st.get("ReactionStepArrows")) for st in sch.findall("step")) for sch in ours.iter("scheme")]
     tgroup = [sorted(st.get("ReactionStepArrows") for st in sch.findall("step")) for sch in theirs.iter("scheme")]
@@ -554,7 +617,7 @@ def test_scheme_reference_diff(ref):
 
 
 @needs_refs
-@pytest.mark.parametrize("ref", ["scheme_basic_x1.0", "scheme_multi_x1.0", "equilibrium_x1.0"])
+@pytest.mark.parametrize("ref", ["scheme_basic_x1.0", "scheme_multi_x1.0", "scheme_wrap_x1.0", "equilibrium_x1.0"])
 def test_scheme_reference_nodes(ref):
     """Phase 1's node and label checks on the scheme references' written species."""
     if ref.startswith("equilibrium_"):
@@ -576,13 +639,36 @@ def test_scheme_spec_exports_validate(spec):
     _check_structure(exported(spec))
 
 
+def _expand_aliases(m: Chem.Mol) -> Chem.Mol:
+    """A molfile's abbreviation aliases (OMe on the O, as cdxml_to_molfile writes ChemDraw's
+    nicknames) replaced by their groups (chem.ABBREVIATIONS), so it compares with what RDKit
+    reads from a nickname node."""
+    for a in m.GetAtoms():
+        alias = a.GetProp("molFileAlias") if a.HasProp("molFileAlias") else None
+        if alias not in ABBREVIATIONS:
+            continue
+        group = Chem.MolFromSmiles(ABBREVIATIONS[alias])
+        star = next(x for x in group.GetAtoms() if x.GetAtomicNum() == 0)
+        head = star.GetNeighbors()[0].GetIdx() + m.GetNumAtoms()
+        (nb_bond,) = a.GetBonds()
+        rw = Chem.RWMol(Chem.CombineMols(m, group))
+        rw.AddBond(nb_bond.GetOtherAtomIdx(a.GetIdx()), head, nb_bond.GetBondType())
+        for i in sorted((a.GetIdx(), star.GetIdx() + m.GetNumAtoms()), reverse=True):
+            rw.RemoveAtom(i)
+        out = rw.GetMol()
+        Chem.SanitizeMol(out)
+        return _expand_aliases(out)
+    return m
+
+
 def _spec_smiles(spec_path) -> dict[str, str]:
-    """name -> canonical SMILES (no maps) of each species as the spec gives it."""
+    """name -> canonical SMILES (no maps) of each species as the spec gives it, abbreviations
+    expanded."""
     spec = load_spec(spec_path)
     out = {}
     for name, sp in spec.species.items():
         m = (Chem.MolFromSmiles(sp.smiles) if sp.smiles
-             else Chem.MolFromMolFile(str(resolve_molfile(sp.molfile, spec_path.parent))))
+             else _expand_aliases(Chem.MolFromMolFile(str(resolve_molfile(sp.molfile, spec_path.parent)))))
         for a in m.GetAtoms():
             a.SetAtomMapNum(0)
         out[name] = Chem.MolToSmiles(m)
@@ -601,20 +687,26 @@ def test_scheme_rdkit_round_trip(spec):
     frags = [f.get("id") for f in root.find("page").findall("fragment")]
     got = dict(zip(frags, (Chem.MolToSmiles(m) for m in Chem.MolsFromCDXML(text))))
     s = load_spec(path)
-    drawn = [n for st in s.steps for n in st.sources + st.drawn_products]
+    drawn = [n for st in s.steps for n in (st.resonance if isinstance(st, ResonanceStep) else st.sources + st.drawn_products)]
     assert sorted(got.values()) == sorted(smiles[n] for n in dict.fromkeys(drawn))
-    steps = list(root.iter("step"))
-    assert len(steps) == len(s.steps)
-    for i, (st, el) in enumerate(zip(s.steps, steps), 1):
+    want_steps = []  # (reactants, products, above) per <step>: a resonance step has one per ↔
+    for i, st in enumerate(s.steps, 1):
+        if isinstance(st, ResonanceStep):
+            want_steps += [([smiles[a]], [smiles[b]], []) for a, b in zip(st.resonance, st.resonance[1:])]
+            continue
         over = s.over_names(i)
         want = ([smiles[n] for n in st.sources if n not in over], [smiles[n] for n in st.drawn_products])
         if st.arrow_type == "equilibrium_reactants":
             want = want[::-1]
+        want_steps.append((*want, [smiles[n] for n in over]))
+    steps = list(root.iter("step"))
+    assert len(steps) == len(want_steps)
+    for el, (reactants, products, over) in zip(steps, want_steps):
         have = tuple([got[i] for i in el.get(k).split()] for k in ("ReactionStepReactants", "ReactionStepProducts"))
-        assert have == want
+        assert have == (reactants, products)
         above = [got[j] for j in (el.get("ReactionStepObjectsAboveArrow") or "").split() if j in got]
-        assert above == [smiles[n] for n in over]
-    if len(s.steps) == 1:
+        assert above == over
+    if len(steps) == 1:
         RDLogger.DisableLog("rdApp.*")  # RDKit looks for the <t> conditions among its fragments
         try:
             rxns = rdChemReactions.ReactionsFromCDXMLBlock(text)
@@ -624,7 +716,7 @@ def test_scheme_rdkit_round_trip(spec):
         # a reaction's SMILES keeps drawn H atoms ([H]C(C)(C)C): read back as plain molecules
         r, p = ([Chem.MolToSmiles(Chem.MolFromSmiles(x)) for x in side.split(".")]
                 for side in rdChemReactions.ReactionToSmiles(rxns[0]).split(">>"))
-        assert sorted(r) == sorted(want[0]) and sorted(p) == sorted(want[1])
+        assert sorted(r) == sorted(want_steps[0][0]) and sorted(p) == sorted(want_steps[0][1])
 
 
 def test_scheme_objects():
@@ -690,9 +782,16 @@ def test_cdxml_arrow_conventions_hold_in_references():
     Center3D the midpoint, MajorAxisEnd3D = center + (head - tail), MinorAxisEnd3D turned 90°,
     the box's half width from ArrowheadWidth / ArrowShaftSpacing, and the pad, all to 0.02 pt,
     except arrows_large_x1.0's balanced arrow (minor axis 28.8 long, a copied arrow's) and the
-    x0.6 forward arrows padded 0.18 (scheme_basic_x0.6, scheme_wrap_x0.6)."""
+    x0.6 forward arrows padded 0.18 (scheme_basic_x0.6, scheme_wrap_x0.6). resonance_x*'s ↔
+    arrows are padded cdxml.resonance_box_pad on both sides (arrows_large_x1.0's large one, 0.5)."""
     pad = 0.5
     for ref in mr.CDXML_SCHEME_REFS:
+        if ref.startswith("resonance_"):
+            rp = load_preset(preset_for(ref)).cdxml.resonance_box_pad
+            for a in mr.cdxml_scheme(ref)["arrows"]:
+                assert a["attrs"]["ArrowheadTail"] == "Full" and a["head3d_right_of_tail3d"], ref
+                assert all(v == pytest.approx(rp, abs=0.02) for v in a["box_pad (top, bottom)"]), ref
+            continue
         for k, a in enumerate(mr.cdxml_scheme(ref)["arrows"]):
             assert max(map(abs, a["center_minus_mid"] + a["major_minus_(center + head - tail)"])) < 0.02, ref
             if not (ref == "arrows_large_x1.0" and k == 0):
@@ -967,3 +1066,112 @@ def test_added_reactant_is_above_arrow():
     st = list(root.iter("step"))[1]
     assert [smiles[i] for i in st.get("ReactionStepObjectsAboveArrow").split()] == ["O"]
     assert [smiles[i] for i in st.get("ReactionStepReactants").split()] == [_canonical("N#CC(C)([O-])C")]
+
+
+# --------------------------------------------------------------------------- phase 4a: abbreviations, resonance, wrap
+
+RESONANCE_REFS = [f"resonance_x{s}" for s in ("1.0", "0.8", "0.6")]
+RESONANCE_KNOWN = {
+    # the C+ signs on unlabeled carbons are hand-placed (charge.unlabeled_distance, a round
+    # default): 1.52 below ChemDraw's on the two outer contributors at x0.8 and x0.6
+    "charge center": 1.6, "fragment box (with a charge)": 1.6,
+    # ChemDraw writes one of resonance_x1.0's three sign boxes mirrored (dx -7.5; preset comment)
+    ("resonance_x1.0", "charge box dx", "node 31"): 15.01,
+}
+ALL_SPECS = sorted(str(p.relative_to(mr.REPO)) for p in (mr.REPO / "examples").glob("*.yaml"))
+LEWIS_SPECS = [s for s in ALL_SPECS if "lewis" in s]  # phase 4b
+
+
+@needs_refs
+@pytest.mark.parametrize("ref", RESONANCE_REFS)
+def test_resonance_reference_diff(ref):
+    """resonance_x* rebuilt (compare.reference_cdx_scheme: templates with their NO2 nicknames,
+    ↔ arrows on ChemDraw's Head3D / Tail3D, brackets on its bars, its steps) and compared with
+    its file: arrows (ArrowType Resonance, Full at both ends, box), brackets (BoundingBox,
+    LipSize), one step per ↔ in one <scheme>, and the nodes, charges and NO2 nicknames (charged
+    inner N+ and O-) as for the M1 references."""
+    bad, nums = scheme_pairs(ref)
+    nbad, nnums = reference_pairs(ref, reference_scheme_export(ref))
+    bad += nbad
+    for cat, key, a, b in [(c, k, a, b) for c, (_, k), a, b in nums] + nnums:
+        if abs(b - a) > RESONANCE_KNOWN.get((ref, cat, key), RESONANCE_KNOWN.get(cat, TOL)):
+            bad.append(f"{cat} {key}: ChemDraw {a} ours {b} (diff {b - a:+.3f})")
+    assert not bad, "\n".join(bad)
+    cats = {c for c, *_ in nums + nnums}
+    assert {"arrow points", "arrow box", "bracket box", "nickname atoms"} <= cats
+    root = etree.fromstring(reference_scheme_export(ref).encode(), PARSER)
+    assert [len(s.findall("step")) for s in root.iter("scheme")] == [2]
+    assert {g.get("ArrowType") for g in root.iter("graphic") if g.get("SupersededBy")} == {"Resonance"}
+
+
+@needs_dtd
+@pytest.mark.parametrize("ref", RESONANCE_REFS)
+def test_resonance_reference_exports_validate(ref):
+    _check_structure(reference_scheme_export(ref))
+
+
+def test_resonance_objects():
+    """m4_resonance_x1.0: two ↔ arrows (Full at both ends), one <step> each from contributor k to
+    k + 1, and two free bracket <graphic>s: no <bracketedgroup>, no objecttag (user decision
+    2026-10-28); "[" lists its bar's bottom first, "]" its top."""
+    root = etree.fromstring(exported("examples/m4_resonance_x1.0.yaml").encode(), PARSER)
+    page = root.find("page")
+    arrows = list(page.iter("arrow"))
+    assert len(arrows) == 2 and all(a.get("ArrowheadHead") == a.get("ArrowheadTail") == "Full" for a in arrows)
+    frags = [f.get("id") for f in page.findall("fragment")]
+    steps = [(st.get("ReactionStepReactants"), st.get("ReactionStepProducts")) for st in root.iter("step")]
+    assert steps == [(frags[0], frags[1]), (frags[1], frags[2])]
+    brackets = [g for g in page.findall("graphic") if g.get("GraphicType") == "Bracket"]
+    assert [g.get("LipSize") for g in brackets] == ["60", "60"]
+    (x0, b0, _, t0), (x1, t1, _, b1) = (_floats(g.get("BoundingBox")) for g in brackets)
+    assert x0 < x1 and b0 > t0 and b1 > t1
+    assert root.find(".//bracketedgroup") is None and root.find(".//objecttag") is None
+
+
+def test_wrapped_sequence_is_one_scheme():
+    """m4_wrap_x1.0: its two rows are one sequence, so one <scheme>; the step that starts row 2
+    cites its arrow, which lies below row 1's."""
+    root = etree.fromstring(exported("examples/m4_wrap_x1.0.yaml").encode(), PARSER)
+    page = root.find("page")
+    assert [len(s.findall("step")) for s in root.iter("scheme")] == [len(load_spec(mr.REPO / "examples/m4_wrap_x1.0.yaml").steps)]
+    graphics = {g.get("id"): g for g in page.findall("graphic")}
+    ys = [_floats(graphics[st.get("ReactionStepArrows")].get("BoundingBox"))[1] for st in root.iter("step")]
+    assert len(set(round(y) for y in ys)) == 2 and ys == sorted(ys)
+
+
+def test_abbreviation_nodes():
+    """m1_abbrev_x1.0: each abbreviation is a nickname node (no Element) holding ChemDraw's
+    group, its <t> the key text in both forms: MeO2C right-justified is CO2Me; Ph and TMS are
+    NodeType Nickname with IsNickname, the formula-like ones NodeType Fragment."""
+    root = etree.fromstring(exported("examples/m1_abbrev_x1.0.yaml").encode(), PARSER)
+    nodes = {_text(n.find("t")): n for n in root.iter("n") if n.get("NodeType") in ("Fragment", "Nickname")}
+    assert set(nodes) == {"CO2Me", "OMe", "CN", "NO2", "CF3", "TMS", "Ph", "NHAc", "SMe"}
+    for key, n in nodes.items():
+        assert n.get("Element") is None and n.get("NeedsClean") == "yes"
+        assert (n.get("NodeType") == "Nickname") == (key in ("TMS", "Ph")) == (n.find("t").get("IsNickname") == "yes")
+        inner = n.find("fragment")
+        ecp = [m for m in inner.findall("n") if m.get("NodeType") == "ExternalConnectionPoint"]
+        assert len(ecp) == 1 and any(_floats(m.get("p")) == _floats(n.get("p")) for m in inner.findall("n"))
+    assert nodes["CO2Me"].find("t").get("Justification") == "Right"  # drawn MeO2C
+
+
+@needs_dtd
+@pytest.mark.parametrize("spec", ALL_SPECS)
+def test_all_spec_exports_validate(spec):
+    """Every example spec exports (phase 4b: Lewis) and passes the DTD, id and citation checks."""
+    if spec in LEWIS_SPECS:
+        pytest.skip("Lewis structures: phase 4b")
+    _check_structure(exported(spec))
+
+
+@pytest.mark.parametrize("spec", ALL_SPECS)
+def test_all_spec_round_trips(spec):
+    """Every example spec reads back with RDKit as its species (and steps) and raises no
+    CdxmlUnsupported."""
+    if spec in LEWIS_SPECS:
+        pytest.skip("Lewis structures: phase 4b")
+    if load_spec(mr.REPO / spec).steps:
+        test_scheme_rdkit_round_trip(spec)
+    else:
+        got = sorted(Chem.MolToSmiles(m) for m in Chem.MolsFromCDXML(exported(spec)))
+        assert got == sorted(_spec_smiles(mr.REPO / spec).values())

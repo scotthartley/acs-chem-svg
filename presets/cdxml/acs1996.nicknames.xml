@@ -1,0 +1,306 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<nicknames source="abbrev_x1.0.cdxml">
+  <nickname key="OMe" NodeType="Fragment">
+    <fragment>
+      <n id="809" p="0.00 0.00" Element="8" NumHydrogens="0"/>
+      <n id="810" p="7.17 -12.43" NumHydrogens="3"/>
+      <n id="811" p="-14.35 0.00" NodeType="ExternalConnectionPoint"/>
+      <b id="812" B="809" E="810"/>
+      <b id="813" B="811" E="809"/>
+    </fragment>
+  </nickname>
+  <nickname key="OEt" NodeType="Fragment">
+    <fragment>
+      <n id="825" p="0.00 0.00" Element="8" NumHydrogens="0"/>
+      <n id="826" p="21.52 -12.43"/>
+      <n id="827" p="7.17 -12.43"/>
+      <n id="828" p="-14.35 0.00" NodeType="ExternalConnectionPoint"/>
+      <b id="829" B="826" E="827"/>
+      <b id="830" B="825" E="827"/>
+      <b id="831" B="828" E="825"/>
+    </fragment>
+  </nickname>
+  <nickname key="OBn" NodeType="Fragment">
+    <fragment>
+      <n id="854" p="0.00 0.00" Element="8" NumHydrogens="0"/>
+      <n id="855" p="21.52 -12.43"/>
+      <n id="856" p="28.70 0.00"/>
+      <n id="857" p="43.05 0.00"/>
+      <n id="858" p="50.22 -12.43"/>
+      <n id="859" p="43.05 -24.86"/>
+      <n id="860" p="28.70 -24.86"/>
+      <n id="861" p="7.17 -12.43"/>
+      <n id="862" p="-14.35 0.00" NodeType="ExternalConnectionPoint"/>
+      <b id="863" B="859" E="860" Order="2"/>
+      <b id="864" B="858" E="859"/>
+      <b id="865" B="857" E="858" Order="2"/>
+      <b id="866" B="856" E="857"/>
+      <b id="867" B="855" E="856" Order="2"/>
+      <b id="868" B="855" E="860"/>
+      <b id="869" B="855" E="861"/>
+      <b id="870" B="854" E="861"/>
+      <b id="871" B="862" E="854"/>
+    </fragment>
+  </nickname>
+  <nickname key="OPh" NodeType="Fragment">
+    <fragment>
+      <n id="892" p="0.00 0.00" Element="8" NumHydrogens="0"/>
+      <n id="893" p="7.17 12.43"/>
+      <n id="894" p="0.00 24.85"/>
+      <n id="895" p="7.17 37.28"/>
+      <n id="896" p="21.52 37.28"/>
+      <n id="897" p="28.70 24.85"/>
+      <n id="898" p="21.52 12.43"/>
+      <n id="899" p="-14.35 0.00" NodeType="ExternalConnectionPoint"/>
+      <b id="900" B="897" E="898" Order="2"/>
+      <b id="901" B="896" E="897"/>
+      <b id="902" B="895" E="896" Order="2"/>
+      <b id="903" B="894" E="895"/>
+      <b id="904" B="893" E="894" Order="2"/>
+      <b id="905" B="893" E="898"/>
+      <b id="906" B="892" E="893"/>
+      <b id="907" B="899" E="892"/>
+    </fragment>
+  </nickname>
+  <nickname key="OAc" NodeType="Fragment">
+    <fragment>
+      <n id="921" p="0.00 0.00" Element="8" NumHydrogens="0"/>
+      <n id="922" p="0.00 24.85" Element="8" NumHydrogens="0"/>
+      <n id="923" p="7.17 12.43"/>
+      <n id="924" p="21.52 12.43"/>
+      <n id="925" p="-14.35 0.00" NodeType="ExternalConnectionPoint"/>
+      <b id="926" B="923" E="924"/>
+      <b id="927" B="922" E="923" Order="2"/>
+      <b id="928" B="921" E="923"/>
+      <b id="929" B="925" E="921"/>
+    </fragment>
+  </nickname>
+  <nickname key="SMe" NodeType="Fragment">
+    <fragment>
+      <n id="939" p="0.00 0.00" Element="16" NumHydrogens="0"/>
+      <n id="940" p="7.17 -12.43" NumHydrogens="3"/>
+      <n id="941" p="-14.35 0.00" NodeType="ExternalConnectionPoint"/>
+      <b id="942" B="939" E="940"/>
+      <b id="943" B="941" E="939"/>
+    </fragment>
+  </nickname>
+  <nickname key="NHAc" NodeType="Fragment">
+    <fragment>
+      <n id="957" p="0.00 0.00" Element="7" NumHydrogens="1"/>
+      <n id="958" p="0.00 24.85" Element="8" NumHydrogens="0"/>
+      <n id="959" p="7.17 12.43"/>
+      <n id="960" p="21.52 12.43"/>
+      <n id="961" p="-14.35 0.00" NodeType="ExternalConnectionPoint"/>
+      <b id="962" B="959" E="960"/>
+      <b id="963" B="958" E="959" Order="2"/>
+      <b id="964" B="957" E="959"/>
+      <b id="965" B="961" E="957"/>
+    </fragment>
+  </nickname>
+  <nickname key="CO2Me" NodeType="Fragment">
+    <fragment>
+      <n id="979" p="0.00 0.00" NumHydrogens="0"/>
+      <n id="980" p="7.17 -12.43" Element="8" NumHydrogens="0"/>
+      <n id="981" p="7.17 12.43" Element="8" NumHydrogens="0"/>
+      <n id="982" p="21.52 12.43" NumHydrogens="3"/>
+      <n id="983" p="-14.35 0.00" NodeType="ExternalConnectionPoint"/>
+      <b id="984" B="981" E="982"/>
+      <b id="985" B="979" E="980" Order="2"/>
+      <b id="986" B="979" E="981"/>
+      <b id="987" B="983" E="979"/>
+    </fragment>
+  </nickname>
+  <nickname key="CO2Et" NodeType="Fragment">
+    <fragment>
+      <n id="1003" p="0.00 0.00" NumHydrogens="0"/>
+      <n id="1004" p="7.17 -12.43" Element="8" NumHydrogens="0"/>
+      <n id="1005" p="7.17 12.43" Element="8" NumHydrogens="0"/>
+      <n id="1006" p="28.70 24.85"/>
+      <n id="1007" p="21.52 12.43"/>
+      <n id="1008" p="-14.35 0.00" NodeType="ExternalConnectionPoint"/>
+      <b id="1009" B="1006" E="1007"/>
+      <b id="1010" B="1005" E="1007"/>
+      <b id="1011" B="1003" E="1004" Order="2"/>
+      <b id="1012" B="1003" E="1005"/>
+      <b id="1013" B="1008" E="1003"/>
+    </fragment>
+  </nickname>
+  <nickname key="CO2H" NodeType="Fragment">
+    <fragment>
+      <n id="1025" p="0.00 0.00" NumHydrogens="0"/>
+      <n id="1026" p="7.17 -12.43" Element="8" NumHydrogens="0"/>
+      <n id="1027" p="7.17 12.43" Element="8" NumHydrogens="1"/>
+      <n id="1028" p="-14.35 0.00" NodeType="ExternalConnectionPoint"/>
+      <b id="1029" B="1025" E="1026" Order="2"/>
+      <b id="1030" B="1025" E="1027"/>
+      <b id="1031" B="1028" E="1025"/>
+    </fragment>
+  </nickname>
+  <nickname key="CF3" NodeType="Fragment">
+    <fragment>
+      <n id="1045" p="0.00 0.00" NumHydrogens="0"/>
+      <n id="1046" p="0.00 14.35" Element="9" NumHydrogens="0"/>
+      <n id="1047" p="14.35 0.00" Element="9" NumHydrogens="0"/>
+      <n id="1048" p="0.00 -14.35" Element="9" NumHydrogens="0"/>
+      <n id="1049" p="-14.35 0.00" NodeType="ExternalConnectionPoint"/>
+      <b id="1050" B="1045" E="1046"/>
+      <b id="1051" B="1045" E="1047"/>
+      <b id="1052" B="1045" E="1048"/>
+      <b id="1053" B="1049" E="1045"/>
+    </fragment>
+  </nickname>
+  <nickname key="CN" NodeType="Fragment">
+    <fragment>
+      <n id="1063" p="0.00 0.00" NumHydrogens="0"/>
+      <n id="1064" p="14.35 0.00" Element="7" NumHydrogens="0"/>
+      <n id="1065" p="-14.35 0.00" NodeType="ExternalConnectionPoint"/>
+      <b id="1066" B="1063" E="1064" Order="3"/>
+      <b id="1067" B="1065" E="1063"/>
+    </fragment>
+  </nickname>
+  <nickname key="NO2" NodeType="Fragment">
+    <fragment>
+      <n id="1079" p="0.00 0.00" Element="7" NumHydrogens="0" Charge="1"/>
+      <n id="1080" p="7.17 12.43" Element="8" NumHydrogens="0"/>
+      <n id="1081" p="7.17 -12.43" Element="8" NumHydrogens="0" Charge="-1"/>
+      <n id="1082" p="-14.35 0.00" NodeType="ExternalConnectionPoint"/>
+      <b id="1083" B="1079" E="1080" Order="2"/>
+      <b id="1084" B="1079" E="1081"/>
+      <b id="1085" B="1082" E="1079"/>
+    </fragment>
+  </nickname>
+  <nickname key="Ph" NodeType="Nickname" IsNickname="yes">
+    <fragment>
+      <n id="1104" p="0.00 0.00"/>
+      <n id="1105" p="7.17 12.43"/>
+      <n id="1106" p="21.52 12.43"/>
+      <n id="1107" p="28.70 0.00"/>
+      <n id="1108" p="21.52 -12.43"/>
+      <n id="1109" p="7.17 -12.43"/>
+      <n id="1110" p="-14.35 0.00" NodeType="ExternalConnectionPoint"/>
+      <b id="1111" B="1108" E="1109" Order="2"/>
+      <b id="1112" B="1107" E="1108"/>
+      <b id="1113" B="1106" E="1107" Order="2"/>
+      <b id="1114" B="1105" E="1106"/>
+      <b id="1115" B="1104" E="1105" Order="2"/>
+      <b id="1116" B="1104" E="1109"/>
+      <b id="1117" B="1110" E="1104"/>
+    </fragment>
+  </nickname>
+  <nickname key="Bn" NodeType="Nickname" IsNickname="yes">
+    <fragment>
+      <n id="1138" p="7.17 12.43"/>
+      <n id="1139" p="0.00 24.85"/>
+      <n id="1140" p="7.17 37.28"/>
+      <n id="1141" p="21.52 37.28"/>
+      <n id="1142" p="28.70 24.85"/>
+      <n id="1143" p="21.52 12.43"/>
+      <n id="1144" p="0.00 0.00"/>
+      <n id="1145" p="-14.35 0.00" NodeType="ExternalConnectionPoint"/>
+      <b id="1146" B="1142" E="1143" Order="2"/>
+      <b id="1147" B="1141" E="1142"/>
+      <b id="1148" B="1140" E="1141" Order="2"/>
+      <b id="1149" B="1139" E="1140"/>
+      <b id="1150" B="1138" E="1139" Order="2"/>
+      <b id="1151" B="1138" E="1143"/>
+      <b id="1152" B="1138" E="1144"/>
+      <b id="1153" B="1145" E="1144"/>
+    </fragment>
+  </nickname>
+  <nickname key="Et" NodeType="Nickname" IsNickname="yes">
+    <fragment>
+      <n id="1163" p="7.17 -12.43"/>
+      <n id="1164" p="0.00 0.00"/>
+      <n id="1165" p="-14.35 0.00" NodeType="ExternalConnectionPoint"/>
+      <b id="1166" B="1163" E="1164"/>
+      <b id="1167" B="1165" E="1164"/>
+    </fragment>
+  </nickname>
+  <nickname key="Ac" NodeType="Nickname" IsNickname="yes">
+    <fragment>
+      <n id="1179" p="7.17 12.43" Element="8" NumHydrogens="0"/>
+      <n id="1180" p="0.00 0.00"/>
+      <n id="1181" p="7.17 -12.43"/>
+      <n id="1182" p="-14.35 0.00" NodeType="ExternalConnectionPoint"/>
+      <b id="1183" B="1180" E="1181"/>
+      <b id="1184" B="1179" E="1180" Order="2"/>
+      <b id="1185" B="1182" E="1180"/>
+    </fragment>
+  </nickname>
+  <nickname key="TMS" NodeType="Nickname" IsNickname="yes">
+    <fragment>
+      <n id="1199" p="0.00 0.00" Element="14" NumHydrogens="0"/>
+      <n id="1200" p="0.00 14.35"/>
+      <n id="1201" p="14.35 0.00"/>
+      <n id="1202" p="0.00 -14.35"/>
+      <n id="1203" p="-14.35 0.00" NodeType="ExternalConnectionPoint"/>
+      <b id="1204" B="1199" E="1200"/>
+      <b id="1205" B="1199" E="1201"/>
+      <b id="1206" B="1199" E="1202"/>
+      <b id="1207" B="1203" E="1199"/>
+    </fragment>
+  </nickname>
+  <nickname key="TES" NodeType="Nickname" IsNickname="yes">
+    <fragment>
+      <n id="1227" p="0.00 0.00" Element="14" NumHydrogens="0"/>
+      <n id="1228" p="-7.18 12.43"/>
+      <n id="1229" p="0.00 24.85"/>
+      <n id="1230" p="-7.18 -12.43"/>
+      <n id="1231" p="0.00 -24.86"/>
+      <n id="1232" p="14.35 0.00"/>
+      <n id="1233" p="21.52 12.43"/>
+      <n id="1234" p="-14.35 0.00" NodeType="ExternalConnectionPoint"/>
+      <b id="1235" B="1232" E="1233"/>
+      <b id="1236" B="1230" E="1231"/>
+      <b id="1237" B="1228" E="1229"/>
+      <b id="1238" B="1227" E="1228"/>
+      <b id="1239" B="1227" E="1230"/>
+      <b id="1240" B="1227" E="1232"/>
+      <b id="1241" B="1234" E="1227"/>
+    </fragment>
+  </nickname>
+  <nickname key="TBS" NodeType="Nickname" IsNickname="yes">
+    <fragment>
+      <n id="1261" p="0.00 0.00" Element="14" NumHydrogens="0"/>
+      <n id="1262" p="14.35 0.00"/>
+      <n id="1263" p="-7.18 12.43"/>
+      <n id="1264" p="-7.18 -12.43"/>
+      <n id="1265" p="21.52 -12.43"/>
+      <n id="1266" p="28.70 0.00"/>
+      <n id="1267" p="21.52 12.43"/>
+      <n id="1268" p="-14.35 0.00" NodeType="ExternalConnectionPoint"/>
+      <b id="1269" B="1262" E="1265"/>
+      <b id="1270" B="1262" E="1266"/>
+      <b id="1271" B="1262" E="1267"/>
+      <b id="1272" B="1261" E="1262"/>
+      <b id="1273" B="1261" E="1263"/>
+      <b id="1274" B="1261" E="1264"/>
+      <b id="1275" B="1268" E="1261"/>
+    </fragment>
+  </nickname>
+  <nickname key="TIPS" NodeType="Nickname" IsNickname="yes">
+    <fragment>
+      <n id="1301" p="0.00 0.00" Element="14" NumHydrogens="0"/>
+      <n id="1302" p="-7.18 -12.43"/>
+      <n id="1303" p="-7.18 12.43"/>
+      <n id="1304" p="14.35 0.00"/>
+      <n id="1305" p="-21.53 -12.43"/>
+      <n id="1306" p="0.00 -24.86"/>
+      <n id="1307" p="0.00 24.85"/>
+      <n id="1308" p="-21.53 12.43"/>
+      <n id="1309" p="21.52 12.43"/>
+      <n id="1310" p="21.52 -12.43"/>
+      <n id="1311" p="-14.35 0.00" NodeType="ExternalConnectionPoint"/>
+      <b id="1312" B="1304" E="1309"/>
+      <b id="1313" B="1304" E="1310"/>
+      <b id="1314" B="1303" E="1307"/>
+      <b id="1315" B="1303" E="1308"/>
+      <b id="1316" B="1302" E="1305"/>
+      <b id="1317" B="1302" E="1306"/>
+      <b id="1318" B="1301" E="1302"/>
+      <b id="1319" B="1301" E="1303"/>
+      <b id="1320" B="1301" E="1304"/>
+      <b id="1321" B="1311" E="1301"/>
+    </fragment>
+  </nickname>
+</nicknames>

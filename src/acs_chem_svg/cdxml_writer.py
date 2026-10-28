@@ -1,11 +1,14 @@
 """Molecules and schemes -> CDXML, so a figure can be edited in ChemDraw (acs-style.md §13).
 Phase 1: M1 species. Phase 2 (acs-style.md §13.1): M2 schemes, i.e. reaction and equilibrium
 arrows, conditions, plus signs and compound numbers as captions, and <scheme><step>. Phase 3
-(acs-style.md §13.2): M3 mechanisms, i.e. curved arrows and lone-pair and radical dots.
+(acs-style.md §13.2): M3 mechanisms, i.e. curved arrows and lone-pair and radical dots. Phase 4a
+(acs-style.md §13.3): abbreviations as nickname nodes, resonance ↔ arrows and brackets, and so
+the wrapped and multi-row specs that use them.
 
-The header (root attributes, color and font tables, page) is presets/cdxml/<preset>.xml,
-copied from the ChemDraw references by scripts/cdxml_headers.py; this module types no style
-numbers. Per species, one <fragment>:
+The header (root attributes, color and font tables, page) is presets/cdxml/<preset>.xml, and
+each abbreviation's group presets/cdxml/<preset>.nicknames.xml, both copied from the ChemDraw
+references by scripts/cdxml_headers.py; this module types no style numbers. Per species, one
+<fragment>:
 - <n> per atom at its drawn position: Element (atomic number; carbon has none), and on a labeled
   atom NumHydrogens and NeedsClean="yes", as ChemDraw writes its own labeled atoms; Charge;
   Radical="Doublet".
@@ -14,11 +17,18 @@ numbers. Per species, one <fragment>:
   right-justified label (H on the left) the end of its advance (labels_x1.0, clearance_x*: -Cl
   sits 1.11 right of the atom); y is the label's center line plus half the ink height of the
   element's first glyph, as ChemDraw stores it (all references: 0.3684 x size for O, C, S, Cl;
-  0.3586 for N, H, F, I, Br), though it draws every label's baseline at 0.3585 x size.
+  0.3586 for N, H, F, I, Br), though it draws every label's baseline at 0.3585 x size: half
+  the ink top of the label's full-size glyphs (NO2 and TMS: 3.68, for the O and S).
   BoundingBox: the union of the drawn runs' ink boxes, moved by the same stored - drawn offset.
   LabelJustification / LabelAlignment Left or Right from Label.h_side, plus
   Justification="Right"; a one-character label (-F, -H) is always Left, and only labels of more
   than one character get LabelAlignment, as in the references.
+- An abbreviation (phase 4a, abbrev_x*): <n NodeType="Fragment"> (OMe, CO2Me, NO2, ...) or
+  "Nickname" (Ph, Bn, Et, Ac, silyl groups; IsNickname="yes" on the <t>), no Element,
+  NeedsClean="yes". Inside, ChemDraw's group from the template, turned and moved rigidly so its
+  attachment atom is on the atom and its ExternalConnectionPoint points at the one neighbor. The
+  <t> is the key text (OMe) in both forms, placed as a label: a right-justified one (drawn MeO)
+  has p.x at the end of the drawn text's advance.
 - <b>: Order 2 / 3; wedges Display WedgeBegin / WedgedHashBegin with B at the narrow end
   (Bond.a). No DoublePosition: ChemDraw places double bonds itself.
 - A charge: <graphic GraphicType="Symbol" SymbolType="Plus|Minus"> with
@@ -43,9 +53,10 @@ Scheme objects (phase 2), from the neutral records CdxScheme / CdxArrow / CdxTex
   one line reaches the advance end of each line that ends in a full-size run (scheme_*:
   ChemDraw's box of a stacked caption). No Warning attribute (ChemDraw's
   interpretation note; it writes its own).
-- An arrow: <graphic GraphicType="Line" SupersededBy> (ArrowType FullHead or Equilibrium,
+- An arrow: <graphic GraphicType="Line" SupersededBy> (ArrowType FullHead, Equilibrium or Resonance,
   BoundingBox Head3D then Tail3D) plus the <arrow> it points to, with the same Z. Head
-  attributes per head variant from cdxml.arrow_heads; equilibrium arrows HalfLeft at both ends,
+  attributes per head variant from cdxml.arrow_heads; ↔ arrows Full at both ends (phase 4a);
+  equilibrium arrows HalfLeft at both ends,
   ArrowShaftSpacing = equilibrium.shaft_spacing and ArrowEquilibriumRatio =
   ratios.equilibrium_long_per_short, x 100 / LineWidth and x 100. Head3D / Tail3D: a forward
   arrow's tip and tail; a balanced equilibrium arrow's ends moved in by equilibrium.stagger; one
@@ -54,30 +65,38 @@ Scheme objects (phase 2), from the neutral records CdxScheme / CdxArrow / CdxTex
   MajorAxisEnd3D = Center3D + (Head3D - Tail3D), MinorAxisEnd3D = Center3D + that turned 90°.
   BoundingBox: along the axis the drawn ends; across it the half width (ArrowheadWidth x
   LineWidth / 100, plus half the shaft spacing), with cdxml.arrow_box_pad more on the top of a
-  forward arrow and on both sides of an equilibrium arrow whose Head3D is on the right.
+  forward arrow and on both sides of an equilibrium arrow whose Head3D is on the right; a ↔
+  arrow's, cdxml.resonance_box_pad on both sides.
 - <scheme> per drawn sequence (a new_row step starts one; the rows of a wrapped sequence stay
   one), <step> with ReactionStepReactants / Products (fragment ids), ReactionStepArrows (the
   <graphic> id, as ChemDraw cites it) and ReactionStepObjectsAbove / BelowArrow (<t> ids, and
   the fragments of species drawn above the arrow: a reactant a mechanism step adds, or `over`;
-  user decision 2026-10-28).
+  user decision 2026-10-28). A resonance step: one <step> per ↔, contributor k to k + 1, in
+  its sequence's <scheme>.
+- A bracket (phase 4a, CdxBracket): a free <graphic GraphicType="Bracket" BracketType="Square"
+  LipSize=cdxml.bracket_lip_size>, no <bracketedgroup> (user decision 2026-10-28); BoundingBox
+  the bar's x and its lips' stroke centers, (x, bottom, x, top) for "[" and (x, top, x, bottom)
+  for "]", as resonance_x* stores them.
 - A curved arrow (phase 3, CdxCurve): a free <curve> on the page (no <group>; no step cites it;
   user decision 2026-10-28), no BoundingBox. Two-electron: CurveType 8, ArrowheadHead Full,
   CurvePoints (2p0 - c1, p0, c1, c2, p3, 2p3 - c2). Fishhook: CurveType 32, the same six points
   (the references repeat the last anchor: not written, see _Writer.curve), ArrowheadHead HalfRight when mechanism.fishhook_side is +1 (the
   references' fishhooks), HalfLeft otherwise. p3 is the stroke end, not the head tip: every
   reference curve's last anchor is its stroke end.
-Page order as in the references: fragments, captions, graphics, curves, schemes, arrows.
+Page order as in the references: fragments, captions, graphics (arrows, then brackets), curves,
+schemes, arrows.
 
-Not written: abbreviations and Lewis structures (CdxmlUnsupported), resonance steps and brackets
-(CdxmlUnsupported, phase 4), circled signs and charge_labels texts (a plain sign with the formal
-charge), a second unpaired electron on an atom, atom maps. Each of the last ones warns, except
-maps in a mechanism (CdxScheme.warn_maps): its arrows need them, and the figure never shows them.
+Not written: Lewis structures (CdxmlUnsupported, phase 4b), circled signs and charge_labels texts
+(a plain sign with the formal charge), 2+ / 2- (a plain sign with Charge), a second unpaired
+electron on an atom, atom maps. Each of the last ones warns, except maps in a mechanism
+(CdxScheme.warn_maps): its arrows need them, and the figure never shows them.
 
 Fragment BoundingBox: the drawn ink box (Drawer.draw: stroke widths, second lines, charge signs)
 with the stored label boxes and each dot center plus cdxml.lone_pair_box_reach /
-electron_box_reach, as ChemDraw's; the root's also covers the captions, arrows and curves' ink.
+electron_box_reach, as ChemDraw's; the root's also covers the captions, arrows, brackets and
+curves' ink.
 Coordinates are in the caller's frame: each species' offset is added to its atom positions, and
-CdxScheme.offset to the arrows, captions and curves (render.py passes to_svg's offset, so the
+CdxScheme.offset to the arrows, captions, curves and brackets (render.py passes to_svg's offset, so the
 file lines up with the SVG).
 Numbers are written with two decimals, as ChemDraw writes them. CreationProgram names this
 package, and the page grows by whole pages to fit the drawing.
@@ -88,6 +107,7 @@ from __future__ import annotations
 import math
 import sys
 from collections.abc import Callable
+from functools import lru_cache
 from importlib.metadata import version
 from dataclasses import dataclass, field
 
@@ -95,6 +115,7 @@ from lxml import etree
 from rdkit import Chem
 
 from . import richtext
+from .brackets import square_bracket
 from .chem import Molecule
 from .draw_mol import Drawer
 from .geometry import Point, add, mul, sub, union_box, unit
@@ -118,7 +139,7 @@ class CdxArrow:
     """A step's arrow as drawn: tail and head as the layout passes them to arrows.step_arrow."""
     tail: Point
     head: Point
-    kind: str = "forward"  # forward | equilibrium | equilibrium_products | equilibrium_reactants
+    kind: str = "forward"  # forward | equilibrium | equilibrium_products | equilibrium_reactants | resonance
     variant: str | None = None  # arrow.heads variant; None: the preset's default_head
 
 
@@ -127,6 +148,16 @@ class CdxText:
     """A caption: laid-out lines (richtext.Line with its parts and runs) and its justification."""
     lines: list[richtext.Line]
     justify: str = "Left"  # Left | Center
+
+
+@dataclass
+class CdxBracket:
+    """A square bracket as drawn: its bar's stroke center x, its lips' stroke centers top and
+    bottom; side "left" ([) or "right" (])."""
+    x: float
+    top: float
+    bottom: float
+    side: str
 
 
 @dataclass
@@ -160,7 +191,8 @@ class CdxScheme:
     texts: list[CdxText] = field(default_factory=list)
     schemes: list[list[CdxStep]] = field(default_factory=list)  # one <scheme> per drawn sequence
     curves: list[CdxCurve] = field(default_factory=list)
-    offset: Point = (0.0, 0.0)  # added to the arrows, captions and curves
+    brackets: list[CdxBracket] = field(default_factory=list)
+    offset: Point = (0.0, 0.0)  # added to the arrows, captions, curves and brackets
     warn_maps: bool = True  # False for a mechanism: every species is mapped (user decision 2026-10-28)
 
 
@@ -186,6 +218,17 @@ class Ids:
     def next_z(self) -> str:
         self.z += 1
         return str(self.z - 1)
+
+
+@lru_cache(maxsize=None)
+def load_nicknames(preset_name: str) -> dict[str, etree._Element]:
+    """ABBREVIATIONS key -> its <nickname> template (presets/cdxml/<preset>.nicknames.xml)."""
+    path = HEADER_DIR / f"{preset_name}.nicknames.xml"
+    if not path.exists():
+        raise FileNotFoundError(f"no CDXML nickname templates for preset {preset_name!r} ({path}); "
+                                "run scripts/cdxml_headers.py")
+    root = etree.parse(str(path), etree.XMLParser(load_dtd=False, no_network=True, remove_blank_text=True)).getroot()
+    return {el.get("key"): el for el in root}
 
 
 def load_header(preset_name: str) -> etree._ElementTree:
@@ -216,13 +259,12 @@ class _Writer:
         self.caption_fonts = {style: fonts.get(name) for style, name in (
             ("regular", font_name), ("italic", f"{font_name} Oblique"), ("bold", f"{font_name} Bold"))}
         self.line_width = float(self.root.get("LineWidth"))
+        self.preset_name = preset_name
 
     def check(self, mol: Molecule, d: Drawer) -> None:
         name, msgs = mol.name, []
         if mol.lewis:
-            raise CdxmlUnsupported(f"{name}: Lewis structures are not written to CDXML (phases 1-2)")
-        if any(a.abbrev for a in mol.atoms):
-            raise CdxmlUnsupported(f"{name}: abbreviations (nicknames) are not written to CDXML yet (phases 1-2)")
+            raise CdxmlUnsupported(f"{name}: Lewis structures are not written to CDXML yet (phase 4b)")
         if any(a.radicals > 1 for a in mol.atoms):
             msgs.append(f"{name}: more than one unpaired electron on an atom is not written")
         for a in mol.atoms:
@@ -248,6 +290,12 @@ class _Writer:
             x, y = a.x + off[0], a.y + off[1]
             node_ids[a.idx] = nid = self.ids.new()
             attrs = {"id": nid, "p": pts(x, y), "Z": self.ids.next_z()}
+            if a.abbrev is not None:  # a nickname node: no Element; its atoms are in the inner fragment
+                tpl = self.nickname_template(mol, a)
+                n = etree.SubElement(frag, "n", {**attrs, "NodeType": tpl.get("NodeType"), "NeedsClean": "yes"})
+                self.nickname(n, tpl, mol, a, off)
+                label_boxes.append(self.label(n, d.labels[a.idx], a.abbrev, off, tpl.get("IsNickname")))
+                continue
             if a.element != "C":
                 attrs["Element"] = str(_PT.GetAtomicNumber(a.element))
             lab = d.labels.get(a.idx)
@@ -261,7 +309,7 @@ class _Writer:
                 attrs["NeedsClean"] = "yes"
             n = etree.SubElement(frag, "n", attrs)
             if lab is not None:
-                label_boxes.append(self.label(n, lab, a.element, a.num_h, off))
+                label_boxes.append(self.label(n, lab, label_text(a.element, a.num_h), off))
         for b in mol.bonds:
             attrs = {"id": self.ids.new(), "Z": self.ids.next_z(), "B": node_ids[b.a], "E": node_ids[b.b]}
             if b.order != 1:
@@ -320,17 +368,46 @@ class _Writer:
                 boxes += [(c[0] - r, c[1] - r, c[0] + r, c[1] + r) for c in centers]
         return boxes
 
-    def label(self, n, lab, element: str, num_h: int, off: Point) -> tuple:
-        text = label_text(element, num_h)
-        # bonds to the right: right-justified (H2N, HO, -Cl); one glyph (-F, -H) stays Left
+    def nickname_template(self, mol: Molecule, a) -> etree._Element:
+        tpl = load_nicknames(self.preset_name).get(a.abbrev)
+        if tpl is None:
+            raise CdxmlUnsupported(f"{mol.name}: no CDXML nickname template for {a.abbrev!r}")
+        if mol.degree(a.idx) != 1:
+            raise CdxmlUnsupported(f"{mol.name}: abbreviation {a.abbrev} with {mol.degree(a.idx)} bonds")
+        return tpl
+
+    def nickname(self, n, tpl: etree._Element, mol: Molecule, a, off: Point) -> None:
+        """The nickname's inner <fragment> (abbrev_x*): ChemDraw's group from the template, turned
+        and moved rigidly so its attachment atom is on `a` and its ExternalConnectionPoint (on -x
+        in the template) points at a's one neighbor."""
+        (j, _), = mol.neighbors(a.idx)
+        u = unit(sub(mol.atoms[j].p, a.p))
+        c, s = -u[0], -u[1]  # the template's +x
+        src = tpl.find("fragment")
+        frag = etree.SubElement(n, "fragment", {"id": self.ids.new()})
+        ids = {m.get("id"): self.ids.new() for m in src.findall("n")}
+        for m in src.findall("n"):
+            vx, vy = (float(v) for v in m.get("p").split())
+            p = (a.x + off[0] + vx * c - vy * s, a.y + off[1] + vx * s + vy * c)
+            etree.SubElement(frag, "n", {"id": ids[m.get("id")], "p": pts(*p),
+                                         **{k: v for k, v in m.attrib.items() if k not in ("id", "p")}})
+        for b in src.findall("b"):
+            etree.SubElement(frag, "b", {"id": self.ids.new(), "B": ids[b.get("B")], "E": ids[b.get("E")],
+                                         **{k: v for k, v in b.attrib.items() if k not in ("id", "B", "E")}})
+
+    def label(self, n, lab, text: str, off: Point, is_nickname: str | None = None) -> tuple:
+        """A label's <t>: `text` is the CDXML text (NH2, or an abbreviation's key, OMe, in both
+        forms)."""
+        # bonds to the right: right-justified (H2N, HO, -Cl, MeO); one glyph (-F, -H) stays Left
         right = lab.h_side == "left" and len(text) > 1
-        x, base = lab.elem_origin
-        if right:
-            x += lab.face.advance(element, lab.size)
-        # ChemDraw stores y half the first glyph's ink height below the label's center line
-        # (atom y, or where center_terminal_labels moved it), not the drawn baseline: 3.68 for O
+        x, base = lab.elem_origin  # the element's (an abbreviation's anchor glyph's) origin
+        if right:  # the drawn text ends with the element or anchor glyph
+            x += lab.face.advance(lab.element, lab.size)
+        # ChemDraw stores y half the ink top of the label's full-size glyphs below the label's
+        # center line (atom y, or where center_terminal_labels moved it), not the drawn baseline:
+        # 3.68 for O, C, S (OH, Cl, NO2, TMS), 3.59 for N, H, F, T (NH2, NHAc), 3.60 for Ph
         center = base - self.preset.ratios.label_baseline_per_size * lab.size
-        y = center + lab.face.text_ink_bounds(element[0], lab.size)[3] / 2
+        y = center + max(r.face.text_ink_bounds(r.text, r.size)[3] for r in lab.runs if r.size == lab.size) / 2
         box = union_box(r.bbox() for r in lab.runs)  # in the stored frame too: moved by y - base
         box = (box[0] + off[0], box[1] + y - base + off[1], box[2] + off[0], box[3] + y - base + off[1])
         just = "Right" if right else "Left"
@@ -339,6 +416,8 @@ class _Writer:
             attrs["Justification"] = "Right"
         if len(text) > 1:
             attrs["LabelAlignment"] = just
+        if is_nickname:
+            attrs["IsNickname"] = is_nickname
         t = etree.SubElement(n, "t", attrs)
         etree.SubElement(t, "s", self.s_attrs).text = text
         return box
@@ -413,7 +492,7 @@ class _Writer:
             return add(a.tail, d), sub(a.head, d)
         if a.kind == "equilibrium_reactants":
             return a.head, a.tail
-        if a.kind in ("forward", "equilibrium_products"):
+        if a.kind in ("forward", "equilibrium_products", "resonance"):
             return a.tail, a.head
         raise ValueError(f"unknown arrow kind {a.kind!r}")
 
@@ -423,10 +502,10 @@ class _Writer:
         if variant not in self.preset.cdxml.arrow_heads:
             raise ValueError(f"no CDXML head attributes for arrow head {variant!r} (preset cdxml.arrow_heads)")
         size, center, width = self.preset.cdxml.arrow_heads[variant]
-        eq = a.kind != "forward"
+        eq = a.kind.startswith("equilibrium")
         attrs = {"FillType": "None", "ArrowheadHead": "HalfLeft" if eq else "Full"}
-        if eq:
-            attrs["ArrowheadTail"] = "HalfLeft"
+        if eq or a.kind == "resonance":
+            attrs["ArrowheadTail"] = "HalfLeft" if eq else "Full"
         attrs.update({"ArrowheadType": "Solid", "HeadSize": str(size), "ArrowheadCenterSize": str(center),
                       "ArrowheadWidth": str(width)})
         if eq:
@@ -444,6 +523,8 @@ class _Writer:
         pad = self.preset.cdxml.arrow_box_pad
         if a.kind == "forward":
             top, bottom = pad, 0.0
+        elif a.kind == "resonance":
+            top = bottom = self.preset.cdxml.resonance_box_pad
         else:
             top = bottom = pad if head3d[0] > tail3d[0] else 0.0
         y = a.tail[1]
@@ -459,7 +540,8 @@ class _Writer:
         gid, aid, z = self.ids.new(), self.ids.new(), self.ids.next_z()
         etree.SubElement(page, "graphic", {
             "id": gid, "SupersededBy": aid, "BoundingBox": pts(*head3d, *tail3d), "Z": z, "GraphicType": "Line",
-            "ArrowType": "FullHead" if a.kind == "forward" else "Equilibrium", "HeadSize": attrs["HeadSize"]})
+            "ArrowType": {"forward": "FullHead", "resonance": "Resonance"}.get(a.kind, "Equilibrium"),
+            "HeadSize": attrs["HeadSize"]})
         c = mul(add(head3d, tail3d), 0.5)
         d = sub(head3d, tail3d)
         el = etree.Element("arrow", {"id": aid, "BoundingBox": pts(*box), "Z": z, **attrs,
@@ -467,6 +549,19 @@ class _Writer:
                                      "MajorAxisEnd3D": _p3(add(c, d)), "MinorAxisEnd3D": _p3(add(c, (-d[1], d[0])))})
         return gid, aid, box, el
 
+
+    # ------------------------------------------------------------------ brackets
+
+    def bracket(self, page, br: CdxBracket, off: Point) -> tuple:
+        """A free bracket <graphic> (resonance_x*; no <bracketedgroup>, user decision
+        2026-10-28): BoundingBox the bar's ends, the bottom first for "[" and the top first for
+        "]", as ChemDraw writes them; its drawn ink box."""
+        x, top, bottom = br.x + off[0], br.top + off[1], br.bottom + off[1]
+        ys = (bottom, top) if br.side == "left" else (top, bottom)
+        etree.SubElement(page, "graphic", {
+            "id": self.ids.new(), "BoundingBox": pts(x, ys[0], x, ys[1]), "Z": self.ids.next_z(),
+            "GraphicType": "Bracket", "BracketType": "Square", "LipSize": str(self.preset.cdxml.bracket_lip_size)})
+        return square_bracket(x, top, bottom, br.side, self.preset).ink_bbox()
 
     # ------------------------------------------------------------------ curved arrows
 
@@ -534,6 +629,8 @@ def to_cdxml(scheme: CdxScheme | list[tuple[Molecule, Drawer, Point]], preset_na
         graphic_ids.append(gid)
         arrows.append(el)
         boxes.append(b)
+    for br in scheme.brackets:
+        boxes.append(w.bracket(page, br, scheme.offset))
     for c in scheme.curves:
         boxes.append(w.curve(page, c, scheme.offset))
     for steps in scheme.schemes:
@@ -586,13 +683,6 @@ def placed_cdxml(placed: list[Placed], svg_offset: Point, preset_name: str, name
     return to_cdxml([(p.mol, p.drawer, add(p.offset, svg_offset)) for p in placed], preset_name, name, warn)
 
 
-def check_scheme(spec: Spec) -> None:
-    """Refuse what phase 3 doesn't write: resonance steps (with their brackets)."""
-    for i, st in enumerate(spec.steps or [], 1):
-        if isinstance(st, ResonanceStep):
-            raise CdxmlUnsupported(f"step {i}: resonance steps and brackets are not written to CDXML yet (phase 4)")
-
-
 def _line(runs: list[TextRun], parts: list[richtext.Run]) -> richtext.Line:
     """A richtext.Line for runs placed by the layout (pluses, numbers): positions from the runs."""
     return richtext.Line(runs, runs[0].x, runs[0].y, sum(r.advance() for r in runs),
@@ -602,15 +692,23 @@ def _line(runs: list[TextRun], parts: list[richtext.Run]) -> richtext.Line:
 def scheme_records(lay: SchemeLayout, spec: Spec, svg_offset: Point = (0.0, 0.0)) -> CdxScheme:
     """The CdxScheme of a laid-out scheme, in the frame of the SVG that to_svg wrote with
     `svg_offset`. No layout here: positions are the layout's records."""
-    check_scheme(spec)
-    if lay.resonance:
-        raise CdxmlUnsupported("resonance brackets are not written to CDXML yet (phase 4)")
     names = list(lay.species)
     out = CdxScheme([(p.mol, p.drawer, add(p.offset, svg_offset)) for p in lay.species.values()], offset=svg_offset)
     for run in lay.pluses:
         out.texts.append(CdxText([_line([run], [richtext.Run("+")])]))
     by_n = {st.n: st for st in lay.steps}
+    by_res = {res.n: res for res in lay.resonance}
     for i, st in enumerate(spec.steps, 1):
+        if i == 1 or getattr(st, "new_row", False):
+            out.schemes.append([])
+        if isinstance(st, ResonanceStep):  # a <step> per ↔, left to right; the brackets free
+            res = by_res[i]
+            for k, (tail, head, _) in enumerate(res.arrows):
+                out.arrows.append(CdxArrow(tail, head, "resonance", spec.arrow_head))
+                out.schemes[-1].append(CdxStep([names.index(res.contributors[k])],
+                                               [names.index(res.contributors[k + 1])], len(out.arrows) - 1))
+            out.brackets += [CdxBracket(x, *res.bar_y, side) for x, side in zip(res.bar_x, ("left", "right"))]
+            continue
         sl = by_n[i]
         out.arrows.append(CdxArrow(sl.tail, sl.head, sl.kind, sl.variant))
         sides = []
@@ -626,8 +724,6 @@ def scheme_records(lay: SchemeLayout, spec: Spec, svg_offset: Point = (0.0, 0.0)
         dst = [names.index(n) for n in st.drawn_products]
         if sl.kind == "equilibrium_reactants":  # Head3D on the left: ChemDraw reads the step right to left
             src, dst = dst, src
-        if i == 1 or st.new_row:
-            out.schemes.append([])
         out.schemes[-1].append(CdxStep(src, dst, len(out.arrows) - 1, *sides,
                                        above_species=[names.index(n) for n in over if n in lay.species]))
     for n, runs in lay.numbers.items():
@@ -641,7 +737,6 @@ def spec_cdxml(spec_path, warn: Callable[[str], None] = _stderr) -> str:
     """What render.py --cdxml writes for a spec: M1 species, or an M2 scheme or M3 mechanism."""
     spec = load_spec(spec_path)
     if spec.steps:
-        check_scheme(spec)
         lay = build_scheme(spec, spec_path.parent, spec_path.stem)
         _, offset = to_svg(lay.root)
         return to_cdxml(scheme_records(lay, spec, offset), spec.preset, f"{spec_path.stem}.cdxml", warn)

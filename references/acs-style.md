@@ -719,7 +719,7 @@ All unmeasured (Open 17): user decisions 2026-10-26, round defaults on the 0.5 p
 | Lone pairs: every atom; sides facing a bond or a non-bonded lattice neighbor stay free | §4.2 rules | `draw_mol.Drawer.label_dots`, `lewis_facing` |
 | Checks: shared dots ≥ 2 × gap from labels; assigned dots on the owner's half; dot sets ≥ `dot_spacing` apart | — | `geometry_checks.check_lewis` |
 
-## 13. CDXML export (phase 1: M1 species, phase 2: M2 schemes §13.1, phase 3: M3 mechanisms §13.2; source: every reference's .cdxml)
+## 13. CDXML export (phase 1: M1 species, phase 2: M2 schemes §13.1, phase 3: M3 mechanisms §13.2, phase 4a: abbreviations, resonance, wrap §13.3; source: every reference's .cdxml)
 
 `acs_chem_svg.cdxml_writer` writes what ChemDraw writes for its own structures, so ChemDraw can
 edit a figure. These are file conventions, not drawn geometry. They are measured from the CDXML
@@ -734,7 +734,7 @@ files with `measure_refs.py --cdxml-symbols` and `tests/test_cdxml.py` (referenc
 | Label justification | `LabelJustification="Right"` + `Justification="Right"` when the bonds leave to the right and the text has two or more characters (H₂N, HO, –Cl, –Br); a one-character label (–F, –H, –I) stays Left | from `Label.h_side` and the text length |
 | `LabelAlignment` | on 140 of 144 labels of two or more characters, never on one character (the other 4: a charged O, in mech_basic and labels_x1.0) | on labels of two or more characters |
 | Label `<t p>` x | the element's glyph origin; right-justified, the end of the element's advance (–Cl: +1.11 at ×1.0 = half the l; H₂N: +3.61 = half the N) | the same, within 0.010 pt |
-| Label `<t p>` y | atom y + half the ink height of the element's first glyph: 0.3684 × size for O, C, S, Cl; 0.3586 for N, H, F, I, Br, B. The drawn baseline is 0.3585 × size for all, so for O the stored p sits 0.095 pt below the drawn text | the same, from the font's glyph box, within 0.010 pt |
+| Label `<t p>` y | atom y + half the ink top of the label's full-size glyphs: 0.3684 × size for O, C, S, Cl (an overshooting glyph anywhere: NO2, TMS, OMe, as §13.3); 0.3586 for N, H, F, I, Br, B, T; 0.3599 for Ph (the h). The drawn baseline is 0.3585 × size for all, so for O the stored p sits 0.095 pt below the drawn text | the same, from the font's glyph boxes, within 0.010 pt |
 | Label BoundingBox | the label's ink box, offset by the same stored − drawn amount as p | the same, within 0.010 pt |
 | Fragment BoundingBox | the drawn ink (half line widths, second lines of double bonds, charge signs) with the stored label boxes; dots: §13.2 | the same, within 0.010 pt (where a sign sets an edge, within our sign's placement, ≤ 0.39 pt) |
 | Double bonds | no `DoublePosition` in any reference: ChemDraw places them itself | none |
@@ -749,7 +749,7 @@ decision 2026-10-28), so the DTD tests skip without it. It dates from 2003. libx
 reference then fails on only two attributes the DTD doesn't declare: `ShowPrimeLabels` on
 `<CDXML>` and `IsNickname` on `<t>`. The test allows exactly those.
 
-**Not written in phase 1:** abbreviations and Lewis structures (refused), lone-pair and radical
+**Not written in phase 1:** abbreviations (written since phase 4a, §13.3) and Lewis structures (refused), lone-pair and radical
 dots (the node keeps `Radical`; written since phase 3, §13.2), circled signs and `charge_labels` texts (a plain Plus/Minus with
 the formal charge), atom maps (no `AtomID`). Each is reported on stderr.
 
@@ -794,9 +794,9 @@ equilibrium references rebuilt at ChemDraw's coordinates and compared object by 
 | `<step>` | `ReactionStepReactants` / `Products` (fragment or group ids), `ReactionStepArrows` (the `<graphic>`), `ReactionStepObjectsAboveArrow` / `BelowArrow` (`<t>`, formula fragments, groups); empty lists left out | the same, with `<t>` for every condition; omitted products are not cited |
 
 **Not written in phase 2:** abbreviations, so `m2_scheme_multi_x*`, `m2_sequence_x*` and
-`m4_wrap_x*` are refused, and the scheme_multi_x\* round trip leaves out its OMe / OBn species
-(their steps are checked without them); Lewis structures; curved arrows, resonance steps and
-brackets (M3 / M4 specs with them are refused; M3 is written since phase 3, §13.2).
+`m4_wrap_x*` were refused, and the scheme_multi_x\* round trip left out its OMe / OBn species;
+Lewis structures; curved arrows, resonance steps and brackets. M3 is written since phase 3
+(§13.2); abbreviations, resonance and those specs since phase 4a (§13.3).
 
 **Gate (2026-10-28, `scripts/cdxml_spike.py --phase 2 --diff` on the user's ChemDraw 26 re-saves
 of all seven files in `build/cdxml_spike/phase2/`):**
@@ -851,7 +851,7 @@ Round trip, beyond the tolerances above: the tBu radical's dot is 2.8–5.0 pt f
 out, are within 1.14 pt; mech_basic_x0.8 / x0.6 pad the arrow box 0.18, as scheme_basic_x0.6;
 and the Cl· typed as text (no face 96) has its label box 0.1 higher.
 
-**Not written in phase 3:** resonance steps and brackets (phase 4, refused); Lewis structures'
+**Not written in phase 3:** resonance steps and brackets (written since phase 4a, §13.3); Lewis structures'
 shared and assigned electrons (refused); a second unpaired electron on an atom (warns). Atom
 maps are not written either, but a mechanism doesn't warn about them: every species is mapped
 for its arrows (user decision 2026-10-28).
@@ -874,3 +874,52 @@ of all six files in `build/cdxml_spike/phase3/`):**
   0.011); the user found them clean to edit.
 - Edit check (user): curves move as expected; dots stay behind when their atom is dragged and
   Clean Structure reshapes the structure, both as with ChemDraw's own drawings.
+
+### 13.3 Abbreviations, resonance and wrapped schemes (phase 4a; source: abbrev_x\*, resonance_x\*, scheme_wrap_x\*, scheme_multi_x\*)
+
+Measured with `measure_refs.py --cdxml-scheme` (now also resonance_x\*: ↔ arrows, and each
+bracket `<graphic>` against the bracket drawn in the SVG) and the nickname nodes of abbrev_x\*,
+and held by `tests/test_cdxml.py`: `test_reference_diff` on abbrev_x\* (all 21 keys in both
+forms, three scales: nickname atoms, label p and box within 0.02 pt), `test_resonance_reference_diff`
+and `test_scheme_reference_diff` on scheme_wrap_x\*.
+
+| Item | ChemDraw's files | Ours |
+|---|---|---|
+| Abbreviation node | `<n NodeType="Fragment">` for formula-like groups (OMe, CO2Me, NO2, CF3, CN, NHAc, …), `NodeType="Nickname"` with `IsNickname="yes"` on the `<t>` for Ph, Bn, Et, Ac, TMS, TES, TBS, TIPS; no `Element`; `NeedsClean="yes"` | the same, NodeType and IsNickname from the template |
+| Inner fragment | the group's atoms at real coordinates (Element, NumHydrogens, Charge: NO2's N+ and O−), plus a `NodeType="ExternalConnectionPoint"` 14.35 / 11.50 / 8.60 pt from the attachment atom toward the outer neighbor (0.05 pt short of BondLength) and bonded to it. The right-justified form is the left one turned 180°, to 0.01 pt | `presets/cdxml/<preset>.nicknames.xml`: each key's left-justified inner fragment from abbrev_x\<k\>, attachment atom at the origin (`scripts/cdxml_headers.py`), turned and moved rigidly onto the atom and its neighbor |
+| Inner node attributes | abbrev_x\*: id, p, Element, NumHydrogens, Charge (a methyl C has NumHydrogens="3"). scheme_multi_x1.0's (expanded and contracted by the user): also Z, NeedsClean and ExternalConnectionNum, and no NumHydrogens on carbon | abbrev_x\*'s |
+| Label `<t>` | the key text (OMe) in both forms, one face-96 `<s>`; Left: p.x the first glyph origin; Right (drawn MeO): `Justification="Right"`, p.x the end of the drawn text's advance (+3.89 = half the O); p.y as §13 (NO2, TMS: 3.68 for the O / S; Ph 3.60); BoundingBox the drawn text's ink in the stored frame | the same, from `Label.runs`, within 0.02 pt |
+| RDKit | `Chem.MolsFromCDXML` expands both node types | round trips hold (`test_all_spec_round_trips`) |
+| ↔ arrow | `<graphic ArrowType="Resonance" HeadSize>` + `<arrow ArrowheadHead="Full" ArrowheadTail="Full">`, 1000 / 875 / 250 at every scale; Head3D the right tip, Tail3D the left; axis points as §13.1 | `CdxArrow` kind `resonance` |
+| ↔ BoundingBox | ± ArrowheadWidth × LineWidth / 100 plus 0.18 / 0.67 / 0.67 on both sides (resonance_x1.0 / x0.8 / x0.6; arrows_large_x1.0's large ↔: 0.5) | `cdxml.resonance_box_pad` (`approx`) |
+| `<step>` | one per ↔, contributor k → k + 1, in the sequence's `<scheme>` | the same; a bracket continues its sequence's `<scheme>` (m4_nitration: step 3, two ↔ steps and step 5 in one) |
+| Bracket | `<graphic GraphicType="Bracket" BracketType="Square" LipSize="60">`; BoundingBox the bar's x and its lips' stroke centers, within 0.005 pt: "[" (bottom, top), "]" (top, bottom). resonance_x1.0's "]" also has `<objecttag Name="bracketusage">`, and every file a `<bracketedgroup>` | free bracket graphics after the arrow graphics, no `<bracketedgroup>`, no objecttag (user decision 2026-10-28); `ResonanceLayout.bar_x` / `bar_y` |
+| LipSize | 60 at every scale, while the drawn lips are 4.01 / 3.21 / 2.42 (0.073 × the bracket height in all three), so not lip_length / LineWidth | `cdxml.bracket_lip_size` (`exempt`) |
+| Wrapped sequence | one `<scheme>` for both rows (scheme_wrap: 5 steps); its user `<group>`s hold a species with its number, or a formula caption with a caption cited elsewhere and the step's own arrow; steps cite the groups | one `<scheme>`, no groups (`test_wrapped_sequence_is_one_scheme`); `compare.cited_ids` reads a cited group as what it holds |
+
+Round trip, beyond the tolerances: resonance_x0.8 / x0.6's C+ signs on unlabeled carbons are
+1.52 pt below ChemDraw's (hand-placed, `charge.unlabeled_distance`), and resonance_x1.0's one
+mirrored sign box (dx −7.5, §13) is ChemDraw's.
+
+**Not written in phase 4a:** Lewis structures (refused, phase 4b); circled signs and
+`charge_labels` texts (a plain sign with the formal charge), 2+ / 2− (a plain sign with
+`Charge`), a second unpaired electron on an atom: each warns, until the charges_lewis_x\*
+reference (phase 4b).
+
+**Gate (2026-10-28, `scripts/cdxml_spike.py --phase 4a --diff` on the user's ChemDraw 26
+re-saves of all eight files in `build/cdxml_spike/phase4a/`: the round trips of abbrev_x1.0,
+resonance_x1.0 and scheme_wrap_x1.0 and the specs m1_abbrev, m4_resonance, m4_wrap, m4_nitration
+and m2_sequence, x1.0):**
+- ChemDraw keeps every node (336 on abbrev_x1.0), every nickname's NodeType, IsNickname and inner
+  atoms and bonds (86 nicknames; inner atoms unmoved except one OBn in m2_sequence, 3.75 pt,
+  the one the user expanded and contracted), every ↔ arrow and bracket, and every `<step>` and
+  `<scheme>`; a wrapped sequence stays one scheme.
+- Label p and boxes within 0.02 pt; arrow boxes 0.24 lower (FullHead, as in phase 2) and 0.08
+  taller (↔): bookkeeping it redoes.
+- It adds a `<bracketedgroup>` with two `<bracketattachment>`s around each bracket pair by
+  itself, as in every reference: leaving it out costs nothing.
+- scheme_wrap_x1.0's fourth step: the reference cites a hand-made group holding a caption above
+  the arrow and one below as "below"; written as two captions, ChemDraw files the upper one
+  above. Spec exports cite each caption on its own side and are unchanged.
+- Edit check (user): nicknames expand and contract, contributors drag and brackets move as with
+  ChemDraw's own drawings; no problems reported.

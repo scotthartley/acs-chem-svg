@@ -523,3 +523,28 @@ removed renders pixel-identical to the approved `m4_nitration_x1.0`. Inbox triag
   and drew HO. A tie now allows 1e-3. ChemDraw also asked to expand a page that was too narrow,
   so the writer now sizes the page in whole pages. Charges don't follow a dragged atom, but they
   don't in ChemDraw's own files either.
+
+## 2026-10-28 (CDXML export, phase 4a: abbreviations, resonance, wrap)
+
+- **Copy ChemDraw's group, don't build it.** A nickname node holds the whole group at real
+  coordinates. The writer copies each key's inner fragment from abbrev_x\<k\>
+  (`presets/cdxml/<preset>.nicknames.xml`) and turns it rigidly onto the bond: no geometry typed,
+  and all 21 keys at three scales match ChemDraw's to 0.02 pt, the 30° row included. Check that
+  one template serves both forms before storing two: the right-justified form was the left one
+  turned 180° to 0.01 pt.
+- **The stored label y is half the ink top of all full-size glyphs, not the first.** NO2 and TMS
+  sit 3.68 below the center (the O, the S), though N and T alone give 3.59. The first-glyph rule
+  had held only because element labels start with their tallest glyph.
+- **ChemDraw's numbers that look like style are sometimes constants or context.** LipSize is 60
+  at every scale while the drawn lips scale; the ↔ box pad is 0.18 at ×1.0, 0.67 at ×0.8 and
+  ×0.6, and 0.5 on a large-head ↔. Put such keys where the preset tests expect them (`exempt`,
+  `approx`), not in `nonlinear`, which requires them to shrink.
+- **References carry the user's editing history.** scheme_wrap_x\* steps cite hand-made
+  `<group>`s (a species with its number; a formula caption with another caption and the step's
+  own arrow), and scheme_multi_x1.0's nicknames carry Z, NeedsClean and ExternalConnectionNum
+  from an expand / contract. Compare chemistry and positions; read a cited group as what it holds
+  (`compare.cited_ids`).
+- **A molfile alias hides the group from RDKit.** Expected SMILES for templates with nickname
+  aliases must expand them (`tests/test_cdxml.py` `_expand_aliases`), or the round trip compares
+  O=C(O)… with COC(=O)….
+

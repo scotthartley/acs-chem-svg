@@ -38,7 +38,7 @@ from pathlib import Path
 
 from . import electrons, richtext
 from .arrows import conditions_mid, heads_along, resonance_arrow, step_arrow
-from .brackets import bracket_pair
+from .brackets import bracket_pair, bracket_ys
 from .chem import Molecule
 from .draw_mol import DotSet, Drawer
 from .geometry import Point, add, sub, union_box, unit
@@ -91,6 +91,7 @@ class ResonanceLayout:
     contributors: list[str]
     row: int
     bar_x: tuple[float, float]  # stroke centers of the opening and closing brackets' bars
+    bar_y: tuple[float, float] = (0.0, 0.0)  # their lips' stroke centers (top, bottom); set with the brackets
     arrows: list[tuple[Point, Point, Group]] = field(default_factory=list)  # double-headed: tail tip, head tip
     group: Group | None = None  # bracket-step-<n>, with -left and -right
 
@@ -481,6 +482,7 @@ def _finish_row(spec: Spec, out: SchemeLayout, units: list[Unit], r: int, nrows:
         res.group.children = list(bracket_pair((res.bar_x[0] + preset.bracket.gap_x, box[1],
                                                 res.bar_x[1] - preset.bracket.gap_x, box[3]),
                                                preset, f"bracket-step-{res.n}"))
+        res.bar_y = bracket_ys(box, preset)
     numbered = {n: str(spec.numbers[n]) for n in names if n in (spec.numbers or {})}
     if numbered:
         size = preset.text.caption_size
@@ -529,6 +531,7 @@ def _shift_row_records(out: SchemeLayout, r: int, names: list[str], curved: list
     for res in out.resonance:
         if res.row == r:
             res.arrows = [((t[0], t[1] + dy), (h[0], h[1] + dy), g) for t, h, g in res.arrows]
+            res.bar_y = (res.bar_y[0] + dy, res.bar_y[1] + dy)
     for a in curved:
         a.shift(0.0, dy)
 

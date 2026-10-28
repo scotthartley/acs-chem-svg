@@ -54,8 +54,9 @@ Run every command as `uv run --project <repo> python <repo>/scripts/<script> ...
    and report what is left.
 6. **Deliver** `.svg` (editable text, named groups; `--affinity` writes for Affinity: separate
    arrowhead shapes, bold/italic face names), `.yaml`, `.png`. Mention a fallback-font warning.
-   For ChemDraw, `--cdxml` also writes `.cdxml` (M1 species, M2 schemes, M3 mechanisms;
-   abbreviations, resonance and brackets are refused; report its stderr warnings).
+   For ChemDraw, `--cdxml` also writes `.cdxml` (M1–M4: species, schemes, mechanisms,
+   abbreviations, resonance brackets; Lewis structures are refused). Report its stderr warnings
+   (circled signs, 2+ / 2−, `charge_labels` and atom maps are written as plain chemistry).
 
 ## Mechanisms (curved arrows)
 
