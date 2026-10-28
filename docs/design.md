@@ -319,8 +319,9 @@ approved without edits; fresh-agent trials of all six benchmark prompts are summ
 
 CDXML export (the "Later" backend, `render.py --cdxml`, `references/acs-style.md` §13): phase 1,
 M1 species, and phase 2, M2 schemes (arrows, conditions, plus signs, numbers, `<scheme><step>`,
-§13.1), both passed their ChemDraw gates on 2026-10-28. Abbreviations, curved arrows and
-brackets come later.
+§13.1), both passed their ChemDraw gates on 2026-10-28. Phase 3, M3 mechanisms (curved arrows as
+`<curve>`, lone-pair and radical dots as symbols, §13.2), passed its gate the same day.
+Abbreviations, resonance and brackets come later.
 
 ---
 

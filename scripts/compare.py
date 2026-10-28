@@ -51,11 +51,11 @@ from cdxml_to_molfile import fragments, template_path  # noqa: E402
 from acs_chem_svg import chem, richtext  # noqa: E402
 from acs_chem_svg.arrows import equilibrium_arrow, reaction_arrow, resonance_arrow  # noqa: E402
 from acs_chem_svg.brackets import square_bracket  # noqa: E402
-from acs_chem_svg.cdxml_writer import CdxArrow, CdxScheme, CdxStep, CdxText  # noqa: E402
+from acs_chem_svg.cdxml_writer import CdxArrow, CdxCurve, CdxScheme, CdxStep, CdxText  # noqa: E402
 from acs_chem_svg.draw_mol import Drawer  # noqa: E402
 from acs_chem_svg.preset import Preset, load_preset  # noqa: E402
 from acs_chem_svg.preview import compare_png, rasterize_file, zoom_crops  # noqa: E402
-from acs_chem_svg.geometry import add, mul, sub, unit  # noqa: E402
+from acs_chem_svg.geometry import add, length, mul, sub, unit  # noqa: E402
 from acs_chem_svg.layout import build_scheme  # noqa: E402
 from acs_chem_svg.mechanism import curved_arrow  # noqa: E402
 from acs_chem_svg.scene import Circle, Group  # noqa: E402
@@ -245,7 +245,9 @@ def reference_cdx_scheme(ref: str) -> CdxScheme:
     phase 2); equilibrium_*'s A and B as one-atom stand-ins at their nodes; its arrows
     (cdx_ref_arrow); every caption and formula fragment (K2CO3) set by richtext at ChemDraw's
     glyph origins, with its justification; its steps, minus the species left out. Every
-    object a step cites is paired with ChemDraw's by its p."""
+    object a step cites is paired with ChemDraw's by its p. mech_*: its curves (curve_points),
+    lone pairs shown on the atoms ChemDraw draws them on (our placement), and a step citing a
+    <group> cites the fragment inside it."""
     r = render_reference(ref)
     doc, preset = r.ref, r.preset
     page = etree.parse(str(mr.REF_DIR / f"{ref}.cdxml"), CDXML_PARSER).getroot().find("page")
@@ -266,13 +268,23 @@ def reference_cdx_scheme(ref: str) -> CdxScheme:
                 out.species.append((m, Drawer(m, preset), (0.0, 0.0)))
                 skip_p.append(floats(n.find("t").get("p")))
     else:
-        for (_, fid, _), m in zip(fragments(doc), r.molecules):
+        lp_atoms = {}  # molecule index -> atoms ChemDraw draws lone pairs on
+        for a, b in mr._dot_sets(doc)[0] if ref.startswith("mech_") else []:
+            mid = mul(add(a.center, b.center), 0.5)
+            k, i = min(((k, at.idx) for k, m in enumerate(r.molecules) for at in m.atoms),
+                       key=lambda ki: length(sub(r.molecules[ki[0]].atoms[ki[1]].p, mid)))
+            lp_atoms.setdefault(k, set()).add(i)
+        for k, ((_, fid, _), m) in enumerate(zip(fragments(doc), r.molecules)):
             if any(a.abbrev for a in m.atoms):
                 continue  # abbreviations: not written in phase 2
             frag_idx[fid] = len(out.species)
-            out.species.append((m, Drawer(m, preset), out.offset))
+            out.species.append((m, Drawer(m, preset, show_lone_pairs=lp_atoms.get(k, set())), out.offset))
+        for g in page.iter("group"):  # mech_basic's tBu-Cl and its fishhooks: steps cite the group
+            inner = [f.get("id") for f in g.iter("fragment") if f.get("id") in frag_idx]
+            if len(inner) == 1:
+                frag_idx[g.get("id")] = frag_idx[inner[0]]
     # captions: their <t> ids, or the formula fragment's id, paired by p
-    objs = {t.get("id"): floats(t.get("p")) for t in page.findall("t")}
+    objs = {t.get("id"): floats(t.get("p")) for t in page.iter("t") if t.getparent().tag != "n"}  # mech_basic: in <group>s
     for f in page.findall("fragment"):
         if f.get("id") in doc.text_frags:
             objs[f.get("id")] = floats(f.find("n").find("t").get("p"))
@@ -292,6 +304,7 @@ def reference_cdx_scheme(ref: str) -> CdxScheme:
         g = next(g for g in page.iter("graphic") if g.get("SupersededBy") == el.get("id"))
         arrow_idx[g.get("id")] = len(out.arrows)
         out.arrows.append(cdx_ref_arrow(a, preset))
+    out.curves = [CdxCurve(*curve_points(c), "two_electron" if c["head"] == "Full" else "fishhook") for c in doc.curves]
     for sch in steps:
         out.schemes.append([CdxStep([frag_idx[i] for i in cited(st, "ReactionStepReactants") if i in frag_idx],
                                     [frag_idx[i] for i in cited(st, "ReactionStepProducts") if i in frag_idx],

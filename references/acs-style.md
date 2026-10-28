@@ -719,7 +719,7 @@ All unmeasured (Open 17): user decisions 2026-10-26, round defaults on the 0.5 p
 | Lone pairs: every atom; sides facing a bond or a non-bonded lattice neighbor stay free | §4.2 rules | `draw_mol.Drawer.label_dots`, `lewis_facing` |
 | Checks: shared dots ≥ 2 × gap from labels; assigned dots on the owner's half; dot sets ≥ `dot_spacing` apart | — | `geometry_checks.check_lewis` |
 
-## 13. CDXML export (phase 1: M1 species, phase 2: M2 schemes §13.1; source: every reference's .cdxml)
+## 13. CDXML export (phase 1: M1 species, phase 2: M2 schemes §13.1, phase 3: M3 mechanisms §13.2; source: every reference's .cdxml)
 
 `acs_chem_svg.cdxml_writer` writes what ChemDraw writes for its own structures, so ChemDraw can
 edit a figure. These are file conventions, not drawn geometry. They are measured from the CDXML
@@ -736,7 +736,7 @@ files with `measure_refs.py --cdxml-symbols` and `tests/test_cdxml.py` (referenc
 | Label `<t p>` x | the element's glyph origin; right-justified, the end of the element's advance (–Cl: +1.11 at ×1.0 = half the l; H₂N: +3.61 = half the N) | the same, within 0.010 pt |
 | Label `<t p>` y | atom y + half the ink height of the element's first glyph: 0.3684 × size for O, C, S, Cl; 0.3586 for N, H, F, I, Br, B. The drawn baseline is 0.3585 × size for all, so for O the stored p sits 0.095 pt below the drawn text | the same, from the font's glyph box, within 0.010 pt |
 | Label BoundingBox | the label's ink box, offset by the same stored − drawn amount as p | the same, within 0.010 pt |
-| Fragment BoundingBox | the drawn ink (half line widths, second lines of double bonds, charge signs) with the stored label boxes | the same, within 0.010 pt (where a sign sets an edge, within our sign's placement, ≤ 0.39 pt) |
+| Fragment BoundingBox | the drawn ink (half line widths, second lines of double bonds, charge signs) with the stored label boxes; dots: §13.2 | the same, within 0.010 pt (where a sign sets an edge, within our sign's placement, ≤ 0.39 pt) |
 | Double bonds | no `DoublePosition` in any reference: ChemDraw places them itself | none |
 | Charge | `<graphic GraphicType="Symbol" SymbolType="Plus|Minus">` + `<represent attribute="Charge" object=node>`; BoundingBox = (drawn sign center, center x − dx, center y), the center within 0.004 pt of the drawn bars | `cdxml.charge_box_dx` |
 | `cdxml.charge_box_dx` | 7.5 / 4.8 / 2.7 = 0.075 × LabelSize² in 19 of 20 symbols (labels_x1.0, m1_set_x\*, mech_basic_x\*, resonance_x\*); one in resonance_x1.0 is −7.5 | 7.5 / 4.8 / 2.7 (`nonlinear`) |
@@ -750,7 +750,7 @@ reference then fails on only two attributes the DTD doesn't declare: `ShowPrimeL
 `<CDXML>` and `IsNickname` on `<t>`. The test allows exactly those.
 
 **Not written in phase 1:** abbreviations and Lewis structures (refused), lone-pair and radical
-dots (the node keeps `Radical`), circled signs and `charge_labels` texts (a plain Plus/Minus with
+dots (the node keeps `Radical`; written since phase 3, §13.2), circled signs and `charge_labels` texts (a plain Plus/Minus with
 the formal charge), atom maps (no `AtomID`). Each is reported on stderr.
 
 **Gate (2026-10-28, `scripts/cdxml_spike.py --diff` on the user's ChemDraw 26 re-saves of all
@@ -775,7 +775,7 @@ equilibrium references rebuilt at ChemDraw's coordinates and compared object by 
 
 | Item | ChemDraw's files | Ours |
 |---|---|---|
-| Page order | fragments, `<t>`, `<graphic>`, `<scheme>`, `<arrow>` (scheme_wrap_x\* also has the user's `<group>`s first) | the same, no groups |
+| Page order | fragments, `<t>`, `<graphic>`, `<scheme>`, `<arrow>` (scheme_wrap_x\* also has the user's `<group>`s first); `<curve>`s after the graphics (§13.2) | the same, no groups |
 | Caption `<t p>`, Left | first glyph origin on the first baseline, within 0.005 pt (single lines, plus signs, numbers, stage lines; formula fragments' labels too) | the same, from the richtext runs |
 | Caption `<t p>`, Center | `CaptionJustification="Center" Justification="Center"`; p.x = the first line's advance center (every line's center is the same, within 0.005), p.y its baseline. ChemDraw centers only its stacked conditions | stacked or not, every `above:` / `below:` side is one centered `<t>`; stage lines are one Left `<t>` each (user decision 2026-10-28: every condition is a caption, including formulas ChemDraw stores as a one-node fragment) |
 | Caption BoundingBox | the ink box within 0.005 pt for one line. Stacked: the right edge is the advance end of the lines that end in a full-size glyph ("reflux", "(4:1)"), else the ink; the bottom is 0.04–0.32 below the ink (larger at ×0.6), unexplained | the ink, the stacked right-edge rule, ink bottom (`KNOWN`, 0.35) |
@@ -796,7 +796,7 @@ equilibrium references rebuilt at ChemDraw's coordinates and compared object by 
 **Not written in phase 2:** abbreviations, so `m2_scheme_multi_x*`, `m2_sequence_x*` and
 `m4_wrap_x*` are refused, and the scheme_multi_x\* round trip leaves out its OMe / OBn species
 (their steps are checked without them); Lewis structures; curved arrows, resonance steps and
-brackets (M3 / M4 specs with them are refused).
+brackets (M3 / M4 specs with them are refused; M3 is written since phase 3, §13.2).
 
 **Gate (2026-10-28, `scripts/cdxml_spike.py --phase 2 --diff` on the user's ChemDraw 26 re-saves
 of all seven files in `build/cdxml_spike/phase2/`):**
@@ -823,3 +823,52 @@ of all seven files in `build/cdxml_spike/phase2/`):**
   the re-save within 0.01 pt.
 - Edit check (user): selecting an arrow does not show reactants and products, which is
   ChemDraw's standard behavior, not a fault of the files.
+
+### 13.2 Mechanisms (phase 3: M3; source: mech_basic_x1.0 / x0.8 / x0.6)
+
+Measured with `measure_refs.py --cdxml-symbols` (dot symbols against the circles drawn in each
+reference SVG; each fragment's box against its outermost dots) and `measure_refs.py` (each
+curve's anchors against its drawn stroke), and held by `tests/test_cdxml.py`
+(`test_mech_reference_diff`: the three references rebuilt at ChemDraw's coordinates, with its
+CurvePoints and lone pairs on its atoms, and compared object by object).
+
+| Item | ChemDraw's files | Ours |
+|---|---|---|
+| Curved arrow | `<curve CurveType ArrowheadHead ArrowheadType="Solid" CurvePoints>`, no BoundingBox; page-level after the `<graphic>`s (mech_basic's two fishhooks sit in a user `<group>` with tBu–Cl) | a free `<curve>`, no group; no step cites it (user decision 2026-10-28) |
+| CurvePoints | (in-handle, anchor, out-handle) per anchor: 2e⁻ six points (2p0 − c1, p0, c1, c2, p3, 2p3 − c2), curve 40 to 0.01; the hand-drawn C–Br arrow (curve 91) has c2 = p3 | the same from `MechArrow` p0, c1, c2, p3: anchors and inner handles exact; end handles within 0.02 (we mirror its rounded points) |
+| Last anchor | the SVG stroke end (the head's notch) in all 12 curves, within 0.002 pt; the tip is 4.05 pt beyond it (head_inset) (`test_curve_end_is_stroke_end`) | `MechArrow.p3`, as it is |
+| 2e⁻ arrow | `CurveType="8" ArrowheadHead="Full"` | the same |
+| Fishhook | `CurveType="32" ArrowheadHead="HalfRight"`, nine points: the six plus the second anchor and its handles again, a zero-length loop at the end (its SVG draws it as a second segment; with a 4.5 pt end handle it reaches 1.3 pt, under the head). All six reference fishhooks turn left on screen (y down) and are HalfRight | the six points only: with our longer end handles (up to 17.8 pt) the repeated anchor drew a loop up to 5.1 pt long and showed as a stray node in ChemDraw (user, gate 2026-10-28). `mechanism.fishhook_side` +1 → HalfRight (on all six, `test_fishhook_side_matches_reference`), −1 → HalfLeft (by symmetry; gate) |
+| Lone pair | `<graphic GraphicType="Symbol" SymbolType="LonePair">` + `<represent attribute="Radical" object=node>`; BoundingBox = the two dot centers (to 0.001 pt), counterclockwise on screen around the atom (all 30), so their distance is `lone_pair.dot_spacing` (3.75 / 2.40 / 2.40) | the same from `Drawer.dot_sets()`; our dot centers are our placement (within 1.01 pt of its) |
+| Radical dot | `SymbolType="Electron"`, the same `represent attribute="Radical"`; the node keeps `Radical="Doublet"`; BoundingBox = (dot center, center x − dx, center y) | `cdxml.electron_box_dx` |
+| `cdxml.electron_box_dx` | 7.5 / 4.8 / 4.8 (all 6): not `charge_box_dx` at ×0.6 (2.7), nonlinear like the dot radius | 7.5 / 4.8 / 4.8 (`nonlinear`) |
+| Fragment BoundingBox with dots | reaches 0.97 / 0.67 / 0.67 beyond the outermost lone-pair dot center (dot radius + 0.137) and 0.90 / 0.60 / 0.60 beyond a radical dot (+ 0.067; one per file, Cl·'s on the left) | `cdxml.lone_pair_box_reach`, `cdxml.electron_box_reach` (`nonlinear`), with the ink as before |
+| Added reactant | (no reference) | a species a mechanism step adds, drawn above its arrow, is cited in `ReactionStepObjectsAboveArrow`, not as a reactant (user decision 2026-10-28) |
+| `<step>` | cites the `<group>` holding tBu–Cl and its fishhooks as the reactant | cites the fragment |
+
+Round trip, beyond the tolerances above: the tBu radical's dot is 2.8–5.0 pt from ChemDraw's
+(ours takes the largest gap on the unlabeled C); the O⁻ and Br⁻ signs, which our dots push
+out, are within 1.14 pt; mech_basic_x0.8 / x0.6 pad the arrow box 0.18, as scheme_basic_x0.6;
+and the Cl· typed as text (no face 96) has its label box 0.1 higher.
+
+**Not written in phase 3:** resonance steps and brackets (phase 4, refused); Lewis structures'
+shared and assigned electrons (refused); a second unpaired electron on an atom (warns).
+
+**Gate (2026-10-28, `scripts/cdxml_spike.py --phase 3 --diff` on the user's ChemDraw 26 re-saves
+of all six files in `build/cdxml_spike/phase3/`):**
+- ChemDraw keeps every `<curve>` (CurveType, ArrowheadHead, CurvePoints), every LonePair and
+  Electron symbol with its box and `represent attribute="Radical"`, and every `<step>`, the
+  added water above its arrow included.
+- It draws our heads where we do: stroke ends within 0.005 pt, tips within 0.015, head shapes
+  within 0.014 of our `MechArrow` (spec cases) or its original reference (round trips), barbs on
+  the same side, HalfLeft included (m3_radical_propagation_x1.0). Every dot is drawn at the
+  center its symbol declares (0.000).
+- It recomputes the arrow box top 0.24 lower, as in phase 2, and some fragment boxes with dots
+  and signs by up to 0.28: bookkeeping it redoes.
+- **Fishhooks:** written with the references' nine points, our fishhooks showed an extra node
+  near the end and looked distorted in ChemDraw (the repeated anchor's loop, above). The writer
+  now writes six. Re-saved, ChemDraw keeps them unchanged and draws them as before, and on the
+  mech_basic round trips exactly as its own nine-point originals (stroke ends 0.000, tips within
+  0.011); the user found them clean to edit.
+- Edit check (user): curves move as expected; dots stay behind when their atom is dragged and
+  Clean Structure reshapes the structure, both as with ChemDraw's own drawings.

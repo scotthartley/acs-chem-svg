@@ -102,6 +102,14 @@ def bezier(p0: Point, c1: Point, c2: Point, p3: Point, t: float) -> Point:
             s ** 3 * p0[1] + 3 * s * s * t * c1[1] + 3 * s * t * t * c2[1] + t ** 3 * p3[1])
 
 
+def fishhook_side(c1: Point, c2: Point, p3: Point) -> float:
+    """The side of a fishhook's barb: +1 on perp(end tangent), right of travel (y down), -1
+    left. The barb goes on the side the curve bends toward (cdxml_writer: +1 is HalfRight)."""
+    t = unit(sub(p3, c2 if length(sub(p3, c2)) > 1e-6 else c1))
+    bend = add(sub(p3, mul(c2, 2)), c1)  # B''(1) / 6: the curve bends toward this side
+    return -1.0 if dot(perp(t), bend) > 0 else 1.0
+
+
 def head_marker(c1: Point, c2: Point, p3: Point, kind: str, preset: Preset) -> Marker:
     """The curved arrow's head in the marker frame (origin at stroke end p3, x along the end
     tangent); vertices as ChemDraw orders them. A fishhook's barb goes on the side the curve
@@ -111,9 +119,7 @@ def head_marker(c1: Point, c2: Point, p3: Point, kind: str, preset: Preset) -> M
     if kind == "two_electron":
         hw = ca.head_half_width
         return Marker(f"{preset.name}-head-2e", (("M", (i - L, hw)), ("L", (0.0, 0.0)), ("L", (i - L, -hw)), ("L", (i, 0.0))))
-    t = unit(sub(p3, c2 if length(sub(p3, c2)) > 1e-6 else c1))
-    bend = add(sub(p3, mul(c2, 2)), c1)  # B''(1) / 6: the curve bends toward this side
-    s = -1.0 if dot(perp(t), bend) > 0 else 1.0  # +1: barb on perp(t), right of travel (y down)
+    s = fishhook_side(c1, c2, p3)
     o, b = ca.fishhook_offset, ca.fishhook_barb  # the stroke ends beside the axis, toward the barb
     return Marker(f"{preset.name}-head-fishhook-{'right' if s > 0 else 'left'}",
                   (("M", (0.0, -s * o)), ("L", (i - L, -s * o + s * b)), ("L", (i, -s * o))))

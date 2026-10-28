@@ -1,6 +1,7 @@
 """Molecules and schemes -> CDXML, so a figure can be edited in ChemDraw (acs-style.md §13).
 Phase 1: M1 species. Phase 2 (acs-style.md §13.1): M2 schemes, i.e. reaction and equilibrium
-arrows, conditions, plus signs and compound numbers as captions, and <scheme><step>.
+arrows, conditions, plus signs and compound numbers as captions, and <scheme><step>. Phase 3
+(acs-style.md §13.2): M3 mechanisms, i.e. curved arrows and lone-pair and radical dots.
 
 The header (root attributes, color and font tables, page) is presets/cdxml/<preset>.xml,
 copied from the ChemDraw references by scripts/cdxml_headers.py; this module types no style
@@ -23,6 +24,10 @@ numbers. Per species, one <fragment>:
 - A charge: <graphic GraphicType="Symbol" SymbolType="Plus|Minus"> with
   <represent attribute="Charge">, its BoundingBox the sign's center (Drawer.charge_center) and
   (center x - cdxml.charge_box_dx, center y).
+- Dots (phase 3, mech_basic_x*), each bound to its atom by <represent attribute="Radical">: a
+  lone pair is <graphic SymbolType="LonePair"> with BoundingBox the two dot centers,
+  counterclockwise on screen around the atom; a radical dot SymbolType="Electron", BoundingBox
+  (dot center, center x - cdxml.electron_box_dx, center y), and the node keeps Radical.
 
 Scheme objects (phase 2), from the neutral records CdxScheme / CdxArrow / CdxText / CdxStep
 (scheme_records builds them from a SchemeLayout; tests build them from a reference):
@@ -52,19 +57,27 @@ Scheme objects (phase 2), from the neutral records CdxScheme / CdxArrow / CdxTex
   forward arrow and on both sides of an equilibrium arrow whose Head3D is on the right.
 - <scheme> per drawn sequence (a new_row step starts one; the rows of a wrapped sequence stay
   one), <step> with ReactionStepReactants / Products (fragment ids), ReactionStepArrows (the
-  <graphic> id, as ChemDraw cites it) and ReactionStepObjectsAbove / BelowArrow (<t> ids).
-Page order as in the references: fragments, captions, graphics, schemes, arrows.
+  <graphic> id, as ChemDraw cites it) and ReactionStepObjectsAbove / BelowArrow (<t> ids, and
+  the fragments of species drawn above the arrow: a reactant a mechanism step adds, or `over`;
+  user decision 2026-10-28).
+- A curved arrow (phase 3, CdxCurve): a free <curve> on the page (no <group>; no step cites it;
+  user decision 2026-10-28), no BoundingBox. Two-electron: CurveType 8, ArrowheadHead Full,
+  CurvePoints (2p0 - c1, p0, c1, c2, p3, 2p3 - c2). Fishhook: CurveType 32, the same six points
+  (the references repeat the last anchor: not written, see _Writer.curve), ArrowheadHead HalfRight when mechanism.fishhook_side is +1 (the
+  references' fishhooks), HalfLeft otherwise. p3 is the stroke end, not the head tip: every
+  reference curve's last anchor is its stroke end.
+Page order as in the references: fragments, captions, graphics, curves, schemes, arrows.
 
-Not written: abbreviations and Lewis structures (CdxmlUnsupported), curved arrows, resonance
-steps and brackets (CdxmlUnsupported, phases 3-4), lone-pair and radical dots (the node keeps
-Radical), circled signs and charge_labels texts (a plain sign with the formal charge), atom
-maps. Each of the last ones warns.
+Not written: abbreviations and Lewis structures (CdxmlUnsupported), resonance steps and brackets
+(CdxmlUnsupported, phase 4), circled signs and charge_labels texts (a plain sign with the formal
+charge), a second unpaired electron on an atom, atom maps. Each of the last ones warns.
 
 Fragment BoundingBox: the drawn ink box (Drawer.draw: stroke widths, second lines, charge signs)
-with the stored label boxes, as ChemDraw's; the root's also covers the captions and arrows.
+with the stored label boxes and each dot center plus cdxml.lone_pair_box_reach /
+electron_box_reach, as ChemDraw's; the root's also covers the captions, arrows and curves' ink.
 Coordinates are in the caller's frame: each species' offset is added to its atom positions, and
-CdxScheme.offset to the arrows and captions (render.py passes to_svg's offset, so the file
-lines up with the SVG).
+CdxScheme.offset to the arrows, captions and curves (render.py passes to_svg's offset, so the
+file lines up with the SVG).
 Numbers are written with two decimals, as ChemDraw writes them. CreationProgram names this
 package, and the page grows by whole pages to fit the drawing.
 """
@@ -85,6 +98,7 @@ from .chem import Molecule
 from .draw_mol import Drawer
 from .geometry import Point, add, mul, sub, union_box, unit
 from .layout import Placed, SchemeLayout, build_scheme, m1_placed
+from .mechanism import curved_arrow, fishhook_side
 from .preset import PRESET_DIR, load_preset
 from .scene import Group, TextRun
 from .spec import ResonanceStep, Spec, load_spec
@@ -115,13 +129,27 @@ class CdxText:
 
 
 @dataclass
+class CdxCurve:
+    """A curved arrow as drawn: the cubic p0 -> p3 with controls c1, c2 (mechanism.MechArrow;
+    p3 is the stroke end, not the head tip)."""
+    p0: Point
+    c1: Point
+    c2: Point
+    p3: Point
+    kind: str = "two_electron"  # two_electron | fishhook
+
+
+@dataclass
 class CdxStep:
-    """Indices into CdxScheme.species, .arrows and .texts."""
+    """Indices into CdxScheme.species, .arrows and .texts; above_species / below_species index
+    CdxScheme.species drawn above / below the arrow (a reactant a mechanism step adds)."""
     reactants: list[int]
     products: list[int]
     arrow: int
     above: list[int] = field(default_factory=list)
     below: list[int] = field(default_factory=list)
+    above_species: list[int] = field(default_factory=list)
+    below_species: list[int] = field(default_factory=list)
 
 
 @dataclass
@@ -130,7 +158,8 @@ class CdxScheme:
     arrows: list[CdxArrow] = field(default_factory=list)
     texts: list[CdxText] = field(default_factory=list)
     schemes: list[list[CdxStep]] = field(default_factory=list)  # one <scheme> per drawn sequence
-    offset: Point = (0.0, 0.0)  # added to the arrows and captions
+    curves: list[CdxCurve] = field(default_factory=list)
+    offset: Point = (0.0, 0.0)  # added to the arrows, captions and curves
 
 
 def f2(v: float) -> str:
@@ -191,11 +220,6 @@ class _Writer:
             raise CdxmlUnsupported(f"{name}: Lewis structures are not written to CDXML (phases 1-2)")
         if any(a.abbrev for a in mol.atoms):
             raise CdxmlUnsupported(f"{name}: abbreviations (nicknames) are not written to CDXML yet (phases 1-2)")
-        dots = d.dot_sets()
-        if any(ds.kind == "pair" for sets in dots.values() for ds in sets):
-            msgs.append(f"{name}: lone-pair dots omitted from CDXML")
-        if any(a.radicals for a in mol.atoms):
-            msgs.append(f"{name}: radical dots omitted from CDXML (the atom keeps Radical)")
         if any(a.radicals > 1 for a in mol.atoms):
             msgs.append(f"{name}: more than one unpaired electron on an atom is not written")
         for a in mol.atoms:
@@ -252,13 +276,46 @@ class _Writer:
                 "id": self.ids.new(), "BoundingBox": pts(cx, cy, cx - self.preset.cdxml.charge_box_dx, cy),
                 "Z": self.ids.next_z(), "GraphicType": "Symbol", "SymbolType": "Plus" if sign.sign > 0 else "Minus"})
             etree.SubElement(g, "represent", {"attribute": "Charge", "object": node_ids[a.idx]})
-        # ChemDraw's fragment box: the drawn ink (strokes, second lines, signs) and the stored label boxes
-        drawn = Group("ink", [g for g in d.draw(mol.name).children if not g.id.endswith("-labels")])
+        dot_boxes = self.dots(frag, mol, d, off, node_ids)
+        # ChemDraw's fragment box: the drawn ink (strokes, second lines, signs), the stored label
+        # boxes, and each dot center plus cdxml.*_box_reach
+        drawn = Group("ink", [g for g in d.draw(mol.name).children
+                              if not g.id.endswith(("-labels", "-lone-pairs", "-radicals"))])
         b = drawn.ink_bbox()
-        box = union_box(([(b[0] + off[0], b[1] + off[1], b[2] + off[0], b[3] + off[1])] if b else []) + label_boxes)
+        box = union_box(([(b[0] + off[0], b[1] + off[1], b[2] + off[0], b[3] + off[1])] if b else [])
+                        + label_boxes + dot_boxes)
         frag.set("BoundingBox", pts(*box))
         frag.set("Z", self.ids.next_z())
         return box
+
+    def dots(self, frag, mol: Molecule, d: Drawer, off: Point, node_ids: dict) -> list[tuple]:
+        """Each atom's lone pairs (LonePair, the two dot centers counterclockwise on screen around
+        the atom) and radical dots (Electron, (center, center x - cdxml.electron_box_dx, center
+        y)), bound to the atom by <represent attribute="Radical"> (mech_basic_x*). The boxes
+        they add to the fragment's."""
+        cx = self.preset.cdxml
+        boxes = []
+        for i in sorted(d.dot_sets()):
+            a = mol.atoms[i]
+            for ds in d.dot_sets()[i]:
+                if ds.kind == "pair":
+                    p, q = (add(t, off) for t in ds.dots)
+                    u, v = sub(p, add(a.p, off)), sub(q, add(a.p, off))
+                    if u[0] * v[1] - u[1] * v[0] > 0:  # clockwise on screen (y down): swap
+                        p, q = q, p
+                    bb, sym, r = (*p, *q), "LonePair", cx.lone_pair_box_reach
+                    centers = [p, q]
+                elif ds.kind == "radical":
+                    p = add(ds.dots[0], off)
+                    bb, sym, r = (p[0], p[1], p[0] - cx.electron_box_dx, p[1]), "Electron", cx.electron_box_reach
+                    centers = [p]
+                else:
+                    raise CdxmlUnsupported(f"{mol.name}: {ds.kind} dots are Lewis only, not written to CDXML")
+                g = etree.SubElement(frag, "graphic", {"id": self.ids.new(), "BoundingBox": pts(*bb), "Z": self.ids.next_z(),
+                                                       "GraphicType": "Symbol", "SymbolType": sym})
+                etree.SubElement(g, "represent", {"attribute": "Radical", "object": node_ids[i]})
+                boxes += [(c[0] - r, c[1] - r, c[0] + r, c[1] + r) for c in centers]
+        return boxes
 
     def label(self, n, lab, element: str, num_h: int, off: Point) -> tuple:
         text = label_text(element, num_h)
@@ -408,6 +465,29 @@ class _Writer:
         return gid, aid, box, el
 
 
+    # ------------------------------------------------------------------ curved arrows
+
+    def curve(self, page, c: CdxCurve, off: Point) -> tuple:
+        """A free <curve> on the page (§13.2); its ink box. CurvePoints: (in-handle, anchor,
+        out-handle) per anchor, the end handles mirrored (2p0 - c1, 2p3 - c2). The last anchor
+        is the stroke end (mech_basic_x*). A fishhook has the same six points: the references'
+        third anchor (a repeat of the last, with its handles) is a zero-length loop that ChemDraw
+        draws and edits as an extra node, as long as our end handle (gate 2026-10-28)."""
+        p0, c1, c2, p3 = (add(p, off) for p in (c.p0, c.c1, c.c2, c.p3))
+        cps = [sub(mul(p0, 2), c1), p0, c1, c2, p3, sub(mul(p3, 2), c2)]
+        attrs = {"id": self.ids.new(), "Z": self.ids.next_z()}
+        if c.kind == "two_electron":
+            attrs.update({"CurveType": "8", "ArrowheadHead": "Full"})
+        elif c.kind == "fishhook":
+            side = fishhook_side(c1, c2, p3)
+            attrs.update({"CurveType": "32", "ArrowheadHead": "HalfRight" if side > 0 else "HalfLeft"})
+        else:
+            raise ValueError(f"unknown curved arrow kind {c.kind!r}")
+        attrs.update({"ArrowheadType": "Solid", "CurvePoints": pts(*(v for q in cps for v in q))})
+        etree.SubElement(page, "curve", attrs)
+        return curved_arrow(p0, c1, c2, p3, c.kind, self.preset).ink_bbox()
+
+
 def _p3(p: Point) -> str:
     return f"{pts(*p)} 0"
 
@@ -450,6 +530,8 @@ def to_cdxml(scheme: CdxScheme | list[tuple[Molecule, Drawer, Point]], preset_na
         graphic_ids.append(gid)
         arrows.append(el)
         boxes.append(b)
+    for c in scheme.curves:
+        boxes.append(w.curve(page, c, scheme.offset))
     for steps in scheme.schemes:
         sch = etree.SubElement(page, "scheme", {"id": w.ids.new()})
         for st in steps:
@@ -457,8 +539,10 @@ def to_cdxml(scheme: CdxScheme | list[tuple[Molecule, Drawer, Point]], preset_na
             for key, ids in (("ReactionStepReactants", [frag_ids[i] for i in st.reactants]),
                              ("ReactionStepProducts", [frag_ids[i] for i in st.products]),
                              ("ReactionStepArrows", [graphic_ids[st.arrow]]),
-                             ("ReactionStepObjectsAboveArrow", [j for i in st.above for j in text_ids[i]]),
-                             ("ReactionStepObjectsBelowArrow", [j for i in st.below for j in text_ids[i]])):
+                             ("ReactionStepObjectsAboveArrow", [frag_ids[i] for i in st.above_species]
+                              + [j for i in st.above for j in text_ids[i]]),
+                             ("ReactionStepObjectsBelowArrow", [frag_ids[i] for i in st.below_species]
+                              + [j for i in st.below for j in text_ids[i]])):
                 if ids:
                     attrs[key] = " ".join(ids)
             etree.SubElement(sch, "step", attrs)
@@ -499,12 +583,10 @@ def placed_cdxml(placed: list[Placed], svg_offset: Point, preset_name: str, name
 
 
 def check_scheme(spec: Spec) -> None:
-    """Refuse what phase 2 doesn't write: resonance steps (with their brackets) and curved arrows."""
+    """Refuse what phase 3 doesn't write: resonance steps (with their brackets)."""
     for i, st in enumerate(spec.steps or [], 1):
         if isinstance(st, ResonanceStep):
-            raise CdxmlUnsupported(f"step {i}: resonance steps and brackets are not written to CDXML yet (phase 2)")
-        if st.arrows:
-            raise CdxmlUnsupported(f"step {i}: curved arrows are not written to CDXML yet (phase 2)")
+            raise CdxmlUnsupported(f"step {i}: resonance steps and brackets are not written to CDXML yet (phase 4)")
 
 
 def _line(runs: list[TextRun], parts: list[richtext.Run]) -> richtext.Line:
@@ -517,8 +599,8 @@ def scheme_records(lay: SchemeLayout, spec: Spec, svg_offset: Point = (0.0, 0.0)
     """The CdxScheme of a laid-out scheme, in the frame of the SVG that to_svg wrote with
     `svg_offset`. No layout here: positions are the layout's records."""
     check_scheme(spec)
-    if lay.resonance or lay.curved:
-        raise CdxmlUnsupported("resonance brackets and curved arrows are not written to CDXML yet (phase 2)")
+    if lay.resonance:
+        raise CdxmlUnsupported("resonance brackets are not written to CDXML yet (phase 4)")
     names = list(lay.species)
     out = CdxScheme([(p.mol, p.drawer, add(p.offset, svg_offset)) for p in lay.species.values()], offset=svg_offset)
     for run in lay.pluses:
@@ -535,20 +617,23 @@ def scheme_records(lay: SchemeLayout, spec: Spec, svg_offset: Point = (0.0, 0.0)
             elif lines:
                 out.texts.append(CdxText(list(lines), "Center"))
             sides.append(list(range(k0, len(out.texts))))
-        src = [names.index(n) for n in st.sources if n in lay.species]
+        over = spec.over_names(i)  # drawn above the arrow: cited there, not as reactants (user decision 2026-10-28)
+        src = [names.index(n) for n in st.sources if n in lay.species and n not in over]
         dst = [names.index(n) for n in st.drawn_products]
         if sl.kind == "equilibrium_reactants":  # Head3D on the left: ChemDraw reads the step right to left
             src, dst = dst, src
         if i == 1 or st.new_row:
             out.schemes.append([])
-        out.schemes[-1].append(CdxStep(src, dst, len(out.arrows) - 1, *sides))
+        out.schemes[-1].append(CdxStep(src, dst, len(out.arrows) - 1, *sides,
+                                       above_species=[names.index(n) for n in over if n in lay.species]))
     for n, runs in lay.numbers.items():
         out.texts.append(CdxText([_line(runs, richtext.parse(str(spec.numbers[n]), "bold"))]))
+    out.curves = [CdxCurve(m.p0, m.c1, m.c2, m.p3, m.spec.type) for m in lay.curved]
     return out
 
 
 def spec_cdxml(spec_path, warn: Callable[[str], None] = _stderr) -> str:
-    """What render.py --cdxml writes for a spec: M1 species, or an M2 scheme."""
+    """What render.py --cdxml writes for a spec: M1 species, or an M2 scheme or M3 mechanism."""
     spec = load_spec(spec_path)
     if spec.steps:
         check_scheme(spec)

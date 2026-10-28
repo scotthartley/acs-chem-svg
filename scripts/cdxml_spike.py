@@ -28,8 +28,19 @@ reactant, and retype a condition (does it stay in the step?). --diff then report
    original reference's: line pitch of each stacked caption, and the largest glyph origin shift
    (sub- and superscripts included).
 
-Usage: uv run python scripts/cdxml_spike.py [--phase 2]          # write the gate files
-       uv run python scripts/cdxml_spike.py [--phase 2] --diff   # after the ChemDraw re-saves
+Phase 3 (--phase 3, acs-style.md §13.2; files in build/cdxml_spike/phase3/): mech_basic_x1.0 /
+x0.6 round trips (compare.reference_cdx_scheme) and render.py --cdxml's output for M3 specs
+(two-electron arrows, fishhooks with HalfRight and HalfLeft barbs, an added reactant above its
+arrow). By hand in ChemDraw, besides the re-saves (CDXML and SVG): drag an atom with dots (do they
+follow?), move a curve, and run Clean Structure on a copy. --diff reports, besides phase 2's items:
+5. the curves: CurveType, ArrowheadHead and CurvePoints kept or rewritten;
+6. the LonePair / Electron symbols per atom: boxes and <represent> kept;
+7. the re-saved SVG's ink: each curve's stroke end, head tip and barb side against our MechArrow
+   (spec cases: tip and head polygon from the layout) or the original reference (reference
+   cases), and the drawn dot centers against the centers our symbols declare.
+
+Usage: uv run python scripts/cdxml_spike.py [--phase N]          # write the gate files
+       uv run python scripts/cdxml_spike.py [--phase N] --diff   # after the ChemDraw re-saves
 """
 
 from __future__ import annotations
@@ -47,7 +58,10 @@ from compare import preset_for, reference_cdx_scheme, render_reference  # noqa: 
 
 from acs_chem_svg.cdxml_writer import spec_cdxml, to_cdxml  # noqa: E402
 from acs_chem_svg.draw_mol import Drawer  # noqa: E402
-from acs_chem_svg.geometry import length, sub  # noqa: E402
+from acs_chem_svg.geometry import add, dot, length, sub, unit  # noqa: E402
+from acs_chem_svg.layout import build_scheme  # noqa: E402
+from acs_chem_svg.spec import load_spec  # noqa: E402
+from acs_chem_svg.svg_writer import to_svg  # noqa: E402
 
 OUT = mr.REPO / "build" / "cdxml_spike"
 RESAVED = OUT / "resaved"
@@ -56,6 +70,9 @@ SPECS = ["examples/m1_smiles_x1.0.yaml"]
 PHASE2_REFS = ["scheme_basic_x1.0", "scheme_multi_x1.0", "equilibrium_x1.0"]
 PHASE2_SPECS = ["examples/m2_scheme_basic_x1.0.yaml", "examples/m2_stages3_x1.0.yaml",
                 "examples/m2_equilibrium_x1.0.yaml", "examples/m2_suzuki_x1.0.yaml"]
+PHASE3_REFS = ["mech_basic_x1.0", "mech_basic_x0.6"]
+PHASE3_SPECS = ["examples/m3_sn2_x1.0.yaml", "examples/m3_radical_initiation_x1.0.yaml",
+                "examples/m3_radical_propagation_x1.0.yaml", "examples/m3_carbonyl_addition_x1.0.yaml"]
 PAIR_TOL = 0.05  # pt: node positions should survive a re-save unchanged
 NUM_TOL = 0.005
 PARSER = etree.XMLParser(load_dtd=False, no_network=True, remove_blank_text=True)
@@ -68,12 +85,13 @@ def out_dir(phase: int) -> Path:
 def write(phase: int = 1) -> list[Path]:
     out = out_dir(phase)
     (out / "resaved").mkdir(parents=True, exist_ok=True)
-    if phase == 2:
+    if phase in (2, 3):
+        refs, specs = (PHASE2_REFS, PHASE2_SPECS) if phase == 2 else (PHASE3_REFS, PHASE3_SPECS)
         paths = []
-        for ref in PHASE2_REFS:
+        for ref in refs:
             paths.append(out / f"{ref}.cdxml")
             paths[-1].write_text(to_cdxml(reference_cdx_scheme(ref), preset_for(ref), f"{ref}.cdxml", warn=lambda m: None))
-        for s in PHASE2_SPECS:
+        for s in specs:
             paths.append(out / f"{Path(s).stem}.cdxml")
             paths[-1].write_text(spec_cdxml(mr.REPO / s, warn=lambda m: None))
         return paths
@@ -186,11 +204,13 @@ def attribute_diff(ours_root, theirs_root) -> list[str]:
             ch.counts[("b", "B/E swapped")]["changed"] += 1
     tg = {}
     for g in theirs_root.iter("graphic"):
+        if g.get("SymbolType") in DOTS:
+            continue
         r = g.find("represent")
         tg[tid.get(r.get("object")) if r is not None else None] = g
     for g in ours_root.iter("graphic"):
-        if g.find("represent") is None:
-            continue  # an arrow's legacy <graphic>: scheme_diff
+        if g.find("represent") is None or g.get("SymbolType") in DOTS:
+            continue  # an arrow's legacy <graphic>: scheme_diff; dots: mech_diff
         t = tg.get(g.find("represent").get("object"))
         if t is None:
             ch.counts[("graphic", "<graphic>")]["removed"] += 1
@@ -330,6 +350,129 @@ def caption_ink_diff(ref: str, resaved: Path) -> list[str]:
     return out + [f"  largest caption glyph shift {worst:.3f}"]
 
 
+# --------------------------------------------------------------------------- phase 3: mechanisms
+
+DOTS = ("LonePair", "Electron")
+
+
+def _curves(root) -> list:
+    return list(root.iter("curve"))
+
+
+def _dot_boxes(root) -> list[tuple]:
+    """(SymbolType, node p, BoundingBox) per dot symbol; nodes by position (ids are renumbered)."""
+    nodes = {n.get("id"): _p(n) for n in root.iter("n")}
+    return [(g.get("SymbolType"), nodes.get(g.find("represent").get("object")) if g.find("represent") is not None else None,
+             _floats(g.get("BoundingBox"))) for g in root.iter("graphic") if g.get("SymbolType") in DOTS]
+
+
+def mech_diff(ours_root, theirs_root) -> list[str]:
+    """Items 5 and 6: curves paired by first anchor, dot symbols by atom and first point."""
+    lines, ch = [], Changes()
+    tc = _curves(theirs_root)
+    oc = _curves(ours_root)
+    lines.append(f"  curves: {len(oc)} ours, {len(tc)} re-saved")
+    for c in oc:
+        p = _floats(c.get("CurvePoints"))
+        t = next((x for x in tc if max(abs(u - v) for u, v in zip(_floats(x.get("CurvePoints"))[2:4], p[2:4])) < PAIR_TOL),
+                 None)
+        if t is None:
+            ch.counts[("curve", "<curve>")]["removed"] += 1
+            ch.examples.setdefault(("curve", "<curve>"), f"ours from {p[2:4]}")
+            continue
+        ch.compare("curve", c, t, skip=("id", "Z"))
+    od, td = _dot_boxes(ours_root), _dot_boxes(theirs_root)
+    lines.append(f"  dot symbols: {len(od)} ours, {len(td)} re-saved")
+    for kind, node, box in od:
+        m = [b for k, n, b in td if k == kind and n and node and length(sub(n, node)) < PAIR_TOL
+             and max(abs(u - v) for u, v in zip(b[:2], box[:2])) < PAIR_TOL]
+        if not m:
+            ch.counts[(kind, "moved or removed")]["changed"] += 1
+            ch.examples.setdefault((kind, "moved or removed"), f"ours {box} on the atom at {node}")
+            continue
+        d = max(abs(u - v) for u, v in zip(m[0], box))
+        if d > NUM_TOL:
+            ch.counts[(kind, "BoundingBox")]["changed"] += 1
+            ch.delta[(kind, "BoundingBox")] = max(ch.delta[(kind, "BoundingBox")], d)
+            ch.examples.setdefault((kind, "BoundingBox"), f"ours {box} -> ChemDraw {m[0]}")
+    reps = collections.Counter(r.get("attribute") for g in theirs_root.iter("graphic") if g.get("SymbolType") in DOTS
+                               for r in g.findall("represent"))
+    lines.append(f"  re-saved dot <represent> attributes: {dict(reps)}")
+    return lines + ch.report()
+
+
+def _head_record(tip, p_end, tangent, pts) -> dict:
+    n = (-tangent[1], tangent[0])
+    loc = [(dot(sub(q, tip), tangent), dot(sub(q, tip), n)) for q in pts]
+    left, right = max(v for _, v in loc), -min(v for _, v in loc)
+    return {"tip": tip, "end": p_end, "side": "-" if abs(left - right) < 0.05 else "left" if left > right else "right",
+            "local": sorted((round(u, 2), round(v, 2)) for u, v in loc)}
+
+
+def _drawn_heads(doc) -> list[dict]:
+    """ChemDraw's drawn curves (measure_refs), CDXML frame: stroke end, tip, barb side, head shape."""
+    out = []
+    off = doc.offset
+    for c in mr.measure(doc)["curved_arrows"]:
+        if "head" not in c:
+            continue
+        end = c["svg_path_pts"][3]
+        tip = add(end, c["head"]["tip_minus_stroke_end"])
+        tangent = unit(sub(tip, end)) if c["head"]["n_vertices"] == 4 else None
+        h = c["head"]
+        side = "-" if abs(h["extent_left"] - h["extent_right"]) < 0.05 else (
+            "left" if h["extent_left"] > h["extent_right"] else "right")
+        out.append({"tip": sub(tip, off), "end": sub(end, off), "side": side,
+                    "local": sorted((round(u, 2), round(v, 2)) for u, v in h["pts_local"]), "tangent": tangent})
+    return out
+
+
+def _our_heads(spec_path: Path) -> list[dict]:
+    """Our MechArrows in the exported file's frame (to_svg's offset, as spec_cdxml writes it)."""
+    spec = load_spec(spec_path)
+    lay = build_scheme(spec, spec_path.parent, spec_path.stem)
+    _, off = to_svg(lay.root)
+    out = []
+    for m in lay.curved:
+        t = unit(sub(m.p3, m.c2 if length(sub(m.p3, m.c2)) > 1e-6 else m.c1))
+        out.append(_head_record(add(m.tip, off), add(m.p3, off), t, [add(q, off) for q in m.head]))
+    return out
+
+
+def mech_ink_diff(name: str, resaved: Path, ours_root) -> list[str]:
+    """Item 7."""
+    b = mr.load(name, resaved)
+    drawn = _drawn_heads(b)
+    if name in PHASE3_REFS:
+        want, what = _drawn_heads(mr.load(name)), "original reference"
+    else:
+        want, what = _our_heads(mr.REPO / next(s for s in PHASE3_SPECS if Path(s).stem == name)), "our layout"
+    lines = [f"  {len(want)} heads ({what}), {len(drawn)} drawn in the re-save"]
+    worst = collections.defaultdict(float)
+    for w in want:
+        d = min(drawn, key=lambda x: length(sub(x["end"], w["end"])), default=None)
+        if d is None:
+            continue
+        worst["stroke end"] = max(worst["stroke end"], length(sub(d["end"], w["end"])))
+        worst["head tip"] = max(worst["head tip"], length(sub(d["tip"], w["tip"])))
+        if d["side"] != w["side"]:
+            lines.append(f"  barb side at {tuple(round(v, 2) for v in w['end'])}: {what} {w['side']}, re-save {d['side']}")
+        if len(d["local"]) == len(w["local"]):
+            worst["head shape (local)"] = max(worst["head shape (local)"], max(
+                length(sub(p, q)) for p, q in zip(d["local"], w["local"])))
+        else:
+            lines.append(f"  head at {tuple(round(v, 2) for v in w['end'])}: {len(w['local'])} vertices, re-save {len(d['local'])}")
+    declared = [tuple(bb[:2]) for _, _, bb in _dot_boxes(ours_root)]
+    declared += [tuple(bb[2:]) for k, _, bb in _dot_boxes(ours_root) if k == "LonePair"]
+    circles = [sub(c.center, b.offset) for c in b.shapes if c.kind == "circle"]
+    lines.append(f"  dots: {len(declared)} declared, {len(circles)} drawn")
+    for c in declared:
+        if circles:
+            worst["dot center (declared -> drawn)"] = max(worst["dot center (declared -> drawn)"],
+                                                          min(length(sub(c, q)) for q in circles))
+    return lines + [f"  {k:45} {v:.3f}" for k, v in worst.items()]
+
+
 # --------------------------------------------------------------------------- ink diff
 
 
@@ -389,7 +532,7 @@ def diff(phase: int = 1) -> int:
             print(f"{path.stem}: no re-save in {resaved.relative_to(mr.REPO)}")
             continue
         found = True
-        if phase == 2:
+        if phase in (2, 3):
             ours, theirs = (etree.parse(str(f), PARSER).getroot() for f in (path, saved))
             print(f"{path.stem}: scheme objects (ours -> ChemDraw's re-save)")
             for line in scheme_diff(ours, theirs):
@@ -397,6 +540,14 @@ def diff(phase: int = 1) -> int:
             print(f"{path.stem}: species attributes")
             for line in attribute_diff(ours, theirs):
                 print(line)
+            if phase == 3:
+                print(f"{path.stem}: curves and dots")
+                for line in mech_diff(ours, theirs):
+                    print(line)
+                if (resaved / f"{path.stem}.svg").exists():
+                    print(f"{path.stem}: drawn heads and dots (re-saved SVG)")
+                    for line in mech_ink_diff(path.stem, resaved, ours):
+                        print(line)
             if path.stem in PHASE2_REFS and (resaved / f"{path.stem}.svg").exists():
                 print(f"{path.stem}: caption ink (original reference -> re-save)")
                 for line in caption_ink_diff(path.stem, resaved):
@@ -415,7 +566,8 @@ def diff(phase: int = 1) -> int:
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--diff", action="store_true", help="compare ChemDraw's re-saves with our exports")
-    ap.add_argument("--phase", type=int, choices=(1, 2), default=1, help="1: M1 species; 2: M2 schemes")
+    ap.add_argument("--phase", type=int, choices=(1, 2, 3), default=1,
+                    help="1: M1 species; 2: M2 schemes; 3: M3 mechanisms")
     args = ap.parse_args(argv)
     if args.diff:
         return diff(args.phase)

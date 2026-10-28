@@ -1107,6 +1107,8 @@ def _curve_entry(doc, c):
         # end tangent from the last control point that isn't the end (ChemDraw's C–Br arrow has c2 = p3)
         c_last = next(p for p in reversed(stroke.pts[:3]) if length(sub(p_end, p)) > 1e-6)
         tangent = unit(sub(p_end, c_last))
+        # the curve's last anchor is the stroke end (the head's notch), not the tip (§13.2)
+        rec["last_anchor_minus_stroke_end"] = tuple(round(v, 3) for v in sub(anchors[-1], p_end))
         # head polygon: unclaimed straight poly with a vertex near the stroke end
         heads = [s for s in doc.shapes if s.kind == "poly" and not s.owner and not s.curved
                  and min(length(sub(p, p_end)) for p in s.pts) < 3.0 and len(s.pts) in (3, 4)]
@@ -1996,7 +1998,57 @@ def cdxml_symbols(name: str) -> dict:
         out.append({"sign": g.get("SymbolType"), "first": (x0, y0),
                     "first_minus_drawn_center": tuple(round(v, 3) for v in sub((x0, y0), near)) if near else None,
                     "dx": round(x0 - x1, 3), "dy": round(y1 - y0, 3), "dx_per_size2": round((x0 - x1) / size ** 2, 4)})
-    return {"label_size": size, "symbols": out}
+    res = {"label_size": size, "symbols": out}
+    dots = [sub(c.center, doc.offset) for c in doc.shapes if c.kind == "circle"]
+    if dots:
+        res.update(_cdxml_dots(root, dots))
+    return res
+
+
+def _cdxml_dots(root, dots: list) -> dict:
+    """Lone-pair and radical symbols (§13.2) vs the drawn dot centers (CDXML frame).
+    LonePair: BoundingBox = the two dot centers, counterclockwise on screen around the atom
+    (`ccw`: the cross product of (first - atom) and (second - atom) is negative, y down).
+    Electron: (dot center, center x - dx, center y). Per fragment with dots and per side, how
+    far its BoundingBox reaches beyond the outermost dot center, and that dot's kind: the reach
+    is cdxml.lone_pair_box_reach / electron_box_reach where the dot bounds the box, more where
+    other ink does."""
+    def near(p):
+        return min(dots, key=lambda c: length(sub(c, p)))
+    nodes = {n.get("id"): _xy(n.get("p"), (0.0, 0.0)) for n in root.iter("n")}
+    pairs, electrons, reach = [], [], []
+    for frag in root.iter("fragment"):
+        centers = []
+        for g in frag.findall("graphic"):
+            kind = g.get("SymbolType")
+            if kind not in ("LonePair", "Electron"):
+                continue
+            rep = g.find("represent")
+            atom = nodes[rep.get("object")]
+            x0, y0, x1, y1 = (float(v) for v in g.get("BoundingBox").split())
+            if kind == "LonePair":
+                a, b = (x0, y0), (x1, y1)
+                da, db = sub(a, atom), sub(b, atom)
+                pairs.append({"attribute": rep.get("attribute"), "separation": round(length(sub(a, b)), 3),
+                              "ccw": da[0] * db[1] - da[1] * db[0] < 0,
+                              "first_minus_drawn": tuple(round(v, 3) for v in sub(a, near(a))),
+                              "second_minus_drawn": tuple(round(v, 3) for v in sub(b, near(b)))})
+                centers += [(a, "pair"), (b, "pair")]
+            else:
+                c = (x0, y0)
+                electrons.append({"attribute": rep.get("attribute"), "dx": round(x0 - x1, 3), "dy": round(y1 - y0, 3),
+                                  "first_minus_drawn": tuple(round(v, 3) for v in sub(c, near(c)))})
+                centers.append((c, "electron"))
+        if not centers:
+            continue
+        bb = [float(v) for v in frag.get("BoundingBox").split()]
+        # per side: how far the box reaches beyond the outermost dot center, and that dot's kind
+        rec = {"fragment": frag.get("id")}
+        for side, k, sgn in (("left", 0, -1), ("top", 1, -1), ("right", 0, 1), ("bottom", 1, 1)):
+            c, kind = max(centers, key=lambda ck: sgn * ck[0][k])
+            rec[side] = (round(sgn * (bb[k + (2 if sgn > 0 else 0)] - c[k]), 3), kind)
+        reach.append(rec)
+    return {"lone_pairs": pairs, "electrons": electrons, "fragment_reach_beyond_dot_centers": reach}
 
 
 CDXML_SCHEME_REFS = [f"{k}_x{s}" for k in ("scheme_basic", "scheme_multi", "scheme_wrap", "equilibrium")

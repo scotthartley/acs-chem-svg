@@ -18,8 +18,9 @@ Cases:
   m4_perkin_x1.0: omit / over).
 
 - cdxml/m1_smiles_x1.0.cdxml, cdxml/m1_charges_x1.0.cdxml, cdxml/m2_scheme_basic_x1.0.cdxml,
-  cdxml/m2_equilibrium_x1.0.cdxml: render.py --cdxml's output for those specs (cdxml_writer),
-  compared as text after lxml C14N.
+  cdxml/m2_equilibrium_x1.0.cdxml, cdxml/m3_sn2_x1.0.cdxml, cdxml/m3_radical_propagation_x1.0.cdxml,
+  cdxml/m3_carbonyl_addition_x1.0.cdxml, cdxml/m3_proton_transfer_x1.0.cdxml: render.py --cdxml's
+  output for those specs (cdxml_writer), compared as text after lxml C14N.
 
 All PNGs are rendered at 4 px/pt with a transparent background. tests/test_gallery.py re-renders
 every case and compares pixels (the CDXML cases, canonical text). Rewriting the gallery needs the user's approval of the new
@@ -75,7 +76,8 @@ SPECS = ["examples/m1_smiles_x1.0.yaml", "examples/m1_smiles_x0.8.yaml", "exampl
 
 
 CDXML_SPECS = ["examples/m1_smiles_x1.0.yaml", "examples/m1_charges_x1.0.yaml", "examples/m2_scheme_basic_x1.0.yaml",
-               "examples/m2_equilibrium_x1.0.yaml"]
+               "examples/m2_equilibrium_x1.0.yaml", "examples/m3_sn2_x1.0.yaml", "examples/m3_radical_propagation_x1.0.yaml",
+               "examples/m3_carbonyl_addition_x1.0.yaml", "examples/m3_proton_transfer_x1.0.yaml"]
 
 
 def spec_svg(path: Path) -> str:

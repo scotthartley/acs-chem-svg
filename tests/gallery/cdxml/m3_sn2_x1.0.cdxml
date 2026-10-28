@@ -1,0 +1,116 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE CDXML SYSTEM "https://static.chemistry.revvitycloud.com/cdxml/CDXML.dtd">
+<CDXML CreationProgram="acs-chem-svg 0.3.0" Name="m3_sn2_x1.0.cdxml" BoundingBox="2.00 11.09 262.59 47.60" WindowPosition="0 0" WindowSize="0 0" FractionalWidths="yes" InterpretChemically="yes" ShowAtomQuery="yes" ShowAtomStereo="no" ShowAtomEnhancedStereo="yes" ShowAtomNumber="no" ShowResidueID="no" ShowBondQuery="yes" ShowBondRxn="yes" ShowBondStereo="no" ShowTerminalCarbonLabels="no" ShowNonTerminalCarbonLabels="no" HideImplicitHydrogens="no" Magnification="250" LabelFont="21" LabelSize="10" LabelFace="96" CaptionFont="21" CaptionSize="10" HashSpacing="2.50" MarginWidth="1.60" LineWidth="0.60" BoldWidth="2" BondLength="14.40" BondSpacing="18" ChainAngle="120" LabelJustification="Auto" CaptionJustification="Left" AminoAcidTermini="HOH" ShowSequenceTermini="yes" ShowSequenceBonds="yes" ShowSequenceUnlinkedBranches="no" ShowPrimeLabels="no" ResidueWrapCount="40" PrintMargins="36 36 36 36" MacPrintInfo="0003000000480048000000000300024CFFF4FFF4030C02580367052803FB0002000000480048000000000300024C000100000064000000010001010100000001270F000100010000000000000000000000000002001901900000000000400000000000000000000100000000000000000000000000000000" ChemPropName="" ChemPropFormula="Chemical formula: " ChemPropExactMass="Exact mass: " ChemPropMolWt="Molecular weight: " ChemPropMOverZ="m/z: " ChemPropAnalysis="Elemental analysis: " ChemPropBoilingPt="Boiling point: " ChemPropMeltingPt="Melting point: " ChemPropCritTemp="Critical temp: " ChemPropCritPres="Critical pres: " ChemPropCritVol="Critical vol: " ChemPropGibbs="Gibbs energy: " ChemPropLogP="Log P: " ChemPropMR="MR: " ChemPropHenry="Henry's law: " ChemPropEForm="Heat of form: " ChemProptPSA="tPSA: " ChemPropID="" ChemPropFragmentLabel="" color="0" bgcolor="1" RxnAutonumberStart="1" RxnAutonumberConditions="no" RxnAutonumberStyle="Roman" RxnAutonumberFormat="(#)">
+  <colortable>
+    <color r="1" g="1" b="1"/>
+    <color r="0" g="0" b="0"/>
+    <color r="1" g="0" b="0"/>
+    <color r="1" g="1" b="0"/>
+    <color r="0" g="1" b="0"/>
+    <color r="0" g="1" b="1"/>
+    <color r="0" g="0" b="1"/>
+    <color r="1" g="0" b="1"/>
+  </colortable>
+  <fonttable>
+    <font id="21" charset="x-mac-roman" name="Helvetica"/>
+    <font id="307" charset="x-mac-roman" name="Helvetica Oblique"/>
+    <font id="310" charset="x-mac-roman" name="Helvetica Bold"/>
+  </fonttable>
+  <page id="1" BoundingBox="0 0 540 720" HeaderPosition="36" FooterPosition="36" PrintTrimMarks="yes" HeightPages="1" WidthPages="1">
+    <fragment id="2" BoundingBox="2.00 32.41 27.39 47.60" Z="8">
+      <n id="3" p="4.82 40.00" Z="1" Element="1" NumHydrogens="0" NeedsClean="yes">
+        <t p="1.21 43.59" BoundingBox="2.00 36.41 7.69 43.59" LabelJustification="Left">
+          <s font="21" size="10" color="0" face="96">H</s>
+        </t>
+      </n>
+      <n id="4" p="19.22 40.00" Z="2" Element="8" NumHydrogens="0" Charge="-1" NeedsClean="yes">
+        <t p="15.34 43.68" BoundingBox="15.73 36.32 22.72 43.89" LabelJustification="Left">
+          <s font="21" size="10" color="0" face="96">O</s>
+        </t>
+      </n>
+      <b id="5" Z="3" B="3" E="4"/>
+      <graphic id="6" BoundingBox="25.43 33.51 17.93 33.51" Z="4" GraphicType="Symbol" SymbolType="Minus">
+        <represent attribute="Charge" object="4"/>
+      </graphic>
+      <graphic id="7" BoundingBox="21.10 33.38 17.35 33.38" Z="5" GraphicType="Symbol" SymbolType="LonePair">
+        <represent attribute="Radical" object="4"/>
+      </graphic>
+      <graphic id="8" BoundingBox="25.55 41.88 25.55 38.13" Z="6" GraphicType="Symbol" SymbolType="LonePair">
+        <represent attribute="Radical" object="4"/>
+      </graphic>
+      <graphic id="9" BoundingBox="17.35 46.63 21.10 46.63" Z="7" GraphicType="Symbol" SymbolType="LonePair">
+        <represent attribute="Radical" object="4"/>
+      </graphic>
+    </fragment>
+    <fragment id="10" BoundingBox="64.49 32.62 103.45 47.40" Z="15">
+      <n id="11" p="78.70 40.01" Z="9" NumHydrogens="3" NeedsClean="yes">
+        <t p="82.31 43.69" BoundingBox="64.49 36.32 81.89 46.13" LabelJustification="Right" Justification="Right" LabelAlignment="Right">
+          <s font="21" size="10" color="0" face="96">CH3</s>
+        </t>
+      </n>
+      <n id="12" p="93.10 40.01" Z="10" Element="35" NumHydrogens="0" NeedsClean="yes">
+        <t p="89.77 43.59" BoundingBox="90.51 36.42 99.65 43.59" LabelJustification="Left" LabelAlignment="Left">
+          <s font="21" size="10" color="0" face="96">Br</s>
+        </t>
+      </n>
+      <b id="13" Z="11" B="11" E="12"/>
+      <graphic id="14" BoundingBox="96.95 33.59 93.20 33.59" Z="12" GraphicType="Symbol" SymbolType="LonePair">
+        <represent attribute="Radical" object="12"/>
+      </graphic>
+      <graphic id="15" BoundingBox="102.48 41.88 102.48 38.13" Z="13" GraphicType="Symbol" SymbolType="LonePair">
+        <represent attribute="Radical" object="12"/>
+      </graphic>
+      <graphic id="16" BoundingBox="93.20 46.43 96.95 46.43" Z="14" GraphicType="Symbol" SymbolType="LonePair">
+        <represent attribute="Radical" object="12"/>
+      </graphic>
+    </fragment>
+    <fragment id="17" BoundingBox="169.32 35.20 208.72 45.01" Z="19">
+      <n id="18" p="179.64 38.88" Z="16" Element="8" NumHydrogens="1" NeedsClean="yes">
+        <t p="183.53 42.57" BoundingBox="169.32 35.20 183.14 42.78" LabelJustification="Right" Justification="Right" LabelAlignment="Right">
+          <s font="21" size="10" color="0" face="96">OH</s>
+        </t>
+      </n>
+      <n id="19" p="194.04 38.88" Z="17" NumHydrogens="3" NeedsClean="yes">
+        <t p="190.43 42.57" BoundingBox="190.87 35.20 208.72 45.01" LabelJustification="Left" LabelAlignment="Left">
+          <s font="21" size="10" color="0" face="96">CH3</s>
+        </t>
+      </n>
+      <b id="20" Z="18" B="18" E="19"/>
+    </fragment>
+    <fragment id="21" BoundingBox="245.68 32.62 262.59 47.40" Z="26">
+      <n id="22" p="252.08 40.01" Z="20" Element="35" NumHydrogens="0" Charge="-1" NeedsClean="yes">
+        <t p="248.74 43.59" BoundingBox="249.48 36.42 258.62 43.59" LabelJustification="Left" LabelAlignment="Left">
+          <s font="21" size="10" color="0" face="96">Br</s>
+        </t>
+      </n>
+      <graphic id="23" BoundingBox="260.62 34.42 253.12 34.42" Z="21" GraphicType="Symbol" SymbolType="Minus">
+        <represent attribute="Charge" object="22"/>
+      </graphic>
+      <graphic id="24" BoundingBox="255.93 33.59 252.18 33.59" Z="22" GraphicType="Symbol" SymbolType="LonePair">
+        <represent attribute="Radical" object="22"/>
+      </graphic>
+      <graphic id="25" BoundingBox="261.46 41.88 261.46 38.13" Z="23" GraphicType="Symbol" SymbolType="LonePair">
+        <represent attribute="Radical" object="22"/>
+      </graphic>
+      <graphic id="26" BoundingBox="252.18 46.43 255.93 46.43" Z="24" GraphicType="Symbol" SymbolType="LonePair">
+        <represent attribute="Radical" object="22"/>
+      </graphic>
+      <graphic id="27" BoundingBox="246.65 38.13 246.65 41.88" Z="25" GraphicType="Symbol" SymbolType="LonePair">
+        <represent attribute="Radical" object="22"/>
+      </graphic>
+    </fragment>
+    <t id="28" p="42.94 42.56" BoundingBox="43.39 37.46 48.49 42.56" Z="27" LineHeight="auto">
+      <s font="21" size="10" color="0">+</s>
+    </t>
+    <t id="29" p="224.27 42.56" BoundingBox="224.72 37.46 229.81 42.56" Z="28" LineHeight="auto">
+      <s font="21" size="10" color="0">+</s>
+    </t>
+    <graphic id="30" SupersededBy="31" BoundingBox="156.32 40.01 116.32 40.01" Z="29" GraphicType="Line" ArrowType="FullHead" HeadSize="1500"/>
+    <curve id="32" Z="30" CurveType="8" ArrowheadHead="Full" ArrowheadType="Solid" CurvePoints="4.83 57.80 19.22 30.05 33.62 2.30 68.22 8.28 75.36 29.87 82.50 51.46"/>
+    <curve id="33" Z="31" CurveType="8" ArrowheadHead="Full" ArrowheadType="Solid" CurvePoints="93.31 44.67 86.19 37.51 79.07 30.35 82.19 29.01 86.46 31.79 90.73 34.57"/>
+    <scheme id="34">
+      <step id="35" ReactionStepReactants="2 10" ReactionStepProducts="17 21" ReactionStepArrows="30"/>
+    </scheme>
+    <arrow id="31" BoundingBox="116.32 37.26 156.32 42.26" Z="29" FillType="None" ArrowheadHead="Full" ArrowheadType="Solid" HeadSize="1500" ArrowheadCenterSize="1313" ArrowheadWidth="375" Head3D="156.32 40.01 0" Tail3D="116.32 40.01 0" Center3D="136.32 40.01 0" MajorAxisEnd3D="176.32 40.01 0" MinorAxisEnd3D="136.32 80.01 0"/>
+  </page>
+</CDXML>
