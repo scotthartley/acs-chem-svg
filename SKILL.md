@@ -103,6 +103,7 @@ overrides:
   `references/scheme-schema.md` (Mechanisms).
 - Generic atoms (X·, R): a stand-in element in the SMILES plus `labels: {9: X}` (map → symbol).
 - Lone pairs the arrows don't involve: `show_lone_pairs: [n]` per species.
+- `[C]`/`[CH2]`/`[N]` are singlet carbenes/nitrenes (a drawn pair, `lp(n)`); `triplet: [id]` for two unpaired dots.
 
 ## Resonance, sequences, rows
 
@@ -124,7 +125,7 @@ steps:
 
 ## Known limits (raise errors rather than guess)
 
-- Explicit CH₂/CH labels on internal carbons, carbenes.
+- Explicit CH₂/CH labels on internal carbons.
 - Lewis structures: rings, more than 4 neighbors (PCl₅), Lewis species in schemes.
 - Chairs: fused or spiro rings (decalins, steroids), sp² ring atoms, boats.
 - Condensed labels other than the listed abbreviations (CH₃Cl as text), aromatic circles.

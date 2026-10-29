@@ -1,0 +1,4 @@
+# expect: dots on atom 3 of propylidene sit on a line end with no label: add show_carbons: [3] to propylidene
+preset: acs1996
+species:
+  propylidene: {smiles: "CC[CH]"}

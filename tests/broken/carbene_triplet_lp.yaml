@@ -1,0 +1,12 @@
+# expect: atom 1 (C) is a triplet (triplet: in carbene): start at electron(1), or drop it from triplet:
+preset: acs1996
+species:
+  carbene: {smiles: "[Cl:2][C:1][Cl:3]", triplet: [1]}
+  alkene:  {smiles: "[CH2:7]=[CH2:8]"}
+  cp:      {smiles: "[Cl:2][C:1]1([Cl:3])[CH2:7][CH2:8]1"}
+steps:
+  - from: [carbene, alkene]
+    to: cp
+    arrows:
+      - {from: "bond(7=8)", to: "between(1,7)"}
+      - {from: "lp(1)", to: "between(1,8)"}

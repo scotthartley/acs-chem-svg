@@ -116,7 +116,7 @@ When something goes wrong, Claude appends a note to `issues/inbox.md` in the rep
 
 ## Limits
 
-- Not yet supported: explicit CH₂/CH labels on internal carbons, carbenes, catalytic cycles.
+- Not yet supported: explicit CH₂/CH labels on internal carbons, catalytic cycles.
 - Lewis structures: no rings, no atoms with more than four neighbors (PCl₅), and not inside
   schemes yet.
 - Curved-arrow placement is automatic with a few semantic overrides (bow side, curvature);

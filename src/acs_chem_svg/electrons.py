@@ -13,15 +13,18 @@ moves 1.
   bond if there was none).
 
 Afterwards, formal charge = V − N − E/2, summed over the atom's bonds (implicit H count 2
-each). Unpaired electrons are N mod 2 on atoms an arrow touched (electrons pair up: no carbenes
-or triplets); other atoms keep theirs.
+each). Unpaired electrons are N mod 2 on atoms an arrow touched (electrons pair up, so a step
+that forms a carbene gives a singlet); other atoms keep theirs. A carbene or nitrene written
+[C] / [CH2] / [N] starts as a singlet, one more lone pair (chem.nonbonding), unless its species
+lists it in triplet: (two unpaired electrons).
 
 Errors:
 - a source lacks the electrons (no lone pair, no such bond, wrong order written, no radical);
 - a fishhook draws from a lone pair;
 - a bond ends with an odd electron count;
 - a second-row atom ends above an octet, or H above 2;
-- the result does not match the declared products.
+- the result does not match the declared products, or a product carbene's spin (singlet or
+  triplet:) differs from what the arrows leave (SMILES can't show spin).
 
 The comparison removes H atoms on both sides (mapped ones included), drops stereo, and
 compares canonical SMILES with atom maps, charges and radicals. Passing proves internal
@@ -40,7 +43,7 @@ from pathlib import Path
 
 from rdkit import Chem
 
-from .chem import _ORDER, lone_pairs, valence_electrons
+from .chem import _ORDER, TRIPLET_PROP, nonbonding, valence_electrons
 from .spec import CurvedArrow, ResonanceStep, Spec, parsed_species
 
 SECOND_ROW = {"Li", "Be", "B", "C", "N", "O", "F", "Ne"}
@@ -58,6 +61,7 @@ class AtomState:
     h: int  # implicit / counted H (bonded, 2 electrons each)
     radicals: int
     lone_pairs: int
+    triplet: bool = False  # listed in its species' triplet:
 
 
 @dataclass
@@ -106,10 +110,9 @@ def build_model(mols: dict[str, Chem.Mol]) -> Model:
     for name, mol in mols.items():
         for a in mol.GetAtoms():
             k = (name, a.GetIdx())
-            rad = a.GetNumRadicalElectrons()
-            lp = lone_pairs(a)
+            lp, rad = nonbonding(a)
             out.atoms[k] = AtomState(a.GetSymbol(), a.GetAtomMapNum(), 2 * lp + rad,
-                                     a.GetTotalNumHs(includeNeighbors=False), rad, lp)
+                                     a.GetTotalNumHs(includeNeighbors=False), rad, lp, a.HasProp(TRIPLET_PROP))
             if a.GetAtomMapNum():
                 out.by_map[a.GetAtomMapNum()] = k
         for b in mol.GetBonds():
@@ -183,7 +186,11 @@ def apply_arrows(model: Model, arrows: list[CurvedArrow], where: str) -> tuple[M
 
     for a, need in demand_lp.items():
         have = 2 * model.atoms[a].lone_pairs
-        if need > have:
+        if need > have and model.atoms[a].triplet and model.atoms[a].radicals == 2:
+            m = model.atoms[a].map
+            problems.append(f"{where}: lp({m}): atom {model.label(m)} is a triplet (triplet: in {a[0]}): "
+                            f"start at electron({m}), or drop it from triplet:")
+        elif need > have:
             m = model.atoms[a].map
             problems.append(f"{where}: lp({m}): atom {model.label(m)} has "
                             f"{model.atoms[a].lone_pairs or 'no'} lone pair{'s' if model.atoms[a].lone_pairs != 1 else ''}"
@@ -374,8 +381,30 @@ def check_step(n: int, reactants: dict[str, Chem.Mol], products: dict[str, Chem.
                 msg += (f"; arrows[{k}] ({arr.from_} -> {arr.to}) puts the electrons on atom {b} as a lone pair, "
                         f"with no bond: to make the {a}-{b} bond write to: \"between({a},{b})\"")
         out.problems.append(msg)
+    else:
+        out.problems += spin_problems(new, products, where)
     before = {a.map: a.lone_pairs for a in model.atoms.values() if a.map}
     out.gained_lone_pairs = {a.map for a in new.atoms.values() if a.map and a.lone_pairs > before[a.map]}
+    return out
+
+
+def spin_problems(model: Model, products: dict[str, Chem.Mol], where: str) -> list[str]:
+    """Each mapped product carbene / nitrene (two radicals in RDKit) against the arrows' result:
+    a singlet unless listed in triplet:. Canonical SMILES can't see the difference."""
+    out = []
+    for name, mol in products.items():
+        for at in mol.GetAtoms():
+            m = at.GetAtomMapNum()
+            if not m or at.GetNumRadicalElectrons() != 2 or m not in model.by_map:
+                continue
+            declared = at.HasProp(TRIPLET_PROP)
+            made = model.atoms[model.by_map[m]].radicals == 2
+            if declared and not made:
+                out.append(f"{where}: atom {model.label(m)}: the arrows leave a lone pair (singlet), but {name} "
+                           "lists it in triplet:; a step can't make a triplet")
+            elif made and not declared:
+                out.append(f"{where}: atom {model.label(m)}: the arrows leave two unpaired electrons (triplet), "
+                           f"but {name} has it as a singlet (a lone pair); add it to {name}'s triplet:")
     return out
 
 

@@ -1,0 +1,13 @@
+# M1 carbenes and nitrenes: an atom written with two unpaired electrons ([CH2], [C], [N]) is a
+# singlet, its pair always drawn (label sides, or the widest gap's bisector on a skeletal C), unless
+# the species lists it in triplet: (two dots). Placement reuses the lone-pair and radical rules;
+# unmeasured, no reference (acs-style.md §6 Open, user decision 2026-10-29).
+preset: acs1996
+species:
+  methylene: {smiles: "[CH2]"}
+  dichlorocarbene: {smiles: "Cl[C]Cl"}
+  diphenylcarbene: {smiles: "c1ccc(cc1)[C]c1ccccc1"}
+  diphenylcarbene_t: {smiles: "c1ccc(cc1)[C]c1ccccc1", triplet: [7]}
+  nhc: {smiles: "CN1C=CN(C)[C]1"}
+  cyclopropylidene: {smiles: "[C]1CC1"}
+  phenylnitrene: {smiles: "c1ccccc1[N]"}

@@ -251,6 +251,9 @@ class Species(BaseModel):
     charge_labels: dict[int, str] = Field(default_factory=dict)  # atom-map number -> drawn charge text (+3, 2−); display only
     chair: bool | ChairOptions | None = None  # draw the six-membered ring as a chair (true = ChairOptions())
     front: list[str] = Field(default_factory=list)  # "m-n" bonds (atom maps) drawn whole where bonds cross (§14.2)
+    # carbenes / nitrenes ([C], [CH2], [N]) kept as two unpaired electrons; others are singlets (a lone pair).
+    # Atom ids as in show_carbons.
+    triplet: list[int | str] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def _one_source(self):
@@ -679,12 +682,37 @@ def resolve_molfile(ref: str, base_dir: Path) -> Path:
 
 
 def _parsed(sp: Species, base_dir: Path, name: str = ""):
+    """(mol, from a molfile). Atoms in the species' triplet: carry chem.TRIPLET_PROP."""
     try:
         if sp.smiles is not None:
-            return chem.parse_smiles(sp.smiles, sp.kekule), False
-        return chem.parse_molfile(resolve_molfile(sp.molfile, base_dir).read_text(), sp.kekule), True
+            mol, from_file = chem.parse_smiles(sp.smiles, sp.kekule), False
+        else:
+            mol, from_file = chem.parse_molfile(resolve_molfile(sp.molfile, base_dir).read_text(), sp.kekule), True
+        mark_triplets(mol, sp.triplet)
     except ValueError as e:
         raise ValueError(f"species {name}: {e}" if name else str(e)) from None
+    return mol, from_file
+
+
+def _atom_id(a) -> str:
+    """The show_carbons / triplet id: the atom-map number if set, else the 1-based index."""
+    return str(a.GetAtomMapNum() or a.GetIdx() + 1)
+
+
+def mark_triplets(mol: Chem.Mol, ids: list[int | str]) -> None:
+    """Set chem.TRIPLET_PROP on the atoms `ids` names; each must have exactly two unpaired electrons."""
+    want = {str(x) for x in ids}
+    if not want:
+        return
+    by_id = {_atom_id(a): a for a in mol.GetAtoms()}
+    for x in sorted(want, key=lambda t: (len(t), t)):
+        a = by_id.get(x)
+        if a is None:
+            raise ValueError(f"triplet: no atom with id {x} (the atom-map number, else the 1-based atom index)")
+        if a.GetNumRadicalElectrons() != 2:
+            raise ValueError(f"triplet: atom {x} ({a.GetSymbol()}) has {a.GetNumRadicalElectrons()} unpaired "
+                             "electrons; triplet is for carbenes/nitrenes written [C] / [CH2] / [N]")
+        a.SetIntProp(chem.TRIPLET_PROP, 1)
 
 
 def parsed_species(spec: Spec, base_dir: Path) -> dict[str, Chem.Mol]:
@@ -719,6 +747,16 @@ def with_charges(spec: Spec, name: str, mol: chem.Molecule) -> chem.Molecule:
     return replace(mol, atoms=atoms, circled_charges=circled)
 
 
+def with_spin(spec: Spec, name: str, mol: chem.Molecule) -> chem.Molecule:
+    """The species' triplet: atoms drawn with two unpaired electrons in place of the singlet's
+    pair (chem.nonbonding). The ids are checked against the parsed species (mark_triplets)."""
+    ids = {str(x) for x in spec.species[name].triplet}
+    if not ids or not any(a.singlet and a.id in ids for a in mol.atoms):
+        return mol
+    return replace(mol, atoms=[replace(a, singlet=False, lone_pairs=a.lone_pairs - 1, radicals=2)
+                               if a.singlet and a.id in ids else a for a in mol.atoms])
+
+
 def relabel(spec: Spec, mol: chem.Molecule) -> chem.Molecule:
     """The drawing's atoms with `labels` symbols in place of their stand-in elements."""
     if not spec.labels or not any(a.map in spec.labels for a in mol.atoms):
@@ -741,7 +779,7 @@ def molecules(spec: Spec, base_dir: Path) -> list[chem.Molecule]:
                                        lewis_lines=sp.lewis.bonds == "lines")
             except ValueError as e:
                 raise ValueError(f"species {name}: {e}") from None
-            out.append(with_charges(spec, name, relabel(spec, mol)))
+            out.append(with_spin(spec, name, with_charges(spec, name, relabel(spec, mol))))
             continue
         if sp.smiles is not None:
             rot = "auto" if o.rotate is None else o.rotate
@@ -754,7 +792,8 @@ def molecules(spec: Spec, base_dir: Path) -> list[chem.Molecule]:
             rot = 0.0 if o.rotate is None else o.rotate
             mol = chem.from_molfile(resolve_molfile(sp.molfile, base_dir), name, bl, sp.kekule,
                                     rot, o.flip_h, o.flip_v, sp.abbreviate)
-        out.append(with_front(name, sp, with_charges(spec, name, relabel(spec, chem.show_carbons(mol, sp.show_carbons)))))
+        out.append(with_front(name, sp, with_spin(spec, name, with_charges(
+            spec, name, relabel(spec, chem.show_carbons(mol, sp.show_carbons))))))
     check_labels(spec, base_dir)
     check_charge_labels(spec, base_dir)
     return out
@@ -805,8 +844,8 @@ def scheme_prepared(spec: Spec, base_dir: Path) -> dict[str, chem.Prepared]:
 def scheme_molecules(spec: Spec, base_dir: Path) -> dict[str, chem.Molecule]:
     check_labels(spec, base_dir)
     check_charge_labels(spec, base_dir)
-    return {n: with_front(n, spec.species[n], with_charges(spec, n, relabel(
-                spec, chem.show_carbons(p.molecule(), spec.species[n].show_carbons))))
+    return {n: with_front(n, spec.species[n], with_spin(spec, n, with_charges(spec, n, relabel(
+                spec, chem.show_carbons(p.molecule(), spec.species[n].show_carbons)))))
             for n, p in scheme_prepared(spec, base_dir).items()}
 
 

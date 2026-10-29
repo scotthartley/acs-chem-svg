@@ -1,0 +1,4 @@
+# expect: species ethane: triplet: atom 1 (C) has 0 unpaired electrons; triplet is for carbenes/nitrenes written [C] / [CH2] / [N]
+preset: acs1996
+species:
+  ethane: {smiles: "CC", triplet: [1]}

@@ -89,6 +89,7 @@ class Atom:
     abbrev: str | None = None  # abbreviation label text (OMe); `element` is its attachment atom
     radicals: int = 0  # unpaired electrons (RDKit GetNumRadicalElectrons)
     lone_pairs: int = 0  # (valence electrons - charge - bond orders - H - radicals) / 2
+    singlet: bool = False  # a carbene / nitrene: RDKit's two radicals are this lone pair (nonbonding()); always drawn
     charge_label: str | None = None  # drawn charge text in place of `charge` (spec charge_labels: +3); display only
     z: float = 0.0  # depth, larger = nearer the viewer (chair.py); the nearer of two crossing bonds is drawn whole
 
@@ -326,9 +327,10 @@ def to_molecule(mol: Chem.Mol, name: str, bond_length: float, scale: float | Non
         mp = a.GetAtomMapNum() or None
         show, abbrev = _alias_label(a)
         element = abbrev_element(abbrev) if abbrev and a.GetAtomicNum() == 0 else a.GetSymbol()
+        lp, rad = nonbonding(a)
         atoms.append(Atom(i, str(mp) if mp else str(i + 1), element, pts[i][0], pts[i][1],
                           a.GetFormalCharge(), 0 if abbrev else a.GetTotalNumHs(includeNeighbors=False), mp,
-                          show, abbrev, a.GetNumRadicalElectrons(), 0 if abbrev else lone_pairs(a),
+                          show, abbrev, rad, 0 if abbrev else lp, singlet=rad != a.GetNumRadicalElectrons(),
                           z=(depth or {}).get(i, 0.0)))
     bonds = []
     for b in mol.GetBonds():
@@ -361,6 +363,19 @@ def lone_pairs(a: Chem.Atom) -> int:
         return 0
     n = valence_electrons(a) - a.GetFormalCharge() - bond_order_sum(a) - a.GetNumRadicalElectrons()
     return max(0, n // 2)
+
+
+TRIPLET_PROP = "_triplet"  # set on an atom listed in its species' triplet: (spec._parsed)
+
+
+def nonbonding(a: Chem.Atom) -> tuple[int, int]:
+    """(lone pairs, unpaired electrons). RDKit reads [CH2], Cl[C]Cl and [N] as two radicals;
+    unless the atom is a declared triplet (TRIPLET_PROP), they are a singlet carbene's or
+    nitrene's lone pair."""
+    rad = a.GetNumRadicalElectrons()
+    if rad == 2 and not a.HasProp(TRIPLET_PROP):
+        return lone_pairs(a) + 1, 0
+    return lone_pairs(a), rad
 
 
 def _alias_label(a: Chem.Atom) -> tuple[bool, str | None]:

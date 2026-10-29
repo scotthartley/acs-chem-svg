@@ -86,6 +86,7 @@ overrides:
 | `steps[].arrows[].from` | endpoint | `lp(n)`: a lone pair of atom n (not for fishhooks). `bond(a-b)`, `bond(a=b)`, `bond(a#b)`: the bond, whose order must be as written. `electron(n)`: n's unpaired electron. |
 | `steps[].arrows[].to` | endpoint | `atom(n)`: the electrons become nonbonding on n. `between(a,b)`: a new bond, or one order more. |
 | `species.<name>.show_lone_pairs` | list of map numbers | Also draw these atoms' lone pairs (all of them). |
+| `species.<name>.triplet` | list of atom ids (map number, else 1-based index) | Carbenes / nitrenes kept as triplets: two unpaired electrons (two dots, `electron(n)`). Each must be written with two unpaired electrons (`[C]`, `[CH2]`, `[N]`). Unlisted ones are singlets. |
 | `overrides.arrows[]` | `{step, index, …}` | Adjust arrow `index` (0-based) of step `step` (1-based): `bow: left\|right` (the side of the tail → head direction it bulges to), `curvature` (control offset ÷ chord; default 0.5, short loops 1.3), `tail_side: top\|right\|bottom\|left` (which lone pair or radical the tail leaves). No coordinates. |
 
 Map numbers are atom identities. They must be unique among a step's reactants (and among its
@@ -131,6 +132,11 @@ starts from the default (`bow: left` when it already bows left changes nothing).
   a bond within 45°, the H run or an NH₃⁺ charge are taken). The pair an arrow leaves faces the
   arrow's target. Arrows never move the other pairs; they work around them. On an unlabeled atom
   pairs and radicals go on largest-gap bisectors. Radicals are always drawn.
+- **Carbenes and nitrenes:** an atom written with two unpaired electrons (`Cl[C]Cl`, `[CH2]`,
+  `c1ccccc1[N]`) is a singlet: one more lone pair, always drawn, and an arrow can start there as
+  `lp(n)`. List it in the species' `triplet:` for two unpaired dots (`electron(n)` fishhooks).
+  Arrows that form a carbene leave a singlet (α-elimination); a product in `triplet:` then fails
+  validation, since no step makes a triplet. A carbene on a line end needs `show_carbons`.
 - **Curved arrows:** a cubic stroke and a filled head (half head for fishhooks). The tail starts
   beyond its lone pair or radical dot, or beside the bond's midpoint. The head stops short of the
   target's label and its dots (above a lone pair, never between its dots), atom center, or (for `between` on an existing bond)

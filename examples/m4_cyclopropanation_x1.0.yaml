@@ -1,0 +1,33 @@
+# M4: dichlorocyclopropanation. tert-Butoxide deprotonates chloroform; the trichloromethyl anion
+# loses chloride (α-elimination, omitted and written on the arrow) to give singlet dichlorocarbene, whose pair is drawn; the
+# carbene adds to cyclohexene in one concerted step (7,7-dichloronorcarane).
+preset: acs1996
+species:
+  chloroform:   {smiles: "[Cl:2][C:1]([Cl:3])([Cl:4])[H:5]"}
+  tbuo:         {smiles: "CC(C)(C)[O-:6]"}
+  anion:        {smiles: "[Cl:2][C-:1]([Cl:3])[Cl:4]", align: false}   # trigonal, not chloroform's tetrahedron
+  tbuoh:        {smiles: "CC(C)(C)[O:6][H:5]"}
+  carbene:      {smiles: "[Cl:2][C:1][Cl:3]"}
+  chloride:     {smiles: "[Cl-:4]"}
+  carbene_2:    {smiles: "[Cl:2][C:1][Cl:3]"}
+  cyclohexene:  {smiles: "[CH:7]1=[CH:8]CCCC1"}
+  norcarane:    {smiles: "[Cl:2][C:1]1([Cl:3])[CH:7]2CCCC[CH:8]12"}
+steps:
+  - from: [chloroform, tbuo]
+    to: [anion, tbuoh]
+    omit: [tbuoh]
+    arrows:
+      - {from: "lp(6)", to: "between(6,5)"}
+      - {from: "bond(1-5)", to: "atom(1)"}
+  - from: anion
+    to: [carbene, chloride]
+    omit: [chloride]
+    above: "−Cl−"
+    arrows:
+      - {from: "bond(1-4)", to: "atom(4)"}
+  - new_row: true
+    from: [carbene_2, cyclohexene]
+    to: norcarane
+    arrows:
+      - {from: "bond(7=8)", to: "between(1,7)"}
+      - {from: "lp(1)", to: "between(1,8)"}

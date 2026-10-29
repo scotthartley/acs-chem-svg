@@ -7,6 +7,7 @@ Cases:
 - m1_lewis_x<k>.png, m1_lewis_lines_x<k>.png, m1_lewis_assigned_x1.0.png: examples/m1_lewis_*.yaml
   (Lewis structures: shared pairs as dots, as bond lines, and assigned electrons).
 - m1_abbrev_x1.0.png: examples/m1_abbrev_x1.0.yaml (abbreviations in both forms, from SMILES).
+- m1_carbenes_x1.0.png: examples/m1_carbenes_x1.0.yaml (singlet carbene / nitrene pairs, a triplet).
 - m2_*.png: examples/m2_*.yaml schemes with our own layout (m2_sequence_x<k>: the M2 acceptance).
 - mech_basic_x<k>.png: the mechanism references' templates with our curved arrows on ChemDraw's
   CurvePoints and our dots at its centers.
@@ -16,14 +17,15 @@ Cases:
 - equilibrium_x<k>.png, arrows_large_x1.0.png: our equilibrium, forward and ↔ arrows on
   ChemDraw's, with the captions (no structures: the references' "B" is a stand-in atom).
 - m4_*.png: examples/m4_*.yaml with our own layout (m4_nitration_x<k>: the M4 acceptance;
-  m4_perkin_x1.0: omit / over; m4_snar_x<k>: a short lone-pair hook as an excursion).
+  m4_perkin_x1.0: omit / over; m4_snar_x<k>: a short lone-pair hook as an excursion;
+  m4_cyclopropanation_x1.0: α-elimination and a singlet carbene's lp(n) tail).
 
 - cdxml/m1_smiles_x1.0.cdxml, cdxml/m1_charges_x1.0.cdxml, cdxml/m2_scheme_basic_x1.0.cdxml,
   cdxml/m2_equilibrium_x1.0.cdxml, cdxml/m3_sn2_x1.0.cdxml, cdxml/m3_radical_propagation_x1.0.cdxml,
   cdxml/m3_carbonyl_addition_x1.0.cdxml, cdxml/m3_proton_transfer_x1.0.cdxml,
   cdxml/m1_abbrev_x1.0.cdxml, cdxml/m4_resonance_x1.0.cdxml, cdxml/m4_wrap_x1.0.cdxml,
   cdxml/m4_nitration_x1.0.cdxml, cdxml/m1_lewis_x1.0.cdxml, cdxml/m1_lewis_lines_x1.0.cdxml,
-  cdxml/m1_lewis_assigned_x1.0.cdxml: render.py --cdxml's
+  cdxml/m1_lewis_assigned_x1.0.cdxml, cdxml/m1_carbenes_x1.0.cdxml: render.py --cdxml's
   output for those specs (cdxml_writer), compared as text after lxml C14N.
 
 All PNGs are rendered at 4 px/pt with a transparent background. tests/test_gallery.py re-renders
@@ -64,7 +66,7 @@ SPECS = ["examples/m1_smiles_x1.0.yaml", "examples/m1_smiles_x0.8.yaml", "exampl
          "examples/m1_lewis_lines_x1.0.yaml", "examples/m1_lewis_lines_x0.8.yaml", "examples/m1_lewis_lines_x0.6.yaml",
          "examples/m1_lewis_assigned_x1.0.yaml",
          "examples/m1_charges_x1.0.yaml", "examples/m1_charges_x0.8.yaml", "examples/m1_charges_x0.6.yaml",
-         "examples/m1_abbrev_x1.0.yaml",
+         "examples/m1_abbrev_x1.0.yaml", "examples/m1_carbenes_x1.0.yaml",
          "examples/m1_chair_x1.0.yaml", "examples/m1_chair_x0.8.yaml", "examples/m1_chair_x0.6.yaml",
          "examples/m2_sequence_x1.0.yaml", "examples/m2_sequence_x0.8.yaml", "examples/m2_sequence_x0.6.yaml",
          "examples/m2_scheme_basic_x1.0.yaml", "examples/m2_scheme_basic_x0.8.yaml", "examples/m2_scheme_basic_x0.6.yaml",
@@ -79,6 +81,7 @@ SPECS = ["examples/m1_smiles_x1.0.yaml", "examples/m1_smiles_x0.8.yaml", "exampl
          "examples/m4_resonance_x1.0.yaml", "examples/m4_resonance_x0.8.yaml", "examples/m4_resonance_x0.6.yaml",
          "examples/m4_wrap_x1.0.yaml", "examples/m4_wrap_x0.8.yaml", "examples/m4_wrap_x0.6.yaml",
          "examples/m4_perkin_x1.0.yaml", "examples/m4_snar_x1.0.yaml", "examples/m4_snar_x0.8.yaml",
+         "examples/m4_cyclopropanation_x1.0.yaml",
          "examples/benchmarks/nitration_accepted.yaml"]
 
 
@@ -87,7 +90,8 @@ CDXML_SPECS = ["examples/m1_smiles_x1.0.yaml", "examples/m1_charges_x1.0.yaml", 
                "examples/m3_carbonyl_addition_x1.0.yaml", "examples/m3_proton_transfer_x1.0.yaml",
                "examples/m1_abbrev_x1.0.yaml", "examples/m4_resonance_x1.0.yaml", "examples/m4_wrap_x1.0.yaml",
                "examples/m4_nitration_x1.0.yaml", "examples/m1_lewis_x1.0.yaml", "examples/m1_lewis_lines_x1.0.yaml",
-               "examples/m1_lewis_assigned_x1.0.yaml", "examples/m1_chair_x1.0.yaml"]
+               "examples/m1_lewis_assigned_x1.0.yaml", "examples/m1_chair_x1.0.yaml",
+               "examples/m1_carbenes_x1.0.yaml"]
 
 
 def spec_svg(path: Path) -> str:

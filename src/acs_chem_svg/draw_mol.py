@@ -1047,12 +1047,13 @@ class Drawer:
     # ---------------------------------------------------------------- lone pairs and radicals (§4)
 
     def dot_sets(self) -> dict[int, list[DotSet]]:
-        """atom index -> its drawn lone pairs and radicals. Radicals are always drawn; lone
-        pairs on the atoms in show_lone_pairs (all of the atom's pairs)."""
+        """atom index -> its drawn lone pairs and radicals. Radicals are always drawn, and so is
+        a singlet carbene's or nitrene's pair (Atom.singlet); lone pairs on the atoms in
+        show_lone_pairs (all of the atom's pairs)."""
         if self._dots is None:
             self._dots = {}
             for i, a in enumerate(self.mol.atoms):
-                pairs = a.lone_pairs if i in self.show_lone_pairs else 0
+                pairs = a.lone_pairs if i in self.show_lone_pairs else (1 if a.singlet else 0)
                 if pairs or a.radicals:
                     sets = (self.label_dots(i, pairs, a.radicals) if i in self.labels
                             else self.bisector_dots(i, pairs, a.radicals))
@@ -1228,7 +1229,10 @@ class Drawer:
         placed around the dots (charge_center, _charge_clear). A set
         an arrow starts from (`tails`) goes first, into the widest gap facing its target.
         A radical sits radical.distance from the atom; a lone pair's midpoint does too
-        (unmeasured: no reference has one), its dots dot_spacing apart across the bisector."""
+        (unmeasured: no reference has one), its dots dot_spacing apart across the bisector.
+        A triplet's second dot goes on the bisector of the bond gap opposite the first (Ph₂C:
+        one dot below the bonds, one between them), or straight opposite when there is only
+        one gap, so the two never read as a pair (unmeasured, user decision 2026-10-29)."""
         a = self.mol.atoms[i]
         lp, dist = self.preset.lone_pair, self.preset.radical.distance
         angs = [math.atan2(self.mol.atoms[j].y - a.y, self.mol.atoms[j].x - a.x) for j, _ in self.mol.neighbors(i)]
@@ -1236,9 +1240,12 @@ class Drawer:
         kinds = ["pair"] * pairs + ["radical"] * radicals
         hint = self.tails.get(i, {})
         kinds.sort(key=lambda k: k not in hint)  # an arrow's tail set is placed first
+        bond_angs = sorted(angs)
         for n, kind in enumerate(kinds):
             srt = sorted(angs)
-            if srt:
+            if kinds == ["radical", "radical"] and n == 1:
+                t = self._opposite_gap(bond_angs, angs[-1])
+            elif srt:
                 gaps = [((srt[(k + 1) % len(srt)] - srt[k]) % (2 * math.pi) or 2 * math.pi, srt[k])
                         for k in range(len(srt))]
                 gap, start = max(gaps)
@@ -1257,6 +1264,20 @@ class Drawer:
                     if kind == "pair" else [mid])
             out.append(DotSet(i, kind, mid, d, _side_name(d), dots))
         return out
+
+    @staticmethod
+    def _opposite_gap(bond_angs: list[float], t0: float) -> float:
+        """The bisector of the gap between bonds (sorted angles) that holds t0 + 180°; t0 +
+        180° itself when that is t0's gap too (one bond or none)."""
+        opp = t0 + math.pi
+        if len(bond_angs) < 2:
+            return opp
+        tau = 2 * math.pi
+        for k, start in enumerate(bond_angs):
+            width = (bond_angs[(k + 1) % len(bond_angs)] - start) % tau or tau
+            if (opp - start) % tau < width:
+                return opp if (t0 - start) % tau < width else start + width / 2
+        return opp
 
     # ---------------------------------------------------------------- assemble
 

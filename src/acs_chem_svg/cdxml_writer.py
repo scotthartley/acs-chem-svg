@@ -13,7 +13,9 @@ references by scripts/cdxml_headers.py; this module types no style numbers. Per 
 - <n> per atom at its drawn position: Element (atomic number; carbon has none), and on a labeled
   atom NumHydrogens and NeedsClean="yes", as ChemDraw writes its own labeled atoms; Charge (the
   SMILES charge, whatever is drawn); Radical="Doublet", or "Singlet" for two unpaired electrons
-  (ChemDraw's own for two Electron dots, charges_lewis_x*' CH2; RDKit reads two radicals).
+  (ChemDraw's own for two Electron dots, charges_lewis_x*' CH2; RDKit reads two radicals) and
+  for a singlet carbene / nitrene, whose pair is a bound LonePair (unmeasured, ungated: keeps
+  ChemDraw from adding H; acs-style.md §6 Open).
 - A labeled atom's <t>: the text in CDXML order (NH2 even when drawn H2N), one <s> in the
   header's label font, size and face. p: x is the element symbol's glyph origin, or for a
   right-justified label (H on the left) the end of its advance (labels_x1.0, clearance_x*: -Cl
@@ -306,6 +308,8 @@ class _Writer:
                 attrs["Charge"] = str(a.charge)
             if a.radicals:  # two Electron symbols: ChemDraw writes Singlet (charges_lewis_x*' CH2)
                 attrs["Radical"] = "Doublet" if a.radicals == 1 else "Singlet"
+            elif a.singlet:  # a carbene's pair (unmeasured)
+                attrs["Radical"] = "Singlet"
             if lab is not None:
                 attrs["NeedsClean"] = "yes"
             n = etree.SubElement(frag, "n", attrs)

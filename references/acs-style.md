@@ -620,6 +620,9 @@ Rules (M4; unmeasured, user decisions 2026-10-25, flagged at review):
     The label stub (a sliver between a label clip and a gap) is copied from ChemDraw; it is 0.52
     pt at x1.0 and has no x0.8 / x0.6 measurement (those files lack the label).
 
+23. **Carbenes** (§10): carbene pair and triplet dot placement on skeletal carbons and the singlet CDXML
+    (`LonePair` + `Radical="Singlet"`) are unmeasured; no reference (user decision 2026-10-29).
+
 ## 7. Design-brief (docs/design.md) discrepancies (references win)
 
 1. **Bond drawing.** design.md §3.3 says "stroked line, butt caps". ChemDraw draws filled polygons
@@ -703,6 +706,7 @@ Module `src/acs_chem_svg/draw_mol.py` unless noted.
 | Tails, heads, bow, arc, loop and hook shapes; clash-scored choice | §4.2 | `mechanism.Planner` (`ARC_HANDLES`, `LOOP_HANDLES`; `hook`, `hook_controls`, `HOOK_SCAN`, `HOOK_REACH`; `SLID_REACH`, `excursion_controls`, `EXCURSION_REACH`, `stroke_shown`, `MIN_STROKE`: short hooks; `swept`: the ring bonds a chair hook may cross; `ring_center`, `RING_SLIDE`: ring hooks inside the ring; `bond_mid`: bond tails at the drawn bond's midpoint), `mechanism.solve_end` (end tangent through the target), `mechanism.plan_step` (bow combinations), `layout.curved_arrows`, `layout.tail_directions` |
 | Heads clear the target's label and dots and aim into it | §4.2 | `mechanism.clear_along`, `aims`, `solve_end` (roots, then aiming ends), `FARTHER`, `SOFTER`, `MISS_DEG` (unlabeled targets), `MISS_LABEL_DEG` (labeled targets) |
 | Electron bookkeeping | design.md §6.3 | `electrons.check_step` / `check_spec`; `tests/test_electrons.py`, `tests/broken/` |
+| Carbenes / nitrenes: two RDKit radicals are a singlet's lone pair, always drawn and an `lp(n)` source, unless the species lists the atom in `triplet:` (two radicals); arrows that form one leave a singlet; placement reuses the lone-pair rules (`label_dots`, `bisector_dots` at `radical.distance`); a skeletal triplet's second dot goes in the bond gap opposite the first (Ph₂C: one below the bonds, one between them); unmeasured (Open 23) | §4 | `chem.nonbonding`, `Drawer._opposite_gap`, `Atom.singlet`, `spec.mark_triplets` / `with_spin`, `electrons.spin_problems`; `tests/test_carbenes.py` |
 | Mechanism checks | design.md §6.4 | `geometry_checks.check_mechanism` (`mechanism.clashes`) |
 | Zoomed crops | design.md §6.5 | `preview.crops`, `scripts/render.py --crops` |
 | Comparison with ChemDraw | — | `scripts/compare.py mech_basic_x*` (our arrows on ChemDraw's CurvePoints, our dots at its centers; templates/m3/) |
@@ -952,6 +956,7 @@ them. Measured with `measure_refs.py --charges-lewis`.
 | 2+ / 2− | no symbol: the user typed "Fe2+" into the label (superscript run, face 64; `Charge="2"` kept), but "O2−" lost the atom ("ChemDraw can't interpret this label": no Element, no Charge; RDKit reads C) | `Charge` ±2 and one free `<t>` "2+" / "2−" at digit size with `InterpretChemically="no"`, its ink centered where the drawing centers digits and bars; no symbol (user decisions 2026-10-28 and 2026-10-29, after the gates below) |
 | "+3" (charge_labels) | the user typed "Fe+2" into the label, `Charge="2"` | `Charge` from the SMILES; one free `<t>` "+3", `InterpretChemically="no"` |
 | Two unpaired electrons (CH₂) | two Electron symbols bound to the node; ChemDraw sets `Radical="Singlet"`; RDKit reads two radical electrons | the same |
+| Singlet carbene / nitrene (`[CH2]`, `Cl[C]Cl` not in `triplet:`) | no reference | its pair a LonePair bound to the node, plus `Radical="Singlet"` so ChemDraw adds no H; unmeasured, ungated (Open 23) |
 | Lewis, dots for bonds | bonds `Visible="no"`: ChemDraw hides them and keeps the chemistry. Shared pairs: free LonePair symbols, kept | the same |
 | Lewis, bond lines | ordinary bonds, lone pairs bound LonePairs | the same |
 | Assigned electrons | an Electron near a node becomes a radical: ChemDraw set `Radical` on HCN's C (Singlet), N and H (Doublet), and RDKit reads `[H][C]#[N]` | pairs: free LonePairs; an odd electron: a filled oval, `<graphic GraphicType="Oval" OvalType="Circle Filled">`, BoundingBox (center, center x + r, center y), Center3D / MajorAxisEnd3D / MinorAxisEnd3D, r = `lone_pair.dot_radius` (unmeasured form, user decision 2026-10-28) |

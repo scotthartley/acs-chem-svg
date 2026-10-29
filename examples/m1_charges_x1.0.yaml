@@ -13,4 +13,4 @@ species:
   iron: {smiles: "[Fe+2]"}
   oxide: {smiles: "[O-2]"}
   iron_iii: {smiles: "[Fe+2:1]", charge_labels: {1: "+3"}}
-  methylene: {smiles: "[CH2]"}
+  methylene: {smiles: "[CH2]", triplet: [1]}

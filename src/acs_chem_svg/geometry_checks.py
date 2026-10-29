@@ -182,14 +182,16 @@ def check_mechanism(lay: SchemeLayout) -> list[str]:
                 if math.dist(c.center, o.center) < c.r + o.r:
                     problems.append(f"{what} overlaps the {okind} on atom {o.source.split(':', 1)[-1]}")
     for sp, p in lay.species.items():
-        if p.drawer is None:
-            continue
-        for i in sorted(p.drawer.dot_sets()):
-            a = p.mol.atoms[i]
-            if i not in p.drawer.labels and len(p.mol.neighbors(i)) <= 1:  # a bare line end reads as no atom
-                problems.append(f"dots on atom {a.id} of {sp} sit on a line end with no label: "
-                                f"add show_carbons: [{a.id}] to {sp}")
+        if p.drawer is not None:
+            problems += check_line_end_dots(sp, p.drawer)
     return list(dict.fromkeys(problems))
+
+
+def check_line_end_dots(name: str, d) -> list[str]:
+    """Dots (a radical, a carbene's pair) on an unlabeled terminal atom: a bare line end reads as no atom."""
+    return [f"dots on atom {d.mol.atoms[i].id} of {name} sit on a line end with no label: "
+            f"add show_carbons: [{d.mol.atoms[i].id}] to {name}"
+            for i in sorted(d.dot_sets()) if i not in d.labels and len(d.mol.neighbors(i)) <= 1]
 
 
 def _unlabeled_hint(lay, sp: str, atom_id: str) -> str:
