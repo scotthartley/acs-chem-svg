@@ -49,6 +49,7 @@ class Ratios(_Section):
     superscript_raise_per_size: float
     arrow_back_control_per_half_width: float
     equilibrium_long_per_short: float
+    crossing_clearance_per_margin: float  # rear-bond cut beyond the front bond's half-extent (acs-style.md §14.2)
 
 
 class Angles(_Section):
@@ -156,6 +157,16 @@ class Scheme(_Section):
     wrap_width: float
 
 
+class Chair(_Section):
+    """ChemDraw's chair template (acs-style.md §14.1). The flipped chair is its exact mirror: its
+    vertex k mirrors vertex (4 - k) mod 6 of `vertices` (0-based). ChemDraw's own flipped template
+    is not quite a mirror and is not used."""
+    vertices: list[tuple[float, float]]  # pt from vertex 1, y down
+    axial_up: list[bool]
+    equatorial_deg: list[float]  # counterclockwise from +x, y up
+    heteroatom_vertex: int  # 1-based, flipped template (β-D-glucopyranose's ring O)
+
+
 class Cdxml(_Section):
     charge_box_dx: float  # charge <graphic> BoundingBox second point, center x minus this (acs-style.md §13)
     circled_box_dx: float  # the same for CirclePlus / CircleMinus (charges_lewis_x*; ChemDraw sizes the ring from it)
@@ -191,6 +202,7 @@ class Preset(_Section):
     bracket: Bracket
     resonance: Resonance
     scheme: Scheme
+    chair: Chair
     cdxml: Cdxml
 
     def head(self, variant: str | None = None) -> Head:

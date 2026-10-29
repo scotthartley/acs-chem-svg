@@ -1,0 +1,143 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE CDXML SYSTEM "https://static.chemistry.revvitycloud.com/cdxml/CDXML.dtd">
+<CDXML CreationProgram="acs-chem-svg 0.4.0" Name="m1_chair_x1.0.cdxml" BoundingBox="2.52 2.10 303.33 51.64" WindowPosition="0 0" WindowSize="0 0" FractionalWidths="yes" InterpretChemically="yes" ShowAtomQuery="yes" ShowAtomStereo="no" ShowAtomEnhancedStereo="yes" ShowAtomNumber="no" ShowResidueID="no" ShowBondQuery="yes" ShowBondRxn="yes" ShowBondStereo="no" ShowTerminalCarbonLabels="no" ShowNonTerminalCarbonLabels="no" HideImplicitHydrogens="no" Magnification="250" LabelFont="21" LabelSize="10" LabelFace="96" CaptionFont="21" CaptionSize="10" HashSpacing="2.50" MarginWidth="1.60" LineWidth="0.60" BoldWidth="2" BondLength="14.40" BondSpacing="18" ChainAngle="120" LabelJustification="Auto" CaptionJustification="Left" AminoAcidTermini="HOH" ShowSequenceTermini="yes" ShowSequenceBonds="yes" ShowSequenceUnlinkedBranches="no" ShowPrimeLabels="no" ResidueWrapCount="40" PrintMargins="36 36 36 36" MacPrintInfo="0003000000480048000000000300024CFFF4FFF4030C02580367052803FB0002000000480048000000000300024C000100000064000000010001010100000001270F000100010000000000000000000000000002001901900000000000400000000000000000000100000000000000000000000000000000" ChemPropName="" ChemPropFormula="Chemical formula: " ChemPropExactMass="Exact mass: " ChemPropMolWt="Molecular weight: " ChemPropMOverZ="m/z: " ChemPropAnalysis="Elemental analysis: " ChemPropBoilingPt="Boiling point: " ChemPropMeltingPt="Melting point: " ChemPropCritTemp="Critical temp: " ChemPropCritPres="Critical pres: " ChemPropCritVol="Critical vol: " ChemPropGibbs="Gibbs energy: " ChemPropLogP="Log P: " ChemPropMR="MR: " ChemPropHenry="Henry's law: " ChemPropEForm="Heat of form: " ChemProptPSA="tPSA: " ChemPropID="" ChemPropFragmentLabel="" color="0" bgcolor="1" RxnAutonumberStart="1" RxnAutonumberConditions="no" RxnAutonumberStyle="Roman" RxnAutonumberFormat="(#)">
+  <colortable>
+    <color r="1" g="1" b="1"/>
+    <color r="0" g="0" b="0"/>
+    <color r="1" g="0" b="0"/>
+    <color r="1" g="1" b="0"/>
+    <color r="0" g="1" b="0"/>
+    <color r="0" g="1" b="1"/>
+    <color r="0" g="0" b="1"/>
+    <color r="1" g="0" b="1"/>
+  </colortable>
+  <fonttable>
+    <font id="21" charset="x-mac-roman" name="Helvetica"/>
+    <font id="307" charset="x-mac-roman" name="Helvetica Oblique"/>
+    <font id="310" charset="x-mac-roman" name="Helvetica Bold"/>
+  </fonttable>
+  <page id="1" BoundingBox="0 0 540 720" HeaderPosition="36" FooterPosition="36" PrintTrimMarks="yes" HeightPages="1" WidthPages="1">
+    <fragment id="2" BoundingBox="2.52 6.15 75.77 46.97" Z="23">
+      <n id="3" p="20.24 19.07" Z="1"/>
+      <n id="4" p="16.51 32.98" Z="2"/>
+      <n id="5" p="12.78 46.89" Z="3"/>
+      <n id="6" p="2.60 29.25" Z="4"/>
+      <n id="7" p="30.42 36.71" Z="5"/>
+      <n id="8" p="37.62 24.24" Z="6"/>
+      <n id="9" p="51.55 28.20" Z="7"/>
+      <n id="10" p="65.40 24.24" Z="8"/>
+      <n id="11" p="65.40 9.84" Z="9" Element="8" NumHydrogens="1" NeedsClean="yes">
+        <t p="61.51 13.52" BoundingBox="61.90 6.15 75.77 13.73" LabelJustification="Left" LabelAlignment="Left">
+          <s font="21" size="10" color="0" face="96">OH</s>
+        </t>
+      </n>
+      <n id="12" p="58.19 36.71" Z="10"/>
+      <n id="13" p="44.27 32.75" Z="11"/>
+      <b id="14" Z="12" B="3" E="4"/>
+      <b id="15" Z="13" B="4" E="5"/>
+      <b id="16" Z="14" B="4" E="6"/>
+      <b id="17" Z="15" B="4" E="7"/>
+      <b id="18" Z="16" B="7" E="8"/>
+      <b id="19" Z="17" B="8" E="9"/>
+      <b id="20" Z="18" B="9" E="10"/>
+      <b id="21" Z="19" B="10" E="11"/>
+      <b id="22" Z="20" B="10" E="12"/>
+      <b id="23" Z="21" B="12" E="13"/>
+      <b id="24" Z="22" B="13" E="7"/>
+    </fragment>
+    <fragment id="25" BoundingBox="91.74 5.64 151.63 47.90" Z="46">
+      <n id="26" p="135.10 18.26" Z="24"/>
+      <n id="27" p="120.70 18.26" Z="25"/>
+      <n id="28" p="113.50 5.79" Z="26"/>
+      <n id="29" p="113.50 30.73" Z="27"/>
+      <n id="30" p="99.57 26.77" Z="28"/>
+      <n id="31" p="92.37 39.24" Z="29"/>
+      <n id="32" p="106.22 35.28" Z="30"/>
+      <n id="33" p="99.02 47.75" Z="31"/>
+      <n id="34" p="120.14 39.24" Z="32"/>
+      <n id="35" p="127.35 26.77" Z="33"/>
+      <n id="36" p="141.26 30.50" Z="34" Element="8" NumHydrogens="1" NeedsClean="yes">
+        <t p="137.37 34.18" BoundingBox="137.76 26.81 151.63 34.39" LabelJustification="Left" LabelAlignment="Left">
+          <s font="21" size="10" color="0" face="96">OH</s>
+        </t>
+      </n>
+      <b id="37" Z="35" B="26" E="27"/>
+      <b id="38" Z="36" B="27" E="28"/>
+      <b id="39" Z="37" B="27" E="29"/>
+      <b id="40" Z="38" B="29" E="30"/>
+      <b id="41" Z="39" B="30" E="31"/>
+      <b id="42" Z="40" B="31" E="32"/>
+      <b id="43" Z="41" B="32" E="33"/>
+      <b id="44" Z="42" B="32" E="34"/>
+      <b id="45" Z="43" B="34" E="35"/>
+      <b id="46" Z="44" B="35" E="36"/>
+      <b id="47" Z="45" B="35" E="29"/>
+    </fragment>
+    <fragment id="48" BoundingBox="167.63 2.10 251.12 51.64" Z="71">
+      <n id="49" p="205.71 5.78" Z="47" Element="8" NumHydrogens="1" NeedsClean="yes">
+        <t p="201.82 9.47" BoundingBox="202.21 2.10 216.08 9.68" LabelJustification="Left" LabelAlignment="Left">
+          <s font="21" size="10" color="0" face="96">OH</s>
+        </t>
+      </n>
+      <n id="50" p="198.51 18.25" Z="48"/>
+      <n id="51" p="205.71 30.72" Z="49"/>
+      <n id="52" p="219.64 26.76" Z="50" Element="8" NumHydrogens="0" NeedsClean="yes">
+        <t p="215.75 30.45" BoundingBox="216.14 23.08 223.13 30.66" LabelJustification="Left">
+          <s font="21" size="10" color="0" face="96">O</s>
+        </t>
+      </n>
+      <n id="53" p="226.84 39.23" Z="51"/>
+      <n id="54" p="240.75 35.51" Z="52" Element="8" NumHydrogens="1" NeedsClean="yes">
+        <t p="236.86 39.19" BoundingBox="237.25 31.82 251.12 39.40" LabelJustification="Left" LabelAlignment="Left">
+          <s font="21" size="10" color="0" face="96">OH</s>
+        </t>
+      </n>
+      <n id="55" p="212.99 35.27" Z="53"/>
+      <n id="56" p="220.19 47.75" Z="54" Element="8" NumHydrogens="1" NeedsClean="yes">
+        <t p="216.30 51.43" BoundingBox="216.69 44.06 230.56 51.64" LabelJustification="Left" LabelAlignment="Left">
+          <s font="21" size="10" color="0" face="96">OH</s>
+        </t>
+      </n>
+      <n id="57" p="199.07 39.23" Z="55"/>
+      <n id="58" p="185.16 35.51" Z="56" Element="8" NumHydrogens="1" NeedsClean="yes">
+        <t p="189.05 39.19" BoundingBox="174.84 31.82 188.65 39.40" LabelJustification="Right" Justification="Right" LabelAlignment="Right">
+          <s font="21" size="10" color="0" face="96">OH</s>
+        </t>
+      </n>
+      <n id="59" p="191.86 26.76" Z="57"/>
+      <n id="60" p="177.95 30.49" Z="58" Element="8" NumHydrogens="1" NeedsClean="yes">
+        <t p="181.84 34.18" BoundingBox="167.63 26.81 181.44 34.39" LabelJustification="Right" Justification="Right" LabelAlignment="Right">
+          <s font="21" size="10" color="0" face="96">OH</s>
+        </t>
+      </n>
+      <b id="61" Z="59" B="49" E="50"/>
+      <b id="62" Z="60" B="50" E="51"/>
+      <b id="63" Z="61" B="51" E="52"/>
+      <b id="64" Z="62" B="52" E="53"/>
+      <b id="65" Z="63" B="53" E="54"/>
+      <b id="66" Z="64" B="53" E="55"/>
+      <b id="67" Z="65" B="55" E="56"/>
+      <b id="68" Z="66" B="55" E="57"/>
+      <b id="69" Z="67" B="57" E="58"/>
+      <b id="70" Z="68" B="57" E="59"/>
+      <b id="71" Z="69" B="59" E="60"/>
+      <b id="72" Z="70" B="59" E="51"/>
+    </fragment>
+    <fragment id="73" BoundingBox="267.09 13.34 303.33 40.70" Z="86">
+      <n id="74" p="274.92 13.34" Z="72"/>
+      <n id="75" p="274.92 27.74" Z="73"/>
+      <n id="76" p="288.85 31.70" Z="74"/>
+      <n id="77" p="302.70 27.74" Z="75"/>
+      <n id="78" p="295.49 40.21" Z="76"/>
+      <n id="79" p="281.57 36.25" Z="77"/>
+      <n id="80" p="267.72 40.21" Z="78"/>
+      <b id="81" Z="79" B="74" E="75"/>
+      <b id="82" Z="80" B="75" E="76"/>
+      <b id="83" Z="81" B="76" E="77"/>
+      <b id="84" Z="82" B="77" E="78"/>
+      <b id="85" Z="83" B="78" E="79"/>
+      <b id="86" Z="84" B="79" E="80"/>
+      <b id="87" Z="85" B="80" E="75"/>
+    </fragment>
+  </page>
+</CDXML>

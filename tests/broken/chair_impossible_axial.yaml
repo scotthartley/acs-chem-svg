@@ -1,0 +1,4 @@
+# expect: no ring flip puts the requested atoms axial
+preset: acs1996
+species:
+  trans_14: {smiles: "[CH3:7][C@H]1CC[C@H]([CH3:8])CC1", chair: {axial: [7], equatorial: [8]}}

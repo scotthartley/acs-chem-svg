@@ -6,7 +6,9 @@ M2:
   lips, so the contributors inside it don't count as overlaps).
 - Conditions must not run past their arrow's tail or head.
 - Inside each species (M1 rows too: check_labels), an atom label must not overlap another
-  atom's label or a bond that isn't on that atom (draw_mol flips a crowded CH₃ to H₃C first).
+  atom's label or a bond that isn't on that atom (draw_mol flips a crowded CH₃ to H₃C first),
+  and drawn bond lines of bonds that share no atom must not touch: a crossing ChemDraw-style,
+  with the rear bond cut (draw_mol, acs-style.md §14.2), leaves a gap and passes.
 
 M3 (check_mechanism). Each curved arrow is sampled into a polyline (mechanism.SAMPLES
 segments), and these must hold:
@@ -98,6 +100,15 @@ def check_labels(name: str, group: Group, mol: Molecule) -> list[str]:
         for a, b, hw, bsrc in pt.bonds:
             if own.isdisjoint(bsrc.split(":", 1)[-1].split(",")) and segment_box_dist(a, b, box) < hw - LABEL_TOL:
                 problems.append(f"species-{name}: {src} label overlaps {bsrc}")
+    atoms_of = {b.id: {b.a, b.b} for b in mol.bonds}
+
+    def atoms(src):
+        return set().union(*(atoms_of.get(i, set()) for i in src.split(":", 1)[-1].split(",")))
+    segs = [(a, b, hw, src, atoms(src)) for a, b, hw, src in pt.bonds]
+    for k, (a, b, hw, src, at) in enumerate(segs):
+        for c, d, hw2, src2, at2 in segs[k + 1:]:
+            if src2 != src and at.isdisjoint(at2) and segment_distance(a, b, c, d) < hw + hw2 - LABEL_TOL:
+                problems.append(f"species-{name}: {src} crosses {src2} without a gap")
     return list(dict.fromkeys(problems))
 
 

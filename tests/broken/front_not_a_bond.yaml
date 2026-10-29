@@ -1,0 +1,4 @@
+# expect: front: no bond between atoms 1 and 3
+preset: acs1996
+species:
+  propane: {smiles: "[CH3:1][CH2:2][CH3:3]", front: ["1-3"]}

@@ -311,8 +311,10 @@ class _Writer:
             n = etree.SubElement(frag, "n", attrs)
             if lab is not None:
                 label_boxes.append(self.label(n, lab, label_text(a.element, a.num_h), off))
+        zs = [self.ids.next_z() for _ in mol.bonds]
+        rank = z_order(mol, d)
         for b in mol.bonds:
-            attrs = {"id": self.ids.new(), "Z": self.ids.next_z(), "B": node_ids[b.a], "E": node_ids[b.b]}
+            attrs = {"id": self.ids.new(), "Z": zs[rank[b.idx]], "B": node_ids[b.a], "E": node_ids[b.b]}
             if b.order != 1:
                 attrs["Order"] = str(b.order)
             if b.stereo:
@@ -809,3 +811,27 @@ def spec_cdxml(spec_path, warn: Callable[[str], None] = _stderr) -> str:
     placed = m1_placed(spec, spec_path.parent)
     _, offset = to_svg(Group(spec_path.stem, [p.group for p in placed]))
     return placed_cdxml(placed, offset, spec.preset, f"{spec_path.stem}.cdxml", warn)
+
+
+def z_order(mol, d) -> dict[int, int]:
+    """Bond idx -> its rank in Z (acs-style.md §14.2): bond order, except that a bond drawn behind
+    another where they cross (draw_mol.Drawer.crossings) comes before it, so ChemDraw, which cuts
+    the lower-Z bond of a crossing (chair_x*), draws the same gap."""
+    after: dict[int, set[int]] = {b.idx: set() for b in mol.bonds}  # rear -> fronts
+    need = {b.idx: 0 for b in mol.bonds}
+    for f, r in d.crossings():
+        if f not in after[r]:
+            after[r].add(f)
+            need[f] += 1
+    ready = sorted(i for i, n in need.items() if n == 0)
+    out = []
+    while ready:
+        i = ready.pop(0)
+        out.append(i)
+        for f in sorted(after[i]):
+            need[f] -= 1
+            if need[f] == 0:
+                ready.append(f)
+                ready.sort()
+    out += [i for i in sorted(need) if i not in out]  # cycles (can't happen with a strict order)
+    return {i: k for k, i in enumerate(out)}

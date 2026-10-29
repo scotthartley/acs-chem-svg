@@ -752,7 +752,8 @@ def _expand_aliases(m: Chem.Mol) -> Chem.Mol:
 
 def _spec_smiles(spec_path) -> dict[str, str]:
     """name -> canonical SMILES (no maps) of each species as the spec gives it, abbreviations
-    expanded."""
+    expanded. A chair's stereo is in its geometry, which ChemDraw doesn't read either (chair_x*:
+    no wedges in ChemDraw's own chairs), so a chair species is compared without stereo."""
     spec = load_spec(spec_path)
     out = {}
     for name, sp in spec.species.items():
@@ -760,6 +761,8 @@ def _spec_smiles(spec_path) -> dict[str, str]:
              else _expand_aliases(Chem.MolFromMolFile(str(resolve_molfile(sp.molfile, spec_path.parent)))))
         for a in m.GetAtoms():
             a.SetAtomMapNum(0)
+        if sp.chair is not None:
+            Chem.RemoveStereochemistry(m)
         out[name] = Chem.MolToSmiles(m)
     return out
 

@@ -21,6 +21,7 @@ OUT = ROOT / "docs" / "images"
 SPECS = {
     "synthesis": "examples/m2_sequence_x1.0.yaml",
     "nitration": "examples/benchmarks/nitration_accepted.yaml",
+    "chairs": "examples/m1_chair_x1.0.yaml",
 }
 
 

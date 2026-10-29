@@ -1,0 +1,4 @@
+# expect: fused, bridged and spiro chairs
+preset: acs1996
+species:
+  decalin: {smiles: "[CH2:1]1[CH2:2][CH2:3][CH:4]2CCCC[CH:5]2[CH2:6]1", chair: {ring: [1, 2, 3, 4, 5, 6]}}

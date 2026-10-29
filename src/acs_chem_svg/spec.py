@@ -214,6 +214,25 @@ class ChargeOptions(BaseModel):
     circled: bool = False  # ±1 signs in a ring (⊕ / ⊖); a species' circled_charges overrides it
 
 
+class ChairOptions(BaseModel):
+    """Draw the species' six-membered ring as a chair (chair.py, acs-style.md §14.1). Atoms are
+    atom-map numbers."""
+    model_config = ConfigDict(extra="forbid")
+    ring: list[int] | None = None  # the ring's six atoms, when there is more than one six-membered ring
+    flip: bool = False  # the other ring flip (default: the bulkier groups equatorial, by A-values)
+    axial: list[int] = Field(default_factory=list)  # substituent atoms that must be axial (picks the flip)
+    equatorial: list[int] = Field(default_factory=list)
+    start: int | None = None  # ring atom drawn on the right tip of the chair
+
+    @model_validator(mode="after")
+    def _consistent(self):
+        if self.ring is not None and len(set(self.ring)) != 6:
+            raise ValueError(f"chair: ring must list six atom-map numbers (got {self.ring})")
+        if self.flip and (self.axial or self.equatorial):
+            raise ValueError("chair: give flip or axial / equatorial, not both (axial / equatorial pick the flip)")
+        return self
+
+
 class Species(BaseModel):
     model_config = ConfigDict(extra="forbid")
     smiles: str | None = None
@@ -230,6 +249,8 @@ class Species(BaseModel):
     lewis: bool | LewisOptions | None = None  # Lewis structure (M1 only): true = {electrons: shared}
     circled_charges: bool | None = None  # None: the spec's charges.circled
     charge_labels: dict[int, str] = Field(default_factory=dict)  # atom-map number -> drawn charge text (+3, 2−); display only
+    chair: bool | ChairOptions | None = None  # draw the six-membered ring as a chair (true = ChairOptions())
+    front: list[str] = Field(default_factory=list)  # "m-n" bonds (atom maps) drawn whole where bonds cross (§14.2)
 
     @model_validator(mode="after")
     def _one_source(self):
@@ -256,6 +277,31 @@ class Species(BaseModel):
         if rot == "auto" or (rot is not None and float(rot) % 90):
             raise ValueError(f"lewis: orientation.rotate must be a multiple of 90 (got {rot!r}); flips are allowed")
         return self
+
+    @model_validator(mode="after")
+    def _chair(self):
+        if self.chair is True:
+            self.chair = ChairOptions()
+        elif self.chair is False:
+            self.chair = None
+        if self.chair is None:
+            return self
+        clash = [k for k, on in (("lewis", self.lewis is not None), ("molfile", self.molfile is not None),
+                                 ("orientation", self.orientation is not None)) if on]
+        if clash:
+            hint = " (a chair has its own layout; chair: {start: <map>} picks the atom on the right tip)" \
+                if "orientation" in clash else ""
+            raise ValueError(f"chair can't be combined with {', '.join(clash)}{hint}")
+        return self
+
+    @field_validator("front")
+    @classmethod
+    def _front_pairs(cls, v):
+        for p in v:
+            parts = p.split("-")
+            if len(parts) != 2 or not all(x.strip().isdigit() for x in parts):
+                raise ValueError(f"front entry {p!r} must look like '1-2' (the atom-map numbers of a bond)")
+        return v
 
     @property
     def lewis_mode(self) -> str | None:
@@ -699,12 +745,16 @@ def molecules(spec: Spec, base_dir: Path) -> list[chem.Molecule]:
             continue
         if sp.smiles is not None:
             rot = "auto" if o.rotate is None else o.rotate
-            mol = chem.from_smiles(sp.smiles, name, bl, sp.kekule, rot, o.flip_h, o.flip_v, sp.abbreviate)
+            try:
+                mol = chem.from_smiles(sp.smiles, name, bl, sp.kekule, rot, o.flip_h, o.flip_v, sp.abbreviate,
+                                       chair=chair_spec(sp, preset))
+            except ValueError as e:
+                raise ValueError(f"species {name}: {e}") from None
         else:
             rot = 0.0 if o.rotate is None else o.rotate
             mol = chem.from_molfile(resolve_molfile(sp.molfile, base_dir), name, bl, sp.kekule,
                                     rot, o.flip_h, o.flip_v, sp.abbreviate)
-        out.append(with_charges(spec, name, relabel(spec, chem.show_carbons(mol, sp.show_carbons))))
+        out.append(with_front(name, sp, with_charges(spec, name, relabel(spec, chem.show_carbons(mol, sp.show_carbons)))))
     check_labels(spec, base_dir)
     check_charge_labels(spec, base_dir)
     return out
@@ -730,7 +780,8 @@ def reference_for(spec: Spec, name: str) -> str | None:
 def scheme_prepared(spec: Spec, base_dir: Path) -> dict[str, chem.Prepared]:
     """M2: species of a scheme, with each product aligned to the species it is drawn from
     (chem.prepare). Species are built in drawing order so references exist first."""
-    bl = load_preset(spec.preset).lengths.bond_length
+    preset = load_preset(spec.preset)
+    bl = preset.lengths.bond_length
     built: dict[str, chem.Prepared] = {}
     for name in spec.order():
         sp = spec.species[name]
@@ -743,12 +794,39 @@ def scheme_prepared(spec: Spec, base_dir: Path) -> dict[str, chem.Prepared]:
             raise ValueError(f"{name}: orientation is set but the species is aligned to {ref}; "
                              "set align: false to orient it on its own")
         o = sp.orientation or Orientation()
-        built[name] = chem.prepare(mol, name, bl, sp.abbreviate, from_file, o.rotate, o.flip_h, o.flip_v, cands)
+        try:
+            built[name] = chem.prepare(mol, name, bl, sp.abbreviate, from_file, o.rotate, o.flip_h, o.flip_v, cands,
+                                       chair=chair_spec(sp, preset))
+        except ValueError as e:
+            raise ValueError(f"species {name}: {e}") from None
     return built
 
 
 def scheme_molecules(spec: Spec, base_dir: Path) -> dict[str, chem.Molecule]:
     check_labels(spec, base_dir)
     check_charge_labels(spec, base_dir)
-    return {n: with_charges(spec, n, relabel(spec, chem.show_carbons(p.molecule(), spec.species[n].show_carbons)))
+    return {n: with_front(n, spec.species[n], with_charges(spec, n, relabel(
+                spec, chem.show_carbons(p.molecule(), spec.species[n].show_carbons))))
             for n, p in scheme_prepared(spec, base_dir).items()}
+
+
+def chair_spec(sp: Species, preset) -> chem.ChairSpec | None:
+    c = sp.chair
+    if c is None:
+        return None
+    return chem.ChairSpec(preset.chair, c.ring, True if c.flip else None, c.axial, c.equatorial, c.start)
+
+
+def with_front(name: str, sp: Species, mol: chem.Molecule) -> chem.Molecule:
+    """The species' `front` bonds (atom-map pairs) as Molecule.front bond indices."""
+    if not sp.front:
+        return mol
+    by_map = {a.map: a.idx for a in mol.atoms if a.map}
+    out = []
+    for p in sp.front:
+        a, b = (int(x) for x in p.split("-"))
+        bond = next((bd for bd in mol.bonds if {bd.a, bd.b} == {by_map.get(a), by_map.get(b)}), None)
+        if bond is None:
+            raise ValueError(f"species {name}: front: no bond between atoms {a} and {b} (atom-map numbers)")
+        out.append(bond.idx)
+    return replace(mol, front=out)

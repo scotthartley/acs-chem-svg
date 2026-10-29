@@ -610,6 +610,15 @@ Rules (M4; unmeasured, user decisions 2026-10-25, flagged at review):
     ChemDraw sizes a symbol from it** (Electron dot radius = dx / 9; the user's CH₂ dots at
     ×0.8 / ×0.6 came out larger for that reason). Circled signs, "2+" and Lewis: §13.4.
 
+21. **Chair equatorial directions** (§14.1): the reference's equatorial bonds at four vertices
+    sit on ChemDraw's 15° snap, 0.85–0.98° off the textbook "parallel to the ring bond one
+    removed". We copy the reference. Open: whether the user wants the textbook parallel instead.
+
+22. **Chair crossings not in the reference** (§14.2): a rear wedge or hashed bond, an offset
+    double or a triple in front, and two crossings on one bond are drawn by rule, unmeasured.
+    The label stub (a sliver between a label clip and a gap) is copied from ChemDraw; it is 0.52
+    pt at x1.0 and has no x0.8 / x0.6 measurement (those files lack the label).
+
 ## 7. Design-brief (docs/design.md) discrepancies (references win)
 
 1. **Bond drawing.** design.md §3.3 says "stroked line, butt caps". ChemDraw draws filled polygons
@@ -993,3 +1002,63 @@ fixed):**
   `charge_labels` text, an oxidation state on a formally charged atom) has no sign symbol, so
   ChemDraw drops its `Charge`. ChemDraw's own form, a superscript label run ("Fe" + "2+"), keeps
   the charge but sits lower than our placement, and a true minus in it ("O2−") loses the atom.
+
+## 14. Chairs and crossings (source: chair_x1.0 / x0.8 / x0.6, ChemDraw 26.1.0.6801)
+
+chair_x\* (the user, 2026-10-29), in CDXML order: two bare chairs from ChemDraw's Conformers
+templates (`chair`, `flipped`); methyls on all six axial positions; on all six equatorial
+positions; β-D-glucopyranose; an axial OAc; then seven crossing cases (single over single at 30°,
+60° and 90°, single over double, double over single, a wedge over a single, a crossing next to a
+CH₃ label; x0.8 / x0.6 have the last one without its label). Each crossing case is two
+fragments; the front bond was brought to front. `measure_refs.py --chair`, `--crossing`.
+Templates: `templates/chair/` (`cdxml_to_molfile.py`; crossing fragments merged, front bonds by
+Z in `<reference>__<n>.front.json`).
+
+### 14.1 Chairs (exact: ChemDraw's templates)
+
+| Item | x1.0 | x0.8 | x0.6 | Notes |
+|---|---|---|---|---|
+| `chair.vertices` (pt from vertex 1, y down) | (0, 0) (−7.20, 12.47) (6.65, 8.51) (20.57, 12.47) (27.78, 0) (13.93, 3.96) | ×0.8 within 0.01 | ×0.6 within 0.01 | fragment 1; bonds 14.40–14.48 (x1.0): three pairs of parallel bonds, the two "middle" bonds 14.47 / 14.48 |
+| Flipped chair | the exact mirror of `chair.vertices`: vertex k mirrors vertex (4 − k) mod 6 (0-based) | same | same | 2026-10-29 (user: the flip should be an exact mirror; mirroring fragment 1, which the axial and equatorial fragments 3–4 use). ChemDraw's own flipped template (fragment 2; β-D-glucopyranose, fragment 5, is drawn on it) is **not an exact mirror**: (0, 0) (7.20, 12.47) (21.13, 8.82) (34.97, 12.47) (27.78, 0) (13.85, 3.65), its middle vertices 0.31 pt (x0.8: 0.25, x0.6: 0.19) farther apart in y than the mirror's (8.51, 3.96), bonds 14.31–14.40 against the chair's 14.40–14.48. The same at all three sizes, so it is the template, not the drawing. Not used: our flipped chairs differ from ChemDraw's by up to 0.31 pt at those two vertices (and their substituents) |
+| Axial bonds | vertical, 14.400 long | 11.520 | 8.640 | fragment 3; up at vertices 1, 3, 5 of `chair` (the right tip, 5, up; the left tip, 2, down) |
+| Equatorial bonds, direction per vertex | −165°, 165°, −120°, 15°, −15°, 60° (± 0.05) | same | same | fragment 4 (deg ccw from +x, y up). At the middle vertices (3, 6) exactly parallel to the ring bond one removed; at the other four ChemDraw's 15° snap, **0.85–0.98° off** that parallel (15.9° bonds). β-D-glucopyranose (flipped template) agrees with the mirror at all five substituted vertices (0.24–0.37° off parallel there). Length = bond length (14.39–14.40) |
+| Ring O of a pyranose | flipped vertex 5 | 5 | 5 | fragment 5 (`chair.heteroatom_vertex`): the back right |
+| Bond ends at labels on chair bonds | §2.1 model | | | OH at 15°, −60°, 90°, ring O at 120° / 14.7°, OAc at 90°: within 0.08 pt (`tests/test_chair_vs_chemdraw.py`) |
+| Depth | — | — | — | ChemDraw's Z (CrossingBonds pairs): an axial bond up from a lower ring atom is in front of the upper ring bond it crosses (axial OAc too); the lower ring bonds are in front of an axial bond down from an upper ring atom. So: lower on the page = nearer, and a substituent takes its ring atom's depth |
+
+Not measured, chosen (`chair.py`): which flip (A-values, the bulkier groups equatorial; Eliel
+& Wilen, Table 11.7: chemistry data, not style); where the ring goes on the templates
+(crowding, then a ring heteroatom on vertex 5 of the flipped template, carbocycles on the
+unflipped one, then fewest crossings, then the first substituted ring atom farthest right);
+second-shell atoms on a 120° zigzag (iPr, Et, CH₂OH); RDKit for the rest. β-D-glucopyranose's
+C3 / C4 HO labels overlap at the default bond length, in ChemDraw's drawing (fragment 5) as in
+ours; `validate.py` reports it.
+
+### 14.2 Crossings (exact)
+
+| Item | Value | Notes |
+|---|---|---|
+| Which bond is cut | the lower Z | all 30 crossings (10 per preset): the higher-Z bond is drawn whole, the other has a gap |
+| Gap edge | a line parallel to the front bond's outline on each side | the rear line's two corners at a cut end lie the same distance from the front axis (spread 0.000 for lines, 0.04 along a wedge's slanted side), so the end is oblique except at 90° |
+| Gap edge distance | front half-extent + `margin_width` × `ratios.crossing_clearance_per_margin` (1.0; measured 0.991–1.005) | half-extent: lw/2 for a single bond (30°, 60°, 74°, 90°); the outer line's **center** (s/2, not s/2 + lw/2) for a centered double in front; the outline half-width at the crossing for a wedge. A double behind: both lines cut on the same edges |
+| Next to a label | the rear line keeps the stub between its label clip and the gap | chair_x1.0 H₃C case: a 0.52 pt stub left of the gap (ChemDraw's; we draw it too) |
+
+Implemented as: `draw_mol.Drawer.crossings` (axes that cross, no shared atom; front: nearer
+`Atom.z`, then `Molecule.front` (spec `front:`), then the later bond, as ChemDraw puts what is
+drawn later on top), `strip_edges`, `cut_pieces` (per line, so each line of a rear double bond
+gets its own oblique ends), `main_segments` / `chains` (a cut main line ends one chain and
+starts another; the joins stay at the atoms), `cut_polygons` (a piece in a chain is stroked to
+its inner corner plus a cap polygon to the outer corner; a loose piece is one polygon). Not
+measured: a rear wedge (clipped on the strip edges) and a rear hashed bond (a hash inside the
+strip is dropped); an offset double or a triple in front (its outermost line center on each
+side). `geometry_checks.check_labels` reports bond lines of unrelated bonds that touch without
+a gap. CDXML: bonds get Z in depth order, rear first (`cdxml_writer.z_order`), no
+CrossingBonds written; our export of chair_x1.0's templates has the same front bond as
+ChemDraw's file at all 10 crossings. Gate (`cdxml_spike.py --phase 5`): pending the user's
+ChemDraw re-saves. A chair's CDXML has no wedges (ChemDraw's own chairs have none either), so
+ChemDraw reads its ring stereocenters as undefined.
+
+| Check | Worst | Test |
+|---|---|---|
+| M1 items on the chair templates (bond lengths, line widths and offsets, labels, ends at labels, wedge) | 0.076 / 0.069 / 0.075 pt | `tests/test_chair_vs_chemdraw.py::test_exact_geometry_within_tolerance` |
+| Cut ends, distance from the front axis, both corners | 0.014 / 0.006 / 0.010 pt | `tests/test_chair_vs_chemdraw.py::test_crossing_cuts_within_tolerance` |

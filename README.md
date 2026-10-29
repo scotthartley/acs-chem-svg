@@ -22,6 +22,11 @@ and `.png` files:
 
 - **Structures** from SMILES: rings, double and triple bonds, wedges and hashes, heteroatom
   labels with H counts and charges, abbreviations (OMe, OBn, CO₂Me, NO₂, Ph, …).
+- **Chairs:** a cyclohexane, pyranose or piperidine ring drawn as a chair, with axial and
+  equatorial groups from the SMILES stereo and the bulkier groups equatorial; where bonds
+  cross, the rear one gets a gap, as in ChemDraw.
+
+  ![Chair conformers: cis-4-tert-butylcyclohexanol, menthol, β-D-glucopyranose and axial methylcyclohexane](docs/images/chairs.png)
 - **Lewis structures** of small acyclic molecules: every atom labeled, all lone pairs drawn,
   and bonds as shared dot pairs, or as electrons assigned to atoms by formal charge or
   oxidation state.

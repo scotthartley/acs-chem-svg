@@ -8,8 +8,11 @@ y up), so chem.from_molfile scales them back to the exact positions on ChemDraw'
 
 Writes templates/m1/<reference>__<n>.mol (templates/m2/ for scheme references, templates/m3/
 for mechanism references, radicals kept; templates/m4/ for resonance references; templates/abbrev/
-for the abbreviation references), with n =
-fragment order in the CDXML (1-based). Labeled carbons (CH3 as text) become molfile atom
+for the abbreviation references; templates/chair/ for chair_x*), with n =
+fragment order in the CDXML (1-based). Fragments whose bonds cross (CDXML CrossingBonds: the
+crossing cases of chair_x*, one bond per fragment) are merged into the first one's template, and
+templates/chair/<reference>__<n>.front.json lists the bonds ChemDraw draws in front at each
+crossing (the higher Z) as CDXML atom-id pairs (acs-style.md §14.2). Labeled carbons (CH3 as text) become molfile atom
 aliases, which chem.from_molfile reads as explicit carbon labels. Nicknames that are known
 abbreviations (OMe, OBn) become their attachment atom with the nickname as its alias; fragments
 with other nicknames (CH3Cl as text) are skipped. Formula text (K2CO3) has no atoms: it is a
@@ -20,6 +23,7 @@ Usage: uv run python scripts/cdxml_to_molfile.py [reference names]   (default: a
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -36,6 +40,7 @@ OUT_M2 = mr.REPO / "templates" / "m2"
 OUT_M3 = mr.REPO / "templates" / "m3"
 OUT_M4 = mr.REPO / "templates" / "m4"
 OUT_ABBREV = mr.REPO / "templates" / "abbrev"
+OUT_CHAIR = mr.REPO / "templates" / "chair"
 M1_REFERENCES = ["m1_set_x1.0", "m1_set_x0.8", "m1_set_x0.6", "double_bonds_x1.0", "labels_x1.0",
                  "double_bonds_2", "stereo_x1.0", "stereo_x0.8", "stereo_x0.6",
                  "clearance_x1.0", "clearance_x0.8", "clearance_x0.6"]
@@ -45,17 +50,47 @@ M3_REFERENCES = ["mech_basic_x1.0", "mech_basic_x0.8", "mech_basic_x0.6"]
 M4_REFERENCES = ["resonance_x1.0", "resonance_x0.8", "resonance_x0.6",
                  "scheme_wrap_x1.0", "scheme_wrap_x0.8", "scheme_wrap_x0.6"]
 ABBREV_REFERENCES = ["abbrev_x1.0", "abbrev_x0.8", "abbrev_x0.6"]
+CHAIR_REFERENCES = mr.CHAIR_REFS
 
 
 def fragments(doc: mr.Doc) -> list[tuple[int, str, set[str]]]:
     """(n, fragment id, atom ids) for fragments drawn with real atoms and bonds. Fragments
-    with a nickname other than a known abbreviation are skipped: we don't draw those labels."""
+    with a nickname other than a known abbreviation are skipped: we don't draw those labels.
+    Fragments with crossing bonds (CDXML CrossingBonds) are merged into the first of them."""
     out = []
+    _, pairs = mr._bond_z(doc.name) if (mr.REF_DIR / f"{doc.name}.cdxml").exists() else ({}, set())
+    frag_of = {b.id: b.frag for b in doc.bonds}
+    order = list(doc.fragments)
+    merged = {}  # fragment id -> the fragment id it is drawn with
+    for p in pairs:
+        f1, f2 = sorted((frag_of[i] for i in p), key=order.index)
+        if f1 != f2:
+            merged[f2] = merged.get(f1, f1)
     for n, fid in enumerate(doc.fragments, 1):
-        atoms = {aid for aid, a in doc.atoms.items() if a.frag == fid}
+        if fid in merged:
+            continue
+        group = {fid} | {f for f, to in merged.items() if to == fid}
+        atoms = {aid for aid, a in doc.atoms.items() if a.frag in group}
         if atoms and not any(doc.atoms[a].nickname and doc.atoms[a].label not in ABBREVIATIONS for a in atoms):
             out.append((n, fid, atoms))
     return out
+
+
+def front_bonds(doc: mr.Doc, atoms: set[str]) -> list[list[str]]:
+    """The bonds among `atoms` drawn in front where two cross: the higher CDXML Z of each
+    CrossingBonds pair, as [atom id, atom id]."""
+    z, pairs = mr._bond_z(doc.name)
+    bonds = {b.id: b for b in doc.bonds}
+    out = []
+    for p in sorted(pairs, key=sorted):
+        front = bonds[max(p, key=lambda i: z[i])]
+        if front.a in atoms and front.b in atoms:
+            out.append([front.a, front.b])
+    return out
+
+
+def front_path(name: str, n: int) -> Path:
+    return template_path(name, n).with_suffix(".front.json")
 
 
 def with_wedges(block: str, doc: mr.Doc, ids: list[str]) -> str:
@@ -83,7 +118,8 @@ def with_wedges(block: str, doc: mr.Doc, ids: list[str]) -> str:
 
 def template_path(name: str, n: int) -> Path:
     out = (OUT_M2 if name.startswith("scheme_") else OUT_M3 if name.startswith("mech_")
-           else OUT_M4 if name.startswith("resonance_") else OUT_ABBREV if name.startswith("abbrev_") else OUT)
+           else OUT_M4 if name.startswith("resonance_") else OUT_ABBREV if name.startswith("abbrev_")
+           else OUT_CHAIR if name.startswith("chair_") else OUT)
     return out / f"{name}__{n}.mol"
 
 
@@ -101,13 +137,17 @@ def convert(name: str) -> list[Path]:
         path = template_path(name, n)
         path.write_text(with_wedges(Chem.MolToMolBlock(mol), doc, ids))
         written.append(path)
+        front = front_bonds(doc, atoms) if name.startswith("chair_") else []
+        if front:
+            front_path(name, n).write_text(json.dumps(front) + "\n")
+            written.append(front_path(name, n))
     return written
 
 
 def main(argv=None) -> int:
     names = (argv if argv is not None else sys.argv[1:]) or (M1_REFERENCES + M2_REFERENCES + M3_REFERENCES
-                                                          + M4_REFERENCES + ABBREV_REFERENCES)
-    for d in (OUT, OUT_M2, OUT_M3, OUT_M4, OUT_ABBREV):
+                                                          + M4_REFERENCES + ABBREV_REFERENCES + CHAIR_REFERENCES)
+    for d in (OUT, OUT_M2, OUT_M3, OUT_M4, OUT_ABBREV, OUT_CHAIR):
         d.mkdir(parents=True, exist_ok=True)
     for name in names:
         for p in convert(name):

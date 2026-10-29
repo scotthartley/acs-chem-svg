@@ -30,6 +30,7 @@ exempt:
   - bracket.stroke_width            # 0.60 in resonance_x0.8/x0.6
   - cdxml.arrow_box_pad             # 0.50 in scheme_*_x0.8/x0.6 and equilibrium_x0.8/x0.6 (CDXML data, not drawn)
   - cdxml.bracket_lip_size          # 60 in resonance_x1.0/x0.8/x0.6 (CDXML data, not drawn)
+  - chair.heteroatom_vertex          # a vertex number (chair_x*), not a length
 # Measured at every scale but not proportional to k. (ChemDraw's charge bars, 3.935 / 2.733 /
 # 1.798, shrink faster than k too; by user decision 2026-10-24 we scale them with k.)
 nonlinear:
@@ -117,6 +118,7 @@ ratios:                             # dimensionless; identical in every preset
   superscript_raise_per_size: 0.3586 # scheme_multi_x*: baseline raised 3.586 / 2.869 / 2.152
   arrow_back_control_per_half_width: 0.4375  # scheme_*, arrows_large_x1.0, equilibrium_x*: every head's back-edge cubic control sits at (notch, 0.4375 x corner offset), standard and large; a half head's from its shaft's center line
   equilibrium_long_per_short: 3.0   # equilibrium_x*, arrows_large_x1.0: unbalanced, long / short shaft butt -> notch 3.000 (CDXML ArrowEquilibriumRatio 300)
+  crossing_clearance_per_margin: 1.0  # chair_x1.0 (measure_refs.py --crossing): a rear bond's cut ends sit margin_width beyond the front bond's half-extent (0.999-1.005, 10 crossings, 30-90 deg); acs-style.md §14.2
 
 angles:
   chain_angle: 120                  # m1_set_x1.0.cdxml ChainAngle; double_bonds_x1.0 hexane zigzag
@@ -211,6 +213,12 @@ scheme:                             # hand-placed in the references (measure_ref
   number_gap: 6.5                   # placement default (user decision 2026-10-24); row's lowest structure ink -> number ink top; measured scheme_*_x1.0 median 6.709 (n=11, 6.39-6.87)
   row_gap: 34.5                     # placement default (user decision 2026-10-25); row ink bottom (incl. numbers) -> next row ink top (incl. conditions); measured scheme_wrap_x1.0 34.73 (measure_refs.py --wrap)
   wrap_width: 504.0                 # user decision 2026-10-25 (7 in, ACS double column); rows break between steps to stay within it; layout.width overrides
+
+chair:                              # chair_x1.0 (measure_refs.py --chair); ChemDraw Conformers templates, exact; acs-style.md §14.1
+  vertices: [[0, 0], [-7.2, 12.47], [6.65, 8.51], [20.57, 12.47], [27.78, 0], [13.93, 3.96]]  # fragment 1 (chair): vertex offsets from vertex 1, pt, y down; the flipped chair is its exact mirror (ChemDraw's own flipped template, fragment 2, is not: its middle vertices sit 0.31 pt from the mirror; not used, §14.1)
+  axial_up: [true, false, true, false, true, false]  # fragment 3: vertical, bond_length long, alternating (flipped: mirrored)
+  equatorial_deg: [-165, 165, -120, 15, -15, 60]  # fragment 4: direction per vertex, deg counterclockwise from +x, y up, bond_length long (flipped: mirrored); 15 deg snaps, see §14.1
+  heteroatom_vertex: 5              # fragment 5 (β-D-glucopyranose, flipped template): the ring O's vertex (of the mirrored chair)
 
 cdxml:                              # CDXML export only (acs-style.md §13); not drawn
   charge_box_dx: 7.5                # charge <graphic> BoundingBox: second point = (center x - this, center y); m1_set_x1.0, labels_x1.0, mech_basic_x1.0, resonance_x1.0 (one of resonance_x1.0's three is -7.5) (measure_refs.py --cdxml-symbols)

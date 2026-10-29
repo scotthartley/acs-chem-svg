@@ -37,6 +37,8 @@ Run every command as `uv run --project <repo> python <repo>/scripts/<script> ...
      labels CH₃; a molfile from `templates/` keeps its layout.
    - Lewis structures (every atom labeled, bonds as dot pairs): `lewis: true`, `lewis: {bonds: lines}`
      (bond lines), or `lewis: {electrons: formal_charge | oxidation_state}`; see `references/scheme-schema.md`.
+   - Chairs: `chair: true` draws a single six-membered sp³ ring as a chair, axial/equatorial from the SMILES
+     stereo (`chair: {flip: true}`, `{axial: [maps]}`, `{start: map}`); see `references/scheme-schema.md`.
    - Charges: `charges: {circled: true}` (spec) or `circled_charges` (species) circles ±1 signs;
      `charge_labels: {1: "+3"}` (species, by atom map) draws a text, display only.
 2. **Validate:** `scripts/validate.py spec.yaml`. Fix the spec until it prints OK (schema,
@@ -124,6 +126,7 @@ steps:
 
 - Explicit CH₂/CH labels on internal carbons, carbenes.
 - Lewis structures: rings, more than 4 neighbors (PCl₅), Lewis species in schemes.
+- Chairs: fused or spiro rings (decalins, steroids), sp² ring atoms, boats.
 - Condensed labels other than the listed abbreviations (CH₃Cl as text), aromatic circles.
 
 ## Rules

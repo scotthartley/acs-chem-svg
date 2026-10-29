@@ -327,6 +327,14 @@ and multi-row specs that use them (§13.3), is implemented and passed its ChemDr
 `charge_labels`, oxidation states, two unpaired electrons; §13.4, from the user's
 charges_lewis_x\* reference), is implemented and passed its ChemDraw gate (2026-10-29; no 4b edit check, closed by the user). Known chemistry-only limits: a lone "+" text beside an atom becomes a charge (`InterpretChemically="no"` doesn't stop it), and ChemDraw drops the charge of an atom whose charge is text (2+, +3); the drawing is unchanged, since the CDXML is for appearance (acs-style.md §13.4).
 
+
+Chairs and crossings (2026-10-29, `references/acs-style.md` §14, from the user's chair_x\*
+reference): `chair: true` draws a single six-membered sp³ ring on ChemDraw's two chair templates,
+axial/equatorial from the SMILES stereo and the flip from A-values (`chair.py`); bonds that cross
+are drawn ChemDraw-style in every species, the front bond whole and the rear one cut with
+oblique ends margin_width beyond it (`draw_mol.Drawer.crossings`). Both match ChemDraw within
+0.1 pt on the reference's templates. The CDXML export writes bond Z rear-first; its ChemDraw gate
+(`cdxml_spike.py --phase 5`) is pending. Not yet: fused chairs (decalins, steroids), boats.
 ---
 
 ## 11. Sources

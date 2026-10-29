@@ -225,9 +225,37 @@ species:
 | `species.<name>.circled_charges` | bool | Overrides `charges.circled` for this species. |
 | `species.<name>.charge_labels` | map: atom-map number → text | Draw this charge text instead of the formal charge: one sign before or after optional digits (`+3`, `2+`, `-`; `-` draws the minus bar). Display only: electron bookkeeping keeps the SMILES charge; a neutral atom draws it too (an oxidation state). Never circled. |
 | `species.<name>.lewis` | `true` \| `{electrons: shared \| formal_charge \| oxidation_state, bonds: dots \| lines}` | Draw a Lewis structure (below). `true` = `{electrons: shared, bonds: dots}`; `bonds: lines` needs `shared`. SMILES only, specs without `steps` only; not with `kekule`, `abbreviate`, `show_carbons` or `show_lone_pairs` (the last two are implied). `orientation.rotate` must be a multiple of 90. |
+| `species.<name>.chair` | `true` \| `{ring, flip, axial, equatorial, start}` | Draw the six-membered ring as a chair (below). SMILES only; not with `lewis`, `molfile` or `orientation`. Atoms are atom-map numbers. |
+| `species.<name>.front` | list of `"m-n"` (atom-map numbers of a bond) | Where two bonds cross at equal depth, draw these whole and cut the other (default: the later bond in the SMILES). A chair sets its own front/back from depth. |
 
 Give exactly one of `smiles` or `molfile`. Without `steps`, several species are placed left to
 right with `scheme.plus_gap` between their ink boxes.
+
+### Chairs (`chair`)
+
+```yaml
+species:
+  menthol: {smiles: "CC(C)[C@@H]1CC[C@@H](C)C[C@H]1O", chair: true}
+  axial_methyl: {smiles: "[CH3:1]C1CCCCC1", chair: {flip: true}}
+  e2_substrate: {smiles: "[H:4][CH:3]1CCCC[CH:2]1[Br:5]", chair: {axial: [5, 4], start: 2}}
+```
+
+- **Ring:** one six-membered ring of sp³ atoms (ring O, N, S allowed), not fused, bridged or
+  spiro. Cyclohexene, cyclohexanone's sp² carbon and benzene are refused (drawn flat). With more
+  than one six-membered ring, `ring: [six maps]` names it.
+- **Axial / equatorial** come from the SMILES stereo. Of the two ring flips, the one with the
+  smaller sum of A-values over its axial groups is drawn (tBu locks the ring; F goes axial
+  before CH₃). `flip: true` draws the other one; `axial: [maps]` / `equatorial: [maps]`
+  (substituent atoms) pick the flip that has them so, and also place substituents without
+  stereo (an H written as `[H:4]` on a CH₂). A substituent without stereo goes equatorial.
+- **Drawing:** ChemDraw's two chair templates, axial bonds vertical, equatorial along the
+  template's directions (acs-style.md §14.1). `start: <map>` puts that ring atom on the right
+  tip; otherwise the layout with the least crowding is used (a ring O at the back right, as in
+  sugars). Ring stereo shows in the geometry, so the ring gets no wedges.
+- **Crossings:** where an axial bond crosses a ring bond, the farther bond gets a gap
+  (§14.2). The CDXML export orders the bonds so ChemDraw cuts the same ones, but carries no ring
+  stereo (ChemDraw's own chairs carry none).
+- Nothing aligns to a chair, and a chair aligns to nothing: in a scheme it keeps its own layout.
 
 ### Lewis structures (`lewis`)
 

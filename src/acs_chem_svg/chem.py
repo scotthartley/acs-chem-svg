@@ -90,6 +90,7 @@ class Atom:
     radicals: int = 0  # unpaired electrons (RDKit GetNumRadicalElectrons)
     lone_pairs: int = 0  # (valence electrons - charge - bond orders - H - radicals) / 2
     charge_label: str | None = None  # drawn charge text in place of `charge` (spec charge_labels: +3); display only
+    z: float = 0.0  # depth, larger = nearer the viewer (chair.py); the nearer of two crossing bonds is drawn whole
 
     @property
     def p(self) -> Point:
@@ -122,6 +123,7 @@ class Molecule:
     lewis: str | None = None  # Lewis structure: "shared" | "formal_charge" | "oxidation_state" (draw_mol)
     lewis_lines: bool = False  # Lewis structure with bond lines instead of shared-pair dots
     circled_charges: bool = False  # ±1 signs drawn in a ring (spec charges.circled / circled_charges)
+    front: list[int] = field(default_factory=list)  # bond indices drawn whole where they cross a bond at equal depth (spec front)
 
     def neighbors(self, i: int) -> list[tuple[int, Bond]]:
         return [(b.other(i), b) for b in self.bonds if i in (b.a, b.b)]
@@ -309,12 +311,15 @@ def layout_scale(mol: Chem.Mol, bond_length: float) -> float:
     return bond_length / (STANDARD_BOND if abs(med / STANDARD_BOND - 1) < 0.002 else med)
 
 
-def to_molecule(mol: Chem.Mol, name: str, bond_length: float, scale: float | None = None) -> Molecule:
+def to_molecule(mol: Chem.Mol, name: str, bond_length: float, scale: float | None = None,
+                depth: dict[int, float] | None = None, flat: set[int] | None = None) -> Molecule:
     """`scale` (pt per layout unit) defaults to layout_scale(); aligned species pass their
-    reference's, so shared atoms land on the same pt coordinates."""
+    reference's, so shared atoms land on the same pt coordinates. `depth`: atom idx -> Atom.z
+    (chairs). `flat`: atoms whose stereo the drawing already shows (a chair's ring): no wedge
+    starts there."""
     k = layout_scale(mol, bond_length) if scale is None else scale
     pts = [(x * k, y * k) for x, y in _coords(mol)]
-    stereo = _stereo(mol)
+    stereo = {bi: st for bi, st in _stereo(mol).items() if st[1] not in (flat or ())}
     atoms = []
     for a in mol.GetAtoms():
         i = a.GetIdx()
@@ -323,7 +328,8 @@ def to_molecule(mol: Chem.Mol, name: str, bond_length: float, scale: float | Non
         element = abbrev_element(abbrev) if abbrev and a.GetAtomicNum() == 0 else a.GetSymbol()
         atoms.append(Atom(i, str(mp) if mp else str(i + 1), element, pts[i][0], pts[i][1],
                           a.GetFormalCharge(), 0 if abbrev else a.GetTotalNumHs(includeNeighbors=False), mp,
-                          show, abbrev, a.GetNumRadicalElectrons(), 0 if abbrev else lone_pairs(a)))
+                          show, abbrev, a.GetNumRadicalElectrons(), 0 if abbrev else lone_pairs(a),
+                          z=(depth or {}).get(i, 0.0)))
     bonds = []
     for b in mol.GetBonds():
         order = _ORDER.get(b.GetBondType())
@@ -460,10 +466,14 @@ def _orient_molfile(mol: Chem.Mol, rotate_deg, flip_h: bool, flip_v: bool) -> No
 
 def from_smiles(smiles: str, name: str, bond_length: float, kekule: list[str] | None = None,
                 rotate_deg: float | str | None = "auto", flip_h: bool = False, flip_v: bool = False,
-                abbreviate: list[str] | None = None, lewis: str | None = None, lewis_lines: bool = False) -> Molecule:
+                abbreviate: list[str] | None = None, lewis: str | None = None, lewis_lines: bool = False,
+                chair: ChairSpec | None = None) -> Molecule:
     """`lewis` (a LEWIS_MODES value): a Lewis structure with every H an atom and every atom
     labeled, laid out by lewis_layout with `bond_length` as the lattice step (lewis.bond_length);
-    `lewis_lines`: its bonds drawn as lines (shared only)."""
+    `lewis_lines`: its bonds drawn as lines (shared only). `chair`: drawn as a chair (chair.py)."""
+    if chair is not None:
+        p = prepare(parse_smiles(smiles, kekule), name, bond_length, abbreviate, chair=chair)
+        return p.molecule()
     if lewis is not None:
         mol = Chem.AddHs(parse_smiles(smiles))
         Chem.RemoveStereochemistry(mol)
@@ -483,6 +493,17 @@ def from_smiles(smiles: str, name: str, bond_length: float, kekule: list[str] | 
     layout_2d(mol)
     orient(mol, rotate_deg, flip_h, flip_v)
     return to_molecule(mol, name, bond_length)
+
+
+@dataclass
+class ChairSpec:
+    """A chair species (chair.layout): the preset's templates and the spec's options (atom maps)."""
+    templates: object  # preset.Chair
+    ring: list[int] | None = None
+    flip: bool | None = None
+    axial: list[int] = field(default_factory=list)
+    equatorial: list[int] = field(default_factory=list)
+    start: int | None = None
 
 
 def from_molfile(path_or_text: str | Path, name: str, bond_length: float, kekule: list[str] | None = None,
@@ -647,9 +668,12 @@ class Prepared:
     scale: float
     aligned_to: str | None = None
     matched: list[tuple[int, int]] = field(default_factory=list)  # (reference idx, idx)
+    depth: dict[int, float] | None = None  # chairs: atom idx -> Atom.z
+    chair_ring: list[int] | None = None  # chairs: the ring, whose stereo the geometry shows
 
     def molecule(self) -> Molecule:
-        return to_molecule(self.mol, self.name, self.bond_length, self.scale)
+        return to_molecule(self.mol, self.name, self.bond_length, self.scale, self.depth,
+                           set(self.chair_ring or ()))
 
 
 def _mcs_copy(mol: Chem.Mol) -> Chem.Mol:
@@ -774,14 +798,23 @@ def bent_linear_atoms(mol: Chem.Mol) -> list[int]:
 
 def prepare(mol: Chem.Mol, name: str, bond_length: float, abbreviate: list[str] | None = None,
             from_file: bool = False, rotate_deg: float | str | None = None, flip_h: bool = False,
-            flip_v: bool = False, refs: list[Prepared] | None = None) -> Prepared:
+            flip_v: bool = False, refs: list[Prepared] | None = None, chair: ChairSpec | None = None) -> Prepared:
     """Condense abbreviations, then lay out: aligned to the best of `refs` (most matched atoms)
     when one shares at least 3 atoms, else on its own (SMILES: CoordGen + orientation, default
     auto; molfile: its own layout, oriented as asked). An alignment that bends an sp atom
-    (nitronium pinned to bent HNO3 atoms) is dropped for the species' own layout."""
+    (nitronium pinned to bent HNO3 atoms) is dropped for the species' own layout. A `chair` species
+    is laid out by chair.layout and aligns to nothing; nothing aligns to a chair either (its
+    pseudo-3D coordinates would bend a flat drawing)."""
     mol = condense(mol, abbreviate, name)
+    if chair is not None:
+        from . import chair as chair_mod
+        m, z, pl = chair_mod.layout(mol, chair.templates, bond_length, chair.ring, chair.flip,
+                                    chair.axial, chair.equatorial, chair.start)
+        return Prepared(m, name, bond_length, bond_length / STANDARD_BOND, depth=z, chair_ring=pl.ring)
     best = None
     for ref in refs or []:
+        if ref.chair_ring is not None:
+            continue
         pairs = correspondence(ref.mol, mol)
         if pairs and (best is None or len(pairs) > len(best[1])):
             best = (ref, pairs)

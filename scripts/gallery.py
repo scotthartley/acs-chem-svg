@@ -57,13 +57,15 @@ REFERENCES = ["m1_set_x1.0", "m1_set_x0.8", "m1_set_x0.6", "double_bonds_x1.0", 
               "mech_basic_x1.0", "mech_basic_x0.8", "mech_basic_x0.6",
               "resonance_x1.0", "resonance_x0.8", "resonance_x0.6",
               "abbrev_x1.0", "abbrev_x0.8", "abbrev_x0.6",
-              "equilibrium_x1.0", "equilibrium_x0.8", "equilibrium_x0.6", "arrows_large_x1.0"]
+              "equilibrium_x1.0", "equilibrium_x0.8", "equilibrium_x0.6", "arrows_large_x1.0",
+              "chair_x1.0", "chair_x0.8", "chair_x0.6"]
 SPECS = ["examples/m1_smiles_x1.0.yaml", "examples/m1_smiles_x0.8.yaml", "examples/m1_smiles_x0.6.yaml",
          "examples/m1_lewis_x1.0.yaml", "examples/m1_lewis_x0.8.yaml", "examples/m1_lewis_x0.6.yaml",
          "examples/m1_lewis_lines_x1.0.yaml", "examples/m1_lewis_lines_x0.8.yaml", "examples/m1_lewis_lines_x0.6.yaml",
          "examples/m1_lewis_assigned_x1.0.yaml",
          "examples/m1_charges_x1.0.yaml", "examples/m1_charges_x0.8.yaml", "examples/m1_charges_x0.6.yaml",
          "examples/m1_abbrev_x1.0.yaml",
+         "examples/m1_chair_x1.0.yaml", "examples/m1_chair_x0.8.yaml", "examples/m1_chair_x0.6.yaml",
          "examples/m2_sequence_x1.0.yaml", "examples/m2_sequence_x0.8.yaml", "examples/m2_sequence_x0.6.yaml",
          "examples/m2_scheme_basic_x1.0.yaml", "examples/m2_scheme_basic_x0.8.yaml", "examples/m2_scheme_basic_x0.6.yaml",
          "examples/m2_scheme_multi_x1.0.yaml", "examples/m2_scheme_multi_x0.8.yaml", "examples/m2_scheme_multi_x0.6.yaml",
@@ -85,7 +87,7 @@ CDXML_SPECS = ["examples/m1_smiles_x1.0.yaml", "examples/m1_charges_x1.0.yaml", 
                "examples/m3_carbonyl_addition_x1.0.yaml", "examples/m3_proton_transfer_x1.0.yaml",
                "examples/m1_abbrev_x1.0.yaml", "examples/m4_resonance_x1.0.yaml", "examples/m4_wrap_x1.0.yaml",
                "examples/m4_nitration_x1.0.yaml", "examples/m1_lewis_x1.0.yaml", "examples/m1_lewis_lines_x1.0.yaml",
-               "examples/m1_lewis_assigned_x1.0.yaml"]
+               "examples/m1_lewis_assigned_x1.0.yaml", "examples/m1_chair_x1.0.yaml"]
 
 
 def spec_svg(path: Path) -> str:
@@ -108,9 +110,11 @@ def cdxml_cases() -> dict[str, str]:
 
 
 def canonical(text: str) -> bytes:
-    """C14N of a CDXML text, insignificant whitespace dropped (the DOCTYPE isn't part of it)."""
+    """C14N of a CDXML text, insignificant whitespace dropped (the DOCTYPE isn't part of it), and
+    without CreationProgram, which carries the package version."""
     from lxml import etree
     root = etree.fromstring(text.encode(), etree.XMLParser(load_dtd=False, no_network=True, remove_blank_text=True))
+    root.attrib.pop("CreationProgram", None)
     return etree.tostring(root, method="c14n")
 
 

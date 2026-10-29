@@ -55,7 +55,7 @@ they disagree, `acs-style.md` (the ChemDraw references) wins.
 - `uv run python scripts/measure_refs.py --resonance` prints the resonance arrow and bracket parameters per preset (acs-style.md §4.3).
 - `uv run python scripts/measure_refs.py --abbrev` prints the abbreviation label parameters per preset, both forms (acs-style.md §3.5).
 - `uv run python scripts/measure_refs.py --equilibrium` prints the equilibrium arrows and arrowhead variants per preset, incl. arrows_large_x1.0 (acs-style.md §3.1, §3.6).
-- `uv run python scripts/cdxml_to_molfile.py` regenerates `templates/m1/` … `templates/m4/` and `templates/abbrev/` from the reference CDXMLs.
+- `uv run python scripts/cdxml_to_molfile.py` regenerates `templates/m1/` … `templates/m4/`, `templates/abbrev/` and `templates/chair/` (with `.front.json` front bonds) from the reference CDXMLs.
 - `uv run python scripts/readme_images.py` re-renders the README's example images (`docs/images/`).
 - `uv run python scripts/compare.py <ref>...` renders a reference's templates and prints ours vs
   ChemDraw, plus side-by-side PNGs in `build/compare/`. Scheme references also get our arrows and captions;
@@ -74,11 +74,13 @@ they disagree, `acs-style.md` (the ChemDraw references) wins.
 - `uv run python scripts/measure_refs.py --cdxml-symbols` prints the charge-symbol boxes per reference (acs-style.md §13),
   and on mech_basic_x* the LonePair / Electron boxes and each fragment box's reach beyond its dots (§13.2).
 - `uv run python scripts/measure_refs.py --cdxml-scheme` prints the CDXML caption, arrow, bracket and step conventions per scheme reference, resonance_x* included (acs-style.md §13.1, §13.3).
-- `uv run python scripts/cdxml_spike.py [--phase 2|3|4a|4b] [--diff]` writes the CDXML gate files to `build/cdxml_spike/`
+- `uv run python scripts/cdxml_spike.py [--phase 2|3|4a|4b|5] [--diff]` writes the CDXML gate files to `build/cdxml_spike/`
   (`phase2/` for schemes, `phase3/` for mechanisms, `phase4a/` for abbreviations, resonance and wrap, `phase4b/` for
-  charges and Lewis); `--diff` compares ChemDraw's re-saves (`resaved/`) with them (acs-style.md §13–§13.4, gate).
+  charges and Lewis, `phase5/` for chairs and crossings); `--diff` compares ChemDraw's re-saves (`resaved/`) with them (acs-style.md §13–§13.4, gate).
   `--lewis-draft` writes `build/cdxml_spike/lewis_draft/charges_lewis_draft_x*.cdxml`, the draft the user edited into
   the charges_lewis_x* reference (never overwrites).
+- `uv run python scripts/measure_refs.py --chair` prints chair_x*'s templates, axial and equatorial bonds per vertex, and the chairs' crossings (acs-style.md §14.1).
+- `uv run python scripts/measure_refs.py --crossing` prints every crossing's front bond (by Z) and the rear bond's cut ends (acs-style.md §14.2).
 - `uv run python scripts/measure_refs.py --charges-lewis` prints charges_lewis_x*'s circled signs, symbol sizes per box,
   two-electron radicals and label texts (acs-style.md §2.2, §13.4).
 - `uv run python scripts/validate.py [--suggest] spec.yaml` checks schema, chemistry, electron bookkeeping, scheme

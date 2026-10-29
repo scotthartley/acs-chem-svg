@@ -38,6 +38,7 @@ from __future__ import annotations
 
 import argparse
 import copy
+import json
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -46,7 +47,7 @@ from lxml import etree
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import measure_refs as mr  # noqa: E402
-from cdxml_to_molfile import fragments, template_path  # noqa: E402
+from cdxml_to_molfile import fragments, front_path, template_path  # noqa: E402
 
 from acs_chem_svg import chem, richtext  # noqa: E402
 from acs_chem_svg.arrows import equilibrium_arrow, reaction_arrow, resonance_arrow  # noqa: E402
@@ -105,6 +106,10 @@ def render_reference(name: str, preset_name: str | None = None) -> Rendered:
     groups, mols, drawers = [], [], []
     for n, _, _ in [] if name.startswith(ARROWS_ONLY) else fragments(ref):
         mol = chem.from_molfile(template_path(name, n), f"{name}__{n}", preset.lengths.bond_length)
+        if front_path(name, n).exists():  # crossings: ChemDraw's front bonds (higher Z), acs-style.md §14.2
+            ids = {a.id: a.idx for a in mol.atoms}
+            pairs = {frozenset(ids[i] for i in p) for p in json.loads(front_path(name, n).read_text())}
+            mol.front = [b.idx for b in mol.bonds if frozenset((b.a, b.b)) in pairs]
         d = Drawer(mol, preset)
         g = d.draw(f"frag{n}")
         g.children = [c for c in g.children if not c.id.endswith(("-radicals", "-lone-pairs"))]  # ChemDraw's dots below

@@ -1,0 +1,4 @@
+# expect: cyclohexene and benzene are drawn flat
+preset: acs1996
+species:
+  cyclohexene: {smiles: "C1=CCCCC1", chair: true}

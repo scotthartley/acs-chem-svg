@@ -67,6 +67,14 @@ every atom labeled; shared pairs as dots (bonds kept but Visible="no") and as bo
 symbol (shared pairs free, assigned and lone pairs bound to their atom), an odd electron an
 Electron.
 
+Phase 5 (--phase 5, acs-style.md §14; files in build/cdxml_spike/phase5/): chair_x1.0's templates
+(as phase 1, with ChemDraw's front bonds) and render.py --cdxml's output for m1_chair_x1.0. We
+write each crossing's rear bond with the lower Z (cdxml_writer.z_order) and no CrossingBonds. By
+hand in ChemDraw, besides the re-saves (CDXML and SVG): does each crossing show its gap on the
+same bond as our SVG, and does moving an atom keep it? --diff reports, besides phase 2's items:
+11. every crossing ChemDraw records (CrossingBonds) with the bond it draws in front (higher Z),
+   against ours, by node positions.
+
 Usage: uv run python scripts/cdxml_spike.py [--phase N]          # write the gate files
        uv run python scripts/cdxml_spike.py --lewis-draft        # the Lewis reference draft
        uv run python scripts/cdxml_spike.py [--phase N] --diff   # after the ChemDraw re-saves
@@ -107,8 +115,10 @@ PHASE4A_SPECS = ["examples/m1_abbrev_x1.0.yaml", "examples/m4_resonance_x1.0.yam
                  "examples/m4_nitration_x1.0.yaml", "examples/m2_sequence_x1.0.yaml"]
 PHASE4B_SPECS = ["examples/m1_charges_x1.0.yaml", "examples/m1_lewis_x1.0.yaml", "examples/m1_lewis_lines_x1.0.yaml",
                  "examples/m1_lewis_assigned_x1.0.yaml"]
+PHASE5_REFS = ["chair_x1.0"]
+PHASE5_SPECS = ["examples/m1_chair_x1.0.yaml"]
 PHASES = {"2": (PHASE2_REFS, PHASE2_SPECS), "3": (PHASE3_REFS, PHASE3_SPECS), "4a": (PHASE4A_REFS, PHASE4A_SPECS),
-          "4b": ([], PHASE4B_SPECS)}
+          "4b": ([], PHASE4B_SPECS), "5": (PHASE5_REFS, PHASE5_SPECS)}
 PAIR_TOL = 0.05  # pt: node positions should survive a re-save unchanged
 NUM_TOL = 0.005
 PARSER = etree.XMLParser(load_dtd=False, no_network=True, remove_blank_text=True)
@@ -134,7 +144,7 @@ def write(phase: str = "1") -> list[Path]:
         paths = []
         for ref in refs:
             paths.append(out / f"{ref}.cdxml")
-            paths[-1].write_text(species_reference(ref) if ref.startswith("abbrev_") else
+            paths[-1].write_text(species_reference(ref) if ref.startswith(("abbrev_", "chair_")) else
                                  to_cdxml(reference_cdx_scheme(ref), preset_for(ref), f"{ref}.cdxml", warn=lambda m: None))
         for s in specs:
             paths.append(out / f"{Path(s).stem}.cdxml")
@@ -696,6 +706,46 @@ def symbol_diff(ours_root, theirs_root) -> list[str]:
     return lines
 
 
+def _crossings(root) -> dict[frozenset, tuple]:
+    """{the two bonds' node-position pairs: front bond's node positions} for every crossing: the
+    CrossingBonds ChemDraw records, else (our files: none recorded) every pair of bonds whose axes
+    cross, the front one by Z."""
+    pos = {n.get("id"): tuple(round(v, 1) for v in _floats(n.get("p"))) for n in root.iter("n") if n.get("p")}
+    bonds = {b.get("id"): b for b in root.iter("b") if b.getparent().getparent().tag != "n"}
+
+    def key(b):
+        return frozenset((pos[b.get("B")], pos[b.get("E")]))
+    pairs = {frozenset((b.get("id"), c)) for b in bonds.values() for c in (b.get("CrossingBonds") or "").split()
+             if c in bonds}
+    if not pairs:
+        from acs_chem_svg.geometry import segments_cross
+        items = list(bonds.values())
+        for i, b in enumerate(items):
+            for c in items[i + 1:]:
+                ends = [pos[b.get("B")], pos[b.get("E")], pos[c.get("B")], pos[c.get("E")]]
+                if len(set(ends)) == 4 and segments_cross(*ends):
+                    pairs.add(frozenset((b.get("id"), c.get("id"))))
+    out = {}
+    for p in pairs:
+        b, c = (bonds[i] for i in p)
+        front = b if int(b.get("Z")) > int(c.get("Z")) else c
+        out[frozenset((key(b), key(c)))] = key(front)
+    return out
+
+
+def crossing_diff(ours_root, theirs_root) -> list[str]:
+    ours, theirs = _crossings(ours_root), _crossings(theirs_root)
+    lines = [f"  {len(ours)} crossings ours, {len(theirs)} recorded by ChemDraw"]
+    for k in sorted(set(ours) | set(theirs), key=lambda k: sorted(sorted(x) for x in k)):
+        o, t = ours.get(k), theirs.get(k)
+        if o != t:
+            lines.append(f"  crossing {sorted(sorted(x) for x in k)}: front ours {sorted(o) if o else None}, "
+                         f"ChemDraw {sorted(t) if t else None}")
+    if len(lines) == 1:
+        lines.append("  every crossing has the same front bond")
+    return lines
+
+
 def diff(phase: str = "1") -> int:
     found = False
     out = out_dir(phase)
@@ -721,6 +771,10 @@ def diff(phase: str = "1") -> int:
             if phase == "4a":
                 print(f"{path.stem}: nicknames")
                 for line in nickname_diff(ours, theirs):
+                    print(line)
+            if phase == "5":
+                print(f"{path.stem}: crossings (front bond by Z; ours -> ChemDraw's re-save)")
+                for line in crossing_diff(ours, theirs):
                     print(line)
             if phase == "3":
                 print(f"{path.stem}: curves and dots")
@@ -749,7 +803,7 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--diff", action="store_true", help="compare ChemDraw's re-saves with our exports")
     ap.add_argument("--lewis-draft", action="store_true", help="write the Lewis reference draft (phase 4b)")
-    ap.add_argument("--phase", choices=("1", "2", "3", "4a", "4b"), default="1",
+    ap.add_argument("--phase", choices=("1", "2", "3", "4a", "4b", "5"), default="1",
                     help="1: M1 species; 2: M2 schemes; 3: M3 mechanisms; 4a: abbreviations, resonance, wrap")
     args = ap.parse_args(argv)
     if args.lewis_draft:

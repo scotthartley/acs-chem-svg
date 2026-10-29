@@ -1,0 +1,4 @@
+# expect: chair can't be combined with lewis
+preset: acs1996
+species:
+  cyclohexane: {smiles: "C1CCCCC1", chair: true, lewis: true}

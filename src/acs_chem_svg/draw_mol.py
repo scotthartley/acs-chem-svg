@@ -18,6 +18,7 @@ from . import richtext
 from .chem import ABBREVIATIONS_REVERSED, ELECTRONEGATIVITY, Bond, Molecule
 from .fontmetrics import FontFace, load_face
 from .geometry import (Point, add, angle_deg, dot, length, mul, perp, ray_box_exit, seg_point_dist, segment_box_dist,
+                       segments_cross,
                        segment_distance, sub, unit)
 from .preset import Preset
 from .scene import Circle, Group, Polygon, Polyline, TextRun
@@ -242,6 +243,95 @@ class BondGeometry:
     placement: str = ""  # double bonds: ring | centered | offset
     polygon: list[Point] | None = None  # wedge
     hashes: list[tuple[float, float]] = field(default_factory=list)  # (u center, half length)
+    cuts: list[Cut] = field(default_factory=list)  # bonds drawn in front of this one (§14.2)
+
+
+Line2 = tuple[Point, Point]  # a line: point, direction
+
+
+@dataclass
+class Cut:
+    """A front bond's clearance strip across a rear bond (acs-style.md §14.2, chair_x*): the rear
+    bond's lines stop on the strip's two edges, each parallel to the front bond's outline on its
+    side and crossing_clearance beyond the front's half-extent there."""
+    front: int  # bond index
+    edges: tuple[Line2, Line2]
+
+
+@dataclass
+class Piece:
+    """One drawn piece of a line (v, u0, u1) that cuts split: stroke from u0 to u1; an end on a
+    cut also has its two corners (u at v + w/2, u at v - w/2), the oblique end of the line."""
+    u0: float
+    u1: float
+    cap0: tuple[float, float] | None = None
+    cap1: tuple[float, float] | None = None
+
+
+def _hit(fr: Frame, v: float, edge: Line2) -> float | None:
+    """u where the line v = const of frame fr meets `edge` (None when parallel)."""
+    p, d = edge
+    den = fr.u[0] * d[1] - fr.u[1] * d[0]
+    if abs(den) < 1e-12:
+        return None
+    w = sub(p, fr.at(0.0, v))
+    return (w[0] * d[1] - w[1] * d[0]) / den
+
+
+def cut_pieces(fr: Frame, v: float, u0: float, u1: float, cuts: list[Cut], width: float) -> list[Piece]:
+    """The line (v, u0, u1) of a bond with frame fr, split where cuts cross it. A piece ends on
+    a cut at its inner corner (the stroke's butt end) with both corners in its cap."""
+    spans = []
+    for c in cuts:
+        ts = [_hit(fr, v, e) for e in c.edges]
+        if None in ts:
+            continue
+        (lo, e_lo), (hi, e_hi) = sorted(zip(ts, c.edges), key=lambda te: te[0])
+        if hi > u0 and lo < u1:
+            spans.append((lo, hi, e_lo, e_hi))
+    if not spans:
+        return [Piece(u0, u1)]
+    h = width / 2
+    out, start, cap0 = [], u0, None
+    for lo, hi, e_lo, e_hi in sorted(spans, key=lambda s: s[0]):
+        if lo > start:
+            corners = (_hit(fr, v + h, e_lo), _hit(fr, v - h, e_lo))
+            out.append(Piece(start if cap0 is None else max(cap0), min(corners), cap0, corners))
+        if hi > start:
+            start, cap0 = hi, (_hit(fr, v + h, e_hi), _hit(fr, v - h, e_hi))
+    if start < u1:
+        out.append(Piece(max(cap0), u1, cap0, None))
+    return out
+
+
+def piece_outline(fr: Frame, v: float, pc: Piece, h: float) -> list[Point]:
+    """The outline of a line piece of half width h, with its oblique ends at cuts."""
+    a = pc.cap0 or (pc.u0, pc.u0)
+    b = pc.cap1 or (pc.u1, pc.u1)
+    return [fr.at(a[0], v + h), fr.at(b[0], v + h), fr.at(b[1], v - h), fr.at(a[1], v - h)]
+
+
+def cap_polygons(fr: Frame, v: float, pc: Piece, h: float) -> list[list[Point]]:
+    """The oblique end(s) of a stroked piece (Drawer.cut_polygons)."""
+    out = []
+    for cap, butt, sign in ((pc.cap0, pc.u0, 1), (pc.cap1, pc.u1, -1)):
+        if cap is None or abs(cap[0] - cap[1]) < 1e-3:
+            continue
+        back = butt + sign * min(h, max(pc.u1 - pc.u0, 0.0))
+        out.append([fr.at(back, v + h), fr.at(cap[0], v + h), fr.at(cap[1], v - h), fr.at(back, v - h)])
+    return out
+
+
+def _clip_half_plane(poly: list[Point], p: Point, n: Point) -> list[Point]:
+    """Sutherland-Hodgman: the part of polygon `poly` where dot(x - p, n) >= 0."""
+    out = []
+    for a, b in zip(poly, poly[1:] + poly[:1]):
+        da, db = dot(sub(a, p), n), dot(sub(b, p), n)
+        if da >= 0:
+            out.append(a)
+        if (da >= 0) != (db >= 0):
+            out.append(add(a, mul(sub(b, a), da / (da - db))))
+    return out
 
 
 # --------------------------------------------------------------------------- dots (§4, M3)
@@ -587,23 +677,120 @@ class Drawer:
             return hw1 if span <= 0 else hw0 + (hw1 - hw0) * (u - first) / (u1 - first)
         return [(near + lw / 2, half(near + lw)) for near in nears]
 
+    # ---------------------------------------------------------------- crossings (§14.2)
+
+    def in_front(self, b1: Bond, b2: Bond) -> bool:
+        """Is b1 drawn whole where it crosses b2? The nearer bond (mean atom depth z: chairs)
+        is; at equal depth a bond in mol.front, then the later bond (ChemDraw puts what is drawn
+        later on top: chair_x*'s Z order)."""
+        z1, z2 = (sum(self.mol.atoms[i].z for i in (b.a, b.b)) / 2 for b in (b1, b2))
+        if abs(z1 - z2) > 1e-9:
+            return z1 > z2
+        f1, f2 = b1.idx in self.mol.front, b2.idx in self.mol.front
+        return f1 if f1 != f2 else b1.idx > b2.idx
+
+    def crossings(self) -> list[tuple[int, int]]:
+        """(front, rear) bond indices of bonds that cross away from their atoms: their axes
+        (atom to atom) intersect and they share no atom."""
+        out = []
+        for b1, b2 in itertools.combinations(self.mol.bonds, 2):
+            if {b1.a, b1.b} & {b2.a, b2.b}:
+                continue
+            p = [self.mol.atoms[i].p for i in (b1.a, b1.b, b2.a, b2.b)]
+            if segments_cross(*p):
+                out.append((b1.idx, b2.idx) if self.in_front(b1, b2) else (b2.idx, b1.idx))
+        return out
+
+    def strip_edges(self, g: BondGeometry) -> tuple[Line2, Line2]:
+        """The edges of front bond g's clearance strip (§14.2, chair_x*): on each side, the
+        drawn half-extent plus crossing_clearance (= margin_width). Lines: the outermost line
+        center on that side, at least line_width/2 (a single bond's edge; a centered double's
+        outer line center, measured; an offset double's or triple's, unmeasured). Wedges and
+        hashes: their outline, so the edge runs parallel to the wedge's side (measured for wedges)."""
+        L = self.preset.lengths
+        c = self.preset.ratios.crossing_clearance_per_margin * L.margin_width
+        fr = g.frame
+        b = self.mol.bonds[g.bond]
+        edges = []
+        for sd in (1, -1):
+            if g.polygon or g.hashes:
+                da, db = self.end_clip(b, b.a), self.end_clip(b, b.b)
+                u0, u1 = da, fr.L - db
+                if g.hashes:
+                    u0 += L.hash_spacing
+                h0, h1 = L.line_width / 2, L.wedge_wide_end / 2
+                p, q = fr.at(u0, sd * (h0 + c)), fr.at(u1, sd * (h1 + c))
+                edges.append((p, sub(q, p)))
+            else:
+                vs = [0.0] * (g.main is not None) + [v for v, _, _ in g.lines]
+                half = max([L.line_width / 2] + [sd * v for v in vs if sd * v > 0])
+                edges.append((fr.at(0.0, sd * (half + c)), fr.u))
+        return edges[0], edges[1]
+
+    def apply_crossings(self, geoms: dict[int, BondGeometry]) -> None:
+        """Cut each rear bond where a front bond crosses it (§14.2)."""
+        for f, r in self.crossings():
+            if f in geoms and r in geoms:
+                geoms[r].cuts.append(Cut(f, self.strip_edges(geoms[f])))
+
+    def cut_polygon(self, g: BondGeometry) -> list[list[Point]]:
+        """A rear wedge's polygon minus its cuts' strips (unmeasured: clipped on the strip edges
+        like lines are)."""
+        polys = [g.polygon]
+        for c in g.cuts:
+            (p0, d0), (p1, d1) = c.edges
+            n0, n1 = perp(d0), perp(d1)
+            if dot(sub(p1, p0), n0) > 0:  # outside = away from the other edge
+                n0 = mul(n0, -1)
+            if dot(sub(p0, p1), n1) > 0:
+                n1 = mul(n1, -1)
+            polys = [q for poly in polys for q in (_clip_half_plane(poly, p0, n0), _clip_half_plane(poly, p1, n1))
+                     if len(q) >= 3]
+        return polys
+
+    def cut_hashes(self, g: BondGeometry) -> list[tuple[float, float]]:
+        """A rear hashed bond's hashes outside its cuts' strips (unmeasured: a hash any part of
+        which falls inside a strip is dropped)."""
+        hw = self.preset.lengths.hash_line_width / 2
+        keep = []
+        for uc, hl in g.hashes:
+            ends = [(uc + du, dv) for du in (-hw, hw) for dv in (-hl, hl)]
+            inside = False
+            for c in g.cuts:
+                for du, dv in ends:
+                    ts = sorted(t for t in (_hit(g.frame, dv, e) for e in c.edges) if t is not None)
+                    if len(ts) == 2 and ts[0] < du < ts[1]:
+                        inside = True
+            if not inside:
+                keep.append((uc, hl))
+        return keep
+
     # ---------------------------------------------------------------- chains
 
-    def chains(self, geoms: dict[int, BondGeometry]) -> list[tuple[list[Point], bool, list[int]]]:
-        """Join main lines into polylines through unlabeled atoms (miter joins). At each
-        atom, ends pair up most-collinear first; an odd end stops at the atom center."""
-        ends: dict[int, list[tuple[int, int]]] = {}  # atom -> [(bond idx, which end 0/1)]
-        for bi, g in geoms.items():
+    def main_segments(self, geoms: dict[int, BondGeometry]):
+        """The main lines as segments (bond idx, Piece, starts at atom a, ends at atom b), split
+        where cuts cross them (§14.2), and how their ends pair up at unlabeled atoms: at each
+        atom, most-collinear first; an odd end stops at the atom center. Only a cut line's first
+        and last pieces reach its atoms, so the joins stay at the atoms."""
+        lw = self.preset.lengths.line_width
+        segs: list[tuple[int, Piece, bool, bool]] = []
+        for bi in sorted(geoms):
+            g = geoms[bi]
             if g.main is None:
                 continue
+            pieces = cut_pieces(g.frame, 0.0, g.main[0], g.main[1], g.cuts, lw)
+            for k, pc in enumerate(pieces):
+                segs.append((bi, pc, k == 0 and pc.cap0 is None, k == len(pieces) - 1 and pc.cap1 is None))
+        ends: dict[int, list[tuple[int, int]]] = {}  # atom -> [(segment, which end 0/1)]
+        for si, (bi, _, at_a, at_b) in enumerate(segs):
             b = self.mol.bonds[bi]
-            for which, i in ((0, b.a), (1, b.b)):
-                if i not in self.labels:
-                    ends.setdefault(i, []).append((bi, which))
+            for which, i, joins in ((0, b.a, at_a), (1, b.b, at_b)):
+                if joins and i not in self.labels:
+                    ends.setdefault(i, []).append((si, which))
         partner: dict[tuple[int, int], tuple[int, int]] = {}
         for i, lst in ends.items():
             pi = self.mol.atoms[i].p
-            dirs = {e: unit(sub(self.mol.atoms[self.mol.bonds[e[0]].other(i)].p, pi)) for e in lst}
+            dirs = {e: unit(sub(self.mol.atoms[self.mol.bonds[segs[e[0]][0]].other(i)].p, pi)) for e in lst}
             free = list(lst)
             while len(free) >= 2:
                 e1, e2 = max(((x, y) for k, x in enumerate(free) for y in free[k + 1:]),
@@ -611,36 +798,72 @@ class Drawer:
                 partner[e1], partner[e2] = e2, e1
                 free.remove(e1)
                 free.remove(e2)
+        return segs, partner
 
-        def pts(bi, start_end):
-            g = geoms[bi]
-            p0, p1 = g.frame.at(g.main[0], 0), g.frame.at(g.main[1], 0)
+    @staticmethod
+    def _loose(segs, partner, si) -> bool:
+        """A cut piece that joins no other line: drawn as one polygon with its oblique ends."""
+        pc = segs[si][1]
+        return (pc.cap0 is not None or pc.cap1 is not None) and (si, 0) not in partner and (si, 1) not in partner
+
+    def chains(self, geoms: dict[int, BondGeometry]) -> list[tuple[list[Point], bool, list[int]]]:
+        """Join main lines into polylines through unlabeled atoms (miter joins; main_segments).
+        Loose cut pieces (loose_pieces) are left out."""
+        segs, partner = self.main_segments(geoms)
+
+        def pts(si, start_end):
+            bi, pc, _, _ = segs[si]
+            fr = geoms[bi].frame
+            p0, p1 = fr.at(pc.u0, 0), fr.at(pc.u1, 0)
             return (p0, p1) if start_end == 0 else (p1, p0)
 
         seen, out = set(), []
-        order = sorted(geoms)
-        starts = [(bi, w) for bi in order if geoms[bi].main for w in (0, 1) if (bi, w) not in partner]
-        for bi, w in starts + [(bi, 0) for bi in order if geoms[bi].main]:
-            if bi in seen:
+        order = [si for si in range(len(segs)) if not self._loose(segs, partner, si)]
+        starts = [(si, w) for si in order for w in (0, 1) if (si, w) not in partner]
+        for si, w in starts + [(si, 0) for si in order]:
+            if si in seen:
                 continue
-            cur, which = bi, w
+            cur, which = si, w
             p0, p1 = pts(cur, which)
-            line, bonds, closed = [p0, p1], [cur], False
+            line, bonds, closed = [p0, p1], [segs[cur][0]], False
             seen.add(cur)
             while True:
                 nxt = partner.get((cur, 1 - which))
                 if nxt is None:
                     break
                 if nxt[0] in seen:
-                    closed = nxt[0] == bi
+                    closed = nxt[0] == si
                     break
                 cur, which = nxt
                 seen.add(cur)
-                bonds.append(cur)
+                bonds.append(segs[cur][0])
                 line.append(pts(cur, which)[1])
             if closed:
                 line.pop()
-            out.append((line, closed, bonds))
+            out.append((line, closed, list(dict.fromkeys(bonds))))
+        return out
+
+    def cut_polygons(self, geoms: dict[int, BondGeometry]) -> list[tuple[int, list[Point]]]:
+        """(bond idx, polygon) for the cut lines' oblique ends (§14.2). A piece that stands
+        alone (a double bond's second line, a main line piece joining nothing) is one polygon
+        with both ends. A piece in a chain is stroked to its inner corner, and a cap polygon
+        (overlapping the stroke by up to half a line width, so no seam shows) carries it on to
+        the outer corner; none at a perpendicular cut."""
+        h = self.preset.lengths.line_width / 2
+        segs, partner = self.main_segments(geoms)
+        out = []
+        for si, (bi, pc, _, _) in enumerate(segs):
+            fr = geoms[bi].frame
+            if self._loose(segs, partner, si):
+                out.append((bi, piece_outline(fr, 0.0, pc, h)))
+            else:
+                out += [(bi, cap) for cap in cap_polygons(fr, 0.0, pc, h)]
+        for bi in sorted(geoms):
+            g = geoms[bi]
+            for v, u0, u1 in g.lines:
+                for pc in cut_pieces(g.frame, v, u0, u1, g.cuts, 2 * h):
+                    if pc.cap0 is not None or pc.cap1 is not None:
+                        out.append((bi, piece_outline(g.frame, v, pc, h)))
         return out
 
     # ---------------------------------------------------------------- charges (§2.2)
@@ -1040,17 +1263,23 @@ class Drawer:
     def draw(self, name: str) -> Group:
         lw = self.preset.lengths.line_width
         geoms = {} if self.mol.lewis and not self.mol.lewis_lines else {b.idx: self.bond_geometry(b) for b in self.mol.bonds}
+        self.apply_crossings(geoms)
         bonds = Group(f"species-{name}-bonds")
         for line, closed, bis in self.chains(geoms):
             src = "bond:" + ",".join(self.mol.bonds[bi].id for bi in bis)
             bonds.children.append(Polyline(line, lw, closed=closed, source=src))
+        if any(g.cuts for g in geoms.values()):
+            bonds.children += [Polygon(poly, source=f"bond:{self.mol.bonds[bi].id}")
+                               for bi, poly in self.cut_polygons(geoms)]
         for bi, g in geoms.items():
             src = f"bond:{self.mol.bonds[bi].id}"
             for v, u0, u1 in g.lines:
-                bonds.children.append(Polyline([g.frame.at(u0, v), g.frame.at(u1, v)], lw, source=src))
+                for pc in cut_pieces(g.frame, v, u0, u1, g.cuts, lw):
+                    if pc.cap0 is None and pc.cap1 is None:
+                        bonds.children.append(Polyline([g.frame.at(pc.u0, v), g.frame.at(pc.u1, v)], lw, source=src))
             if g.polygon:
-                bonds.children.append(Polygon(g.polygon, source=src))
-            for uc, hl in g.hashes:
+                bonds.children += [Polygon(p, source=src) for p in (self.cut_polygon(g) if g.cuts else [g.polygon])]
+            for uc, hl in (self.cut_hashes(g) if g.cuts else g.hashes):
                 bonds.children.append(Polyline([g.frame.at(uc, hl), g.frame.at(uc, -hl)],
                                                 self.preset.lengths.hash_line_width, source=src))
         # copies, so moving the group (layout) leaves self.labels in molecule coordinates

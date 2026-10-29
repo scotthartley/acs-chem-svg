@@ -1,0 +1,4 @@
+# expect: more than one six-membered ring
+preset: acs1996
+species:
+  biphenylish: {smiles: "C1CCC(CC1)C1CCCCC1", chair: true}

@@ -1,0 +1,4 @@
+# expect: axial / equatorial atoms must be bonded to the ring
+preset: acs1996
+species:
+  ethylcyclohexane: {smiles: "[CH3:8][CH2:7]C1CCCCC1", chair: {axial: [8]}}
