@@ -683,6 +683,9 @@ class Drawer:
 
             def spare(corner: Point) -> float:  # angle to the nearest bond
                 return min((angle_deg(corner, b) for b in bonds), default=180.0)
+
+            def own(p: Point) -> bool:  # nearer atom i than any other atom
+                return self._nearest_atom(p) == i
             corners = [((1.0, -1.0), (x1 + c.labeled_offset_x + ex, y0 + c.labeled_offset_y - ey)),  # upper right
                        ((-1.0, -1.0), (x0 - c.labeled_offset_x - ex, y0 + c.labeled_offset_y - ey)),  # HO⁻ drawn O-H: upper left
                        ((1.0, 1.0), (x1 + c.labeled_offset_x + ex, y1 - c.labeled_offset_y + ey)),  # nitro N⁺: a lower corner
@@ -692,17 +695,24 @@ class Drawer:
             # placed every sign in charges_lewis_x* (user review 2026-10-28: consistent placement)
             limits = (CHARGE_CORNER_MIN_DEG,) if self.mol.lewis else (CHARGE_CORNER_DEG, CHARGE_CORNER_MIN_DEG)
             for limit in limits:
-                chosen = next(((d, p) for d, p in corners if spare(unit(d)) >= limit - 1e-9), None)
+                chosen = next(((d, p) for d, p in corners if spare(unit(d)) >= limit - 1e-9 and own(p)), None)
                 if chosen:
                     break
             if chosen is None:
-                # a bond close to every corner (nitro N⁺ in a ring compound): on the largest gap's
-                # bisector, as far beyond the element ink box as the corner offset (unmeasured rule,
-                # acs-style.md §2.2)
+                # no usable corner (nitro N⁺): on the largest gap's bisector, the center as far from
+                # the element ink box as at a corner, sign extent included (unmeasured rule,
+                # acs-style.md §2.2; user review 2026-10-29: measured along the ray, the ring
+                # nearly touched the N)
                 ctr = ((x0 + x1) / 2, (y0 + y1) / 2)
-                d = self._largest_gap_direction(i)
-                dist = ray_box_exit(ctr, d, (x0, y0, x1, y1)) + math.hypot(c.labeled_offset_x, c.labeled_offset_y)
-                chosen = (d, add(ctr, mul(d, dist + sign.extent(d))))
+                d = self._charge_gap_direction(i)
+                want = math.hypot(abs(c.labeled_offset_x) + ex, abs(c.labeled_offset_y) + ey)
+
+                def box_dist(q: Point) -> float:
+                    return math.hypot(max(x0 - q[0], 0.0, q[0] - x1), max(y0 - q[1], 0.0, q[1] - y1))
+                t = ray_box_exit(ctr, d, (x0, y0, x1, y1))
+                while box_dist(add(ctr, mul(d, t))) < want - 1e-9:
+                    t += 0.01
+                chosen = (d, add(ctr, mul(d, t)))
             d, p = chosen
             if not (self.dot_sets().get(i) or sign.bigger):
                 return p
@@ -718,6 +728,13 @@ class Drawer:
                 add(a.p, mul(d, c.unlabeled_distance + sign.extent(d) + k * CHARGE_DOT_STEP_PT)) for d in dirs])
         d = self._largest_gap_direction(i)
         return (a.x + c.unlabeled_distance * d[0], a.y + c.unlabeled_distance * d[1])
+
+    def _nearest_atom(self, p: Point) -> int:
+        """The atom whose position is nearest p. ChemDraw binds a sign to it on open and resets
+        that atom's charge (cdxml_spike.py --phase 4b gate, 2026-10-28: nitromethane's corner ⊕
+        sat 9.66 pt from the =O, 10.04 from the N, and became the O's); a reader pairs them the
+        same way, so a sign keeps its own atom nearest."""
+        return min(range(len(self.mol.atoms)), key=lambda j: math.dist(p, self.mol.atoms[j].p))
 
     def _charge_clear(self, i: int, sign: ChargeSign, candidates) -> Point:
         """Clearance search for atom i's charge (unmeasured rule, acs-style.md §2.2): the dots
@@ -774,6 +791,19 @@ class Drawer:
         """Unit vector along the bisector of the largest angular gap between atom i's bonds
         (+x for an atom without bonds)."""
         return self._largest_gap(i)[1]
+
+    def _charge_gap_direction(self, i: int) -> Point:
+        """A labeled atom's charge with no usable corner: the largest bond gap's bisector; of
+        equal gaps (within 1°; nitro N: three of 120°), the one nearest the upper right, where the user put
+        nitromethane's ⊕ in charges_lewis_x* (unmeasured rule, 2026-10-28)."""
+        a = self.mol.atoms[i]
+        angs = sorted(math.atan2(self.mol.atoms[j].y - a.y, self.mol.atoms[j].x - a.x) for j, _ in self.mol.neighbors(i))
+        if len(angs) < 2:
+            return self._largest_gap_direction(i)
+        gaps = [((angs[(k + 1) % len(angs)] - angs[k]) % (2 * math.pi) or 2 * math.pi, angs[k]) for k in range(len(angs))]
+        top = max(g for g, _ in gaps)
+        dirs = [(math.cos(t + g / 2), math.sin(t + g / 2)) for g, t in gaps if g > top - math.radians(1.0)]
+        return min(dirs, key=lambda d: angle_deg(d, unit((1.0, -1.0))))
 
     def _largest_gap(self, i: int) -> tuple[float, Point]:
         """(width in radians, bisector unit vector) of the largest angular gap between atom i's

@@ -188,6 +188,7 @@ axis (edges clipped to that band); a **horizontal** bond keeps the whole outline
 | On a labeled atom with bonds near both upper corners (nitro N⁺ in a ring compound) | the first lower corner with no bond within 60° (lower right, then lower left; offsets mirrored down); if every corner has a bond within 60°: the first with none within 45° (m1_set_x*: N⁺ with bonds at 0° and 180° keeps the upper right, as ChemDraw); else on the largest gap's bisector, the corner offset's length beyond the element ink box | | | — | rule (M4, nitration); unmeasured (`draw_mol.CHARGE_CORNER_MIN_DEG`, Open 16) |
 | On an unlabeled C that draws a lone pair or radical (ring carbanion with an arrow from its pair) | the dots keep the largest-gap bisectors (§4.2; the charge does not count as a direction); the charge takes the direction inside the largest bond gap, every 5°, whose ink clears the dots and the atom's drawn bond lines the most, at `unlabeled_distance` or 0.5 pt steps beyond it (up to +2.0) until some direction clears by 1.0; ties go nearest the bisector | | | — | rule (inbox 2026-10-26); unmeasured (`draw_mol.CHARGE_DOT_CLEARANCE`, `CHARGE_DOT_STEP_*`, Open 16) |
 | On a labeled atom that draws lone pairs or radicals (HO⁻, Br⁻, bisulfate O⁻ in m3_sn2, m4_nitration) | the corner is chosen as above; the sign then moves out along that corner's diagonal (straight up for NH₃⁺ / single-atom HO⁻) in 0.5 pt steps, up to +2.0, until its ink clears the dots and the atom's drawn bond lines by 1.0 (`CHARGE_DOT_CLEARANCE`); a charge without dots keeps its corner | | | — | rule (user decision 2026-10-26); unmeasured (`draw_mol.Drawer._charge_clear`, Open 18) |
+| Every sign | nearer its own atom (center to atom position) than to any other atom: a corner that fails moves on; with no corner left, the largest bond gap's bisector (equal gaps within 1°: the one nearest the upper right), the center as far from the element ink box as a corner's (user review 2026-10-29: measured along the ray instead, the ring came within 0.07–0.81 pt of the N; now 1.64 / 1.20 / 0.78, as the corner signs; the user's by eye 1.42 / 1.46 / 1.58) | | | — | rule (phase 4b gate, 2026-10-28: ChemDraw binds each sign to the nearest atom on open and resets its charge; nitromethane's corner ⊕ sat 9.66 pt from =O, 10.04 from N). The user placed that ⊕ in the upper-right gap (charges_lewis_x\*). `draw_mol.Drawer._nearest_atom`, `_charge_gap_direction`; `tests/test_cdxml.py::test_signs_sit_nearest_their_atom` |
 | Circled ⊕ / ⊖ (`charges.circled`, `circled_charges`) | the plain bars plus a ring of `circle_radius` (stroke center), stroked at `bar_thickness`: **3.59** | 2.89 | 2.24 | charges_lewis_x\* (ChemDraw's CirclePlus / CircleMinus, all four per file; stroke 0.5; `measure_refs.py --charges-lewis`) | exact ring, copied (user decision 2026-10-28). Placement stays our rule (user decision 2026-10-28; the user's by-eye positions vary): the starting position moves out by the ring's extra reach beyond a plain sign; a circled sign always runs the clearance search (labeled: along the corner diagonal; unlabeled: the largest-gap search above). ChemDraw's bars inside the ring here: 3.93 / 3.27 / 2.60 (it sizes symbols from their CDXML box; §13.4) |
 | Multiple charges ("2+", "2−") and `charge_labels` texts ("+3") | digits in the label font at `digit_scale` × label size (**0.75**, = `ratios.superscript_scale`), ink `digit_gap` (**0.5**) from the bars, in the written order, the whole centered on the sign position and vertically on the bars; never circled. Positions move out by the extra width / height and run the clearance search | | | — | unmeasured (user decision 2026-10-26, Open 18). ChemDraw has no multiple-charge symbol: charges_lewis_x\*' Fe²⁺ is typed into the label as a superscript; the user prefers our digit + drawn sign (2026-10-28) |
 | NH₃⁺ (H on the right) | ⊕ centered above the N: center − atom = (+0.03, −7.43). **Default 7.5** | 6.0 | 4.5 | labels_x1.0 | placement default (`charge.above_label`) |
@@ -938,20 +939,49 @@ them. Measured with `measure_refs.py --charges-lewis`.
 |---|---|---|
 | Circled ⊕ / ⊖ | `<graphic SymbolType="CirclePlus\|CircleMinus">`, `<represent attribute="Charge">`, BoundingBox (center, center x − 7.5 / 6.0 / 4.5, center y); drawn ring 3.59 / 2.89 / 2.24, bars 3.93 / 3.27 / 2.60 | the same; dx `cdxml.circled_box_dx` |
 | Symbol size | ChemDraw draws a symbol from its box dx: Plus / Minus bars 3.93 at dx 7.5, 3.27 at 6.0, 2.60 at 4.5, 2.73 at 4.8, 1.80 at 2.7; Electron dot radius dx / 9 (0.833, 0.667, 0.533, 0.5). A symbol the user adds gets 0.75 × LabelSize; m1_set_x\*'s and mech_basic_x\*'s have their own dx | plain signs and dots keep `charge_box_dx` / `electron_box_dx` (their drawn sizes match §2.2 and §4.2's dots) |
-| 2+ / 2− | no symbol: the user typed "Fe2+" into the label (superscript run, face 64; `Charge="2"` kept), but "O2−" lost the atom ("ChemDraw can't interpret this label": no Element, no Charge; RDKit reads C) | `Charge` ±2; a free Plus / Minus symbol (no `<represent>`) and a free `<t>` "2" at the drawn digits (user decision 2026-10-28) |
-| "+3" (charge_labels) | the user typed "Fe+2" into the label, `Charge="2"` | `Charge` from the SMILES; the sign free, the digits a free `<t>` |
+| 2+ / 2− | no symbol: the user typed "Fe2+" into the label (superscript run, face 64; `Charge="2"` kept), but "O2−" lost the atom ("ChemDraw can't interpret this label": no Element, no Charge; RDKit reads C) | `Charge` ±2 and one free `<t>` "2+" / "2−" at digit size, its ink centered where the drawing centers digits and bars; no symbol (user decision 2026-10-28, after the gate below) |
+| "+3" (charge_labels) | the user typed "Fe+2" into the label, `Charge="2"` | `Charge` from the SMILES; one free `<t>` "+3" |
 | Two unpaired electrons (CH₂) | two Electron symbols bound to the node; ChemDraw sets `Radical="Singlet"`; RDKit reads two radical electrons | the same |
 | Lewis, dots for bonds | bonds `Visible="no"`: ChemDraw hides them and keeps the chemistry. Shared pairs: free LonePair symbols, kept | the same |
 | Lewis, bond lines | ordinary bonds, lone pairs bound LonePairs | the same |
-| Assigned electrons | an Electron bound to its owner becomes a radical: ChemDraw set `Radical` on HCN's C (Singlet), N and H (Doublet), and RDKit reads `[H][C]#[N]` | free LonePair / Electron symbols |
-| Oxidation states | the user drew "+" with the charge tool (bound: every H got `Charge="1"`, RDKit reads `[H+]`) and "2−" as free text | free sign plus digits (§2.2); `Charge` unchanged |
+| Assigned electrons | an Electron near a node becomes a radical: ChemDraw set `Radical` on HCN's C (Singlet), N and H (Doublet), and RDKit reads `[H][C]#[N]` | pairs: free LonePairs; an odd electron: a filled oval, `<graphic GraphicType="Oval" OvalType="Circle Filled">`, BoundingBox (center, center x + r, center y), Center3D / MajorAxisEnd3D / MinorAxisEnd3D, r = `lone_pair.dot_radius` (unmeasured form, user decision 2026-10-28) |
+| Oxidation states | the user drew "+" with the charge tool (bound: every H got `Charge="1"`, RDKit reads `[H+]`) and "2−" as free text | free `<t>`s ("+", "2−"); `Charge` unchanged |
 
 ChemDraw flags many Lewis atoms "This atom has an unusual number of lone pairs" (CO₂, nitrate,
 HCN, in both forms), but keeps them. Molecules RDKit reads from the reference (row 1, the user's
 charges): C[N+](=O)[O-], C[CH+]C, C=C[O-], [Fe+2] (twice), C (the broken O²⁻) and [CH2] with two
 radicals.
 
-**Gate (pending):** `scripts/cdxml_spike.py --phase 4b` writes render.py --cdxml's output for
-m1_charges, m1_lewis, m1_lewis_lines and m1_lewis_assigned (x1.0) to
-`build/cdxml_spike/phase4b/`. The user re-saves them in ChemDraw (CDXML and SVG), notes any
-warning, and drags a Lewis atom and a charged atom; `--diff` then compares.
+**Gate, round 1 (2026-10-28, `scripts/cdxml_spike.py --phase 4b --diff` on the user's
+ChemDraw 26 re-saves of m1_charges, m1_lewis, m1_lewis_lines and m1_lewis_assigned, x1.0, as
+first written: digit signs and Lewis electrons as free symbols):**
+- **ChemDraw ignores `<represent>` and binds every symbol to the nearest atom on open** (ties,
+  such as a shared pair centered on its bond, stay free with "Chemical symbol is not associated
+  with an atom"), then recomputes each atom's `Charge` and `Radical` from its symbols:
+  - nitromethane's circled ⊕, 9.66 pt from the =O and 10.04 from the N, became the O's
+    (RDKit: `CN(=[O+])[O-]`);
+  - the free signs of Fe²⁺, O²⁻ and "+3" were bound, and their charges became ±1 (`[Fe+]`,
+    `[O-]`);
+  - every oxidation-state "+" made its H a H⁺, the "2−" signs made C and O −1, and HCN's
+    single assigned electrons made radicals again.
+- Lewis structures in both forms kept their chemistry (RDKit SMILES unchanged); off-center
+  shared pairs were bound to the nearer atom ("unusual number of lone pairs" warnings only).
+  Labels and boxes within 0.01 pt; every symbol unmoved.
+- Fixed: every sign nearest its own atom (§2.2), digits and oxidation states as free text, odd
+  electrons as ovals.
+
+**Gate, round 2 (2026-10-29, the user's re-saves of m1_charges and m1_lewis_assigned as
+fixed):**
+- Every bound sign stayed on its atom (nitromethane's ⊕ included; 9.48 pt from N, 12.68 from
+  =O) and every symbol and label stayed put.
+- The ovals work: ChemDraw keeps all four at our centers and draws them at radius 0.83–0.84
+  (`lone_pair.dot_radius` 0.833). It rewrites them as BoundingBox (axis end, center) and
+  `OvalType="Filled"`. HCN's formal-charge view now keeps its chemistry.
+- **Still wrong (open):**
+  - ChemDraw drops `Charge` from an atom with no sign symbol: Fe²⁺ came back Fe and O²⁻ came
+    back O (RDKit `[Fe]`, `O`).
+  - It read each free "+" text next to an H as a charge: the text disappeared and the H became
+    H⁺. The "2−" texts (U+2212) it left alone.
+- Next (round 3, not yet written): `InterpretChemically="no"` on the free charge texts (ChemDraw
+  writes it on two scheme_wrap_x1.0 captions), and real ±2 charges as ChemDraw's own label run
+  ("Fe" plus a superscript "2+", as the user drew Fe2+), which keeps `Charge`.

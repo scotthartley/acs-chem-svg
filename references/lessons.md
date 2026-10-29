@@ -571,3 +571,9 @@ removed renders pixel-identical to the approved `m4_nitration_x1.0`. Inbox triag
 - **The user's by-eye placements aim at a rule, not at numbers.** They put every Lewis sign at
   the upper right. The lattice puts every bond 45° from each corner, so our 60° corner test had
   scattered the signs around.
+- **ChemDraw binds symbols by distance, not by `<represent>`.** On open it attaches each sign,
+  dot and pair to the nearest atom and recomputes that atom's charge and radical. So a sign has
+  to sit nearest its own atom, which is also how a reader pairs them. Anything display-only
+  must not be a symbol: digits and oxidation states became text, odd Lewis electrons ovals. The
+  first gate showed this; a file that RDKit reads correctly before ChemDraw opens it proves
+  nothing.

@@ -192,9 +192,10 @@ def _symbols(frag, kind=None) -> list:
 
 def test_charge_objects():
     """§13.4 on m1_charges_x1.0: circled signs are ChemDraw's CirclePlus / CircleMinus bound to
-    the node, box dx cdxml.circled_box_dx; 2+ / 2- and the +3 label are a free sign plus a free
-    <t> with the digits, the node keeping its SMILES Charge; CH2's two unpaired electrons are two
-    bound Electron symbols with Radical="Singlet", as ChemDraw wrote them."""
+    the node, box dx cdxml.circled_box_dx; 2+ / 2- and the +3 label are one free <t> and no
+    symbol (ChemDraw rebinds any sign symbol), the node keeping its SMILES Charge; CH2's two
+    unpaired electrons are two bound Electron symbols with Radical="Singlet", as ChemDraw wrote
+    them."""
     text = exported("examples/m1_charges_x1.0.yaml")
     root = etree.fromstring(text.encode())
     frags = dict(zip(load_spec(mr.REPO / "examples/m1_charges_x1.0.yaml").species, _species_frags(text)))
@@ -207,12 +208,10 @@ def test_charge_objects():
     assert [g.get("SymbolType") for g in _symbols(frags["plain"])] == ["Plus", "Minus"] or \
         sorted(g.get("SymbolType") for g in _symbols(frags["plain"])) == ["Minus", "Plus"]
     texts = ["".join(x.text for x in t.iter("s")) for t in root.find("page").findall("t")]
-    for name, charge, sym in (("iron", "2", "Plus"), ("oxide", "-2", "Minus"), ("iron_iii", "2", "Plus")):
+    for name, charge in (("iron", "2"), ("oxide", "-2"), ("iron_iii", "2")):
         (n,) = frags[name].findall("n")
-        assert n.get("Charge") == charge
-        (g,) = _symbols(frags[name])
-        assert g.get("SymbolType") == sym and g.find("represent") is None
-    assert sorted(texts) == ["2", "2", "3"]
+        assert n.get("Charge") == charge and not _symbols(frags[name])
+    assert sorted(texts) == ["+3", "2+", "2\u2212"]
     (ch2,) = frags["methylene"].findall("n")
     assert ch2.get("Radical") == "Singlet"
     assert [g.find("represent").get("object") for g in _symbols(frags["methylene"], "Electron")] == [ch2.get("id")] * 2
@@ -220,9 +219,9 @@ def test_charge_objects():
 
 def test_lewis_objects():
     """§13.4: every atom labeled; dots form: bonds Visible="no" and each shared column a free
-    LonePair; lines form: visible bonds, no shared pairs; assigned electrons free LonePair /
-    Electron symbols (a bound Electron becomes a radical in ChemDraw); oxidation states a free
-    sign plus digits, Charge unchanged."""
+    LonePair; lines form: visible bonds, no shared pairs; assigned pairs free LonePairs, an odd
+    assigned electron a filled oval (ChemDraw makes any Electron near a node a radical);
+    oxidation states free <t>s, Charge unchanged."""
     dots = _species_frags(exported("examples/m1_lewis_x1.0.yaml"))
     lines = _species_frags(exported("examples/m1_lewis_lines_x1.0.yaml"))
     for fd, fl in zip(dots, lines):
@@ -236,10 +235,13 @@ def test_lewis_objects():
     frags = dict(zip(load_spec(mr.REPO / "examples/m1_lewis_assigned_x1.0.yaml").species,
                      assigned.find("page").findall("fragment")))
     assert all(n.get("Radical") is None for f in frags.values() for n in f.findall("n"))
-    assert all(g.find("represent") is None for g in _symbols(frags["hcn"], "Electron"))
+    assert not _symbols(frags["hcn"], "Electron")
+    ovals = [g for g in frags["hcn"].findall("graphic") if g.get("GraphicType") == "Oval"]
+    assert len(ovals) == 4 and all(g.get("OvalType") == "Circle Filled" for g in ovals)
     assert all(n.get("Charge") is None for n in frags["methanol"].findall("n"))
-    signs = [g.get("SymbolType") for g in _symbols(frags["methanol"]) if g.get("SymbolType") in ("Plus", "Minus")]
-    assert sorted(signs) == ["Minus", "Minus", "Plus", "Plus", "Plus", "Plus"]  # C 2-, O 2-, four H +
+    assert not [g for g in _symbols(frags["methanol"]) if g.get("SymbolType") in ("Plus", "Minus")]
+    texts = sorted("".join(x.text for x in t.iter("s")) for t in assigned.find("page").findall("t"))
+    assert texts == sorted(["2\u2212"] * 3 + ["+"] * 6)  # CH3OH: C, O 2-, four H +; H2O: O 2-, two H +
 
 
 @needs_refs
@@ -258,11 +260,11 @@ def test_charges_lewis_reference_keeps_our_lewis(scale, tmp_path):
         for f in root.find("page").findall("fragment")[skip:]:
             pts_ = [_xy(n.get("p")) for n in f.findall("n")]
             o = (sum(q[0] for q in pts_) / len(pts_), sum(q[1] for q in pts_) / len(pts_))
-            for g in _symbols(f):
+            for g in f.findall("graphic"):
                 if g.get("SymbolType") == "LonePair":
                     b = _xy4(g.get("BoundingBox"))
                     pts_ += [b[:2], b[2:]]
-                elif g.get("SymbolType") == "Electron":
+                elif g.get("SymbolType") == "Electron" or g.get("GraphicType") == "Oval":  # odd electrons: ovals now
                     pts_.append(_xy(g.get("BoundingBox")))
             out.append([sub(q, o) for q in pts_])
         return out
@@ -1255,3 +1257,16 @@ def test_all_spec_round_trips(spec):
     else:
         got = sorted(Chem.MolToSmiles(m) for m in Chem.MolsFromCDXML(exported(spec)))
         assert got == sorted(_spec_smiles(mr.REPO / spec).values())
+
+
+@pytest.mark.parametrize("spec", ALL_SPECS)
+def test_signs_sit_nearest_their_atom(spec):
+    """ChemDraw binds each sign symbol to the nearest atom on open and resets its charge from it
+    (phase 4b gate), so every drawn charge is nearer its own atom than any other."""
+    from acs_chem_svg.spec import molecules
+    sp = load_spec(mr.REPO / spec)
+    for mol in molecules(sp, (mr.REPO / spec).parent):
+        d = Drawer(mol, load_preset(sp.preset))
+        for a in mol.atoms:
+            if d.charge_sign(a.idx) is not None:
+                assert d._nearest_atom(d.charge_center(a.idx)) == a.idx, (mol.name, a.id)

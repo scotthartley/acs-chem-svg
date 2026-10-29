@@ -37,7 +37,7 @@
       <b id="7" Z="5" B="3" E="4"/>
       <b id="8" Z="6" B="4" E="5" Order="2"/>
       <b id="9" Z="7" B="4" E="6"/>
-      <graphic id="10" BoundingBox="8.05 12.72 0.55 12.72" Z="8" GraphicType="Symbol" SymbolType="CirclePlus">
+      <graphic id="10" BoundingBox="22.98 15.44 15.48 15.44" Z="8" GraphicType="Symbol" SymbolType="CirclePlus">
         <represent attribute="Charge" object="4"/>
       </graphic>
       <graphic id="11" BoundingBox="34.61 19.73 27.11 19.73" Z="9" GraphicType="Symbol" SymbolType="CircleMinus">
@@ -116,51 +116,48 @@
         <represent attribute="Charge" object="38"/>
       </graphic>
     </fragment>
-    <fragment id="44" BoundingBox="239.63 10.26 258.10 22.92" Z="46">
+    <fragment id="44" BoundingBox="239.63 10.26 258.10 22.92" Z="45">
       <n id="45" p="241.83 19.15" Z="43" Element="26" NumHydrogens="0" Charge="2" NeedsClean="yes">
         <t p="238.77 22.73" BoundingBox="239.63 15.56 250.01 22.92" LabelJustification="Left" LabelAlignment="Left">
           <s font="21" size="10" color="0" face="96">Fe</s>
         </t>
       </n>
-      <graphic id="46" BoundingBox="256.13 12.89 248.63 12.89" Z="44" GraphicType="Symbol" SymbolType="Plus"/>
     </fragment>
-    <fragment id="48" BoundingBox="274.35 10.15 289.43 23.13" Z="50">
-      <n id="49" p="277.85 19.23" Z="47" Element="8" NumHydrogens="0" Charge="-2" NeedsClean="yes">
+    <fragment id="47" BoundingBox="274.35 10.15 289.43 23.13" Z="48">
+      <n id="48" p="277.85 19.23" Z="46" Element="8" NumHydrogens="0" Charge="-2" NeedsClean="yes">
         <t p="273.96 22.92" BoundingBox="274.35 15.55 281.34 23.13" LabelJustification="Left">
           <s font="21" size="10" color="0" face="96">O</s>
         </t>
       </n>
-      <graphic id="50" BoundingBox="287.47 12.78 279.97 12.78" Z="48" GraphicType="Symbol" SymbolType="Minus"/>
     </fragment>
-    <fragment id="52" BoundingBox="305.68 10.20 324.20 22.98" Z="54">
-      <n id="53" p="307.88 19.21" Z="51" Element="26" NumHydrogens="0" Charge="2" NeedsClean="yes">
+    <fragment id="50" BoundingBox="305.68 10.20 324.20 22.98" Z="51">
+      <n id="51" p="307.88 19.21" Z="49" Element="26" NumHydrogens="0" Charge="2" NeedsClean="yes">
         <t p="304.83 22.80" BoundingBox="305.68 15.63 316.07 22.98" LabelJustification="Left" LabelAlignment="Left">
           <s font="21" size="10" color="0" face="96">Fe</s>
         </t>
       </n>
-      <graphic id="54" BoundingBox="318.07 12.89 310.57 12.89" Z="52" GraphicType="Symbol" SymbolType="Plus"/>
     </fragment>
-    <fragment id="56" BoundingBox="340.20 9.08 358.06 24.10" Z="58">
-      <n id="57" p="343.37 16.60" Z="55" NumHydrogens="2" Radical="Singlet" NeedsClean="yes">
+    <fragment id="53" BoundingBox="340.20 9.08 358.06 24.10" Z="55">
+      <n id="54" p="343.37 16.60" Z="52" NumHydrogens="2" Radical="Singlet" NeedsClean="yes">
         <t p="339.76 20.28" BoundingBox="340.20 12.91 358.06 22.58" LabelJustification="Left" LabelAlignment="Left">
           <s font="21" size="10" color="0" face="96">CH2</s>
         </t>
       </n>
-      <graphic id="58" BoundingBox="343.38 9.98 335.88 9.98" Z="56" GraphicType="Symbol" SymbolType="Electron">
-        <represent attribute="Radical" object="57"/>
+      <graphic id="55" BoundingBox="343.38 9.98 335.88 9.98" Z="53" GraphicType="Symbol" SymbolType="Electron">
+        <represent attribute="Radical" object="54"/>
       </graphic>
-      <graphic id="59" BoundingBox="343.38 23.20 335.88 23.20" Z="57" GraphicType="Symbol" SymbolType="Electron">
-        <represent attribute="Radical" object="57"/>
+      <graphic id="56" BoundingBox="343.38 23.20 335.88 23.20" Z="54" GraphicType="Symbol" SymbolType="Electron">
+        <represent attribute="Radical" object="54"/>
       </graphic>
     </fragment>
-    <t id="47" p="249.80 15.53" BoundingBox="250.04 10.26 253.66 15.53" Z="45" LineHeight="auto">
-      <s font="21" size="7.5" color="0">2</s>
+    <t id="46" p="249.79 15.53" BoundingBox="250.02 10.26 258.12 15.53" Z="44" LineHeight="auto">
+      <s font="21" size="7.5" color="0">2+</s>
     </t>
-    <t id="51" p="281.14 15.42" BoundingBox="281.37 10.15 285.00 15.42" Z="49" LineHeight="auto">
-      <s font="21" size="7.5" color="0">2</s>
+    <t id="49" p="281.12 15.42" BoundingBox="281.36 10.15 289.45 15.42" Z="47" LineHeight="auto">
+      <s font="21" size="7.5" color="0">2−</s>
     </t>
-    <t id="55" p="320.35 15.45" BoundingBox="320.53 10.20 324.20 15.59" Z="53" LineHeight="auto">
-      <s font="21" size="7.5" color="0">3</s>
+    <t id="52" p="315.87 15.45" BoundingBox="316.20 10.20 324.09 15.59" Z="50" LineHeight="auto">
+      <s font="21" size="7.5" color="0">+3</s>
     </t>
   </page>
 </CDXML>

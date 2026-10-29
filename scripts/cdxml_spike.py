@@ -309,10 +309,11 @@ def attribute_diff(ours_root, theirs_root) -> list[str]:
         tg[tid.get(r.get("object")) if r is not None else None] = g
     for g in ours_root.iter("graphic"):
         if g.find("represent") is None or g.get("SymbolType") in DOTS:
-            continue  # an arrow's legacy <graphic>: scheme_diff; dots: mech_diff
+            continue  # an arrow's legacy <graphic>, ovals: scheme_diff / symbol_diff; dots: mech_diff
         t = tg.get(g.find("represent").get("object"))
         if t is None:
             ch.counts[("graphic", "<graphic>")]["removed"] += 1
+            ch.examples.setdefault(("graphic", "<graphic>"), f"{g.get('SymbolType')} on node {g.find('represent').get('object')}")
             continue
         ch.compare("graphic", g, t, skip=("id", "Z"))
     of = [f for f in ours_root.iter("fragment") if f.getparent().tag == "page"]
@@ -430,6 +431,8 @@ def scheme_diff(ours_root, theirs_root) -> list[str]:
                     lines.append(f"  step not in the re-save: {st}")
     for tag, key in (("arrow", "Head3D"), ("graphic", "BoundingBox")):
         for el in op.iter(tag):
+            if el.get("GraphicType") == "Oval":
+                continue  # ChemDraw rewrites an oval's BoundingBox: symbol_diff pairs them by Center3D
             t = next((x for x in tp.iter(tag) if x.get(key) and max(
                 abs(u - v) for u, v in zip(_floats(x.get(key)), _floats(el.get(key)))) < PAIR_TOL), None)
             if t is None:
@@ -682,6 +685,12 @@ def symbol_diff(ours_root, theirs_root) -> list[str]:
 
     def texts(root):
         return sorted("".join(x.text or "" for x in t.iter("s")) for t in root.find("page").findall("t"))
+    def ovals(root):  # ChemDraw rewrites an oval's BoundingBox and OvalType: pair by Center3D
+        return [_floats(g.get("Center3D"))[:2] for g in root.iter("graphic") if g.get("GraphicType") == "Oval"]
+    oa, ob = ovals(ours_root), ovals(theirs_root)
+    if oa or ob:
+        move = max((min(length(sub(p, q)) for q in ob) for p in oa), default=0.0) if ob else float("nan")
+        lines.append(f"  {'Oval':12} {'':5} ours {len(oa):3}  re-save {len(ob):3}  largest move {move:.3f}")
     ta, tb = texts(ours_root), texts(theirs_root)
     lines.append(f"  free texts: {'the same' if ta == tb else f'{ta} -> {tb}'}")
     return lines
