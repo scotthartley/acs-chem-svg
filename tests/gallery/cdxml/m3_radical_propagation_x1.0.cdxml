@@ -65,14 +65,14 @@
       <b id="21" Z="19" B="19" E="20"/>
     </fragment>
     <fragment id="22" BoundingBox="210.35 26.30 235.59 48.16" Z="29">
-      <n id="23" p="222.97 26.30" Z="21"/>
-      <n id="24" p="222.97 40.70" Z="22" Radical="Doublet"/>
-      <n id="25" p="235.44 47.90" Z="23"/>
-      <n id="26" p="210.50 47.90" Z="24"/>
+      <n id="23" p="210.50 26.56" Z="21"/>
+      <n id="24" p="222.97 33.76" Z="22" Radical="Doublet"/>
+      <n id="25" p="222.97 48.16" Z="23"/>
+      <n id="26" p="235.44 26.56" Z="24"/>
       <b id="27" Z="25" B="23" E="24"/>
       <b id="28" Z="26" B="24" E="25"/>
       <b id="29" Z="27" B="24" E="26"/>
-      <graphic id="30" BoundingBox="220.37 39.20 212.87 39.20" Z="28" GraphicType="Symbol" SymbolType="Electron">
+      <graphic id="30" BoundingBox="222.97 30.76 215.47 30.76" Z="28" GraphicType="Symbol" SymbolType="Electron">
         <represent attribute="Radical" object="24"/>
       </graphic>
     </fragment>

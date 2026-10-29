@@ -150,8 +150,8 @@
       </graphic>
     </fragment>
     <fragment id="45" BoundingBox="244.04 34.64 279.83 46.09" Z="50">
-      <n id="46" p="247.54 42.20" Z="44" Element="8" NumHydrogens="0" NeedsClean="yes">
-        <t p="243.65 45.88" BoundingBox="244.04 38.51 251.03 46.09" LabelJustification="Left">
+      <n id="46" p="276.34 42.20" Z="44" Element="8" NumHydrogens="0" NeedsClean="yes">
+        <t p="272.45 45.88" BoundingBox="272.84 38.51 279.83 46.09" LabelJustification="Left">
           <s font="21" size="10" color="0" face="96">O</s>
         </t>
       </n>
@@ -160,8 +160,8 @@
           <s font="21" size="10" color="0" face="96">N</s>
         </t>
       </n>
-      <n id="48" p="276.34 42.20" Z="46" Element="8" NumHydrogens="0" NeedsClean="yes">
-        <t p="272.45 45.88" BoundingBox="272.84 38.51 279.83 46.09" LabelJustification="Left">
+      <n id="48" p="247.54 42.20" Z="46" Element="8" NumHydrogens="0" NeedsClean="yes">
+        <t p="243.65 45.88" BoundingBox="244.04 38.51 251.03 46.09" LabelJustification="Left">
           <s font="21" size="10" color="0" face="96">O</s>
         </t>
       </n>

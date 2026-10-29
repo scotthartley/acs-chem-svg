@@ -5,7 +5,7 @@ preset: acs1996
 species:
   chloroform:   {smiles: "[Cl:2][C:1]([Cl:3])([Cl:4])[H:5]"}
   tbuo:         {smiles: "CC(C)(C)[O-:6]"}
-  anion:        {smiles: "[Cl:2][C-:1]([Cl:3])[Cl:4]", align: false}   # trigonal, not chloroform's tetrahedron
+  anion:        {smiles: "[Cl:2][C-:1]([Cl:3])[Cl:4]"}
   tbuoh:        {smiles: "CC(C)(C)[O:6][H:5]"}
   carbene:      {smiles: "[Cl:2][C:1][Cl:3]"}
   chloride:     {smiles: "[Cl-:4]"}

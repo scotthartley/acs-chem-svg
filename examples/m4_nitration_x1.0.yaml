@@ -7,7 +7,7 @@ species:
   sulfuric:     {smiles: "[O:5]=[S:6](=[O:7])([OH:8])[O:9][H:10]"}
   nitric_h:     {smiles: "[O:1]=[N+:2]([O-:3])[OH+:4][H:10]"}
   bisulfate:    {smiles: "[O:5]=[S:6](=[O:7])([OH:8])[O-:9]"}
-  nitronium:    {smiles: "[O:1]=[N+:2]=[O:3]", align: false}   # linear, not bent like nitric_h
+  nitronium:    {smiles: "[O:1]=[N+:2]=[O:3]"}
   water:        {smiles: "[H:10][OH:4]"}
   benzene:      {smiles: "[CH:11]1=[CH:12][CH:13]=[CH:14][CH:15]=[CH:16]1", orientation: {rotate: 180}}
   nitronium_2:  {smiles: "[O:1]=[N+:2]=[O:3]"}

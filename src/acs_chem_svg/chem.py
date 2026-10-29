@@ -232,25 +232,29 @@ def _off(angle: float, step: float, phase: float = 0.0) -> float:
     return abs(((angle - phase + step / 2) % step) - step / 2)
 
 
-def auto_rotation(mol: Chem.Mol, pts: list[Point]) -> float:
+def auto_rotation(mol: Chem.Mol, pts: list[Point], near: float | None = None) -> float:
     """Rotation (deg) in ChemDraw's habit: zigzag bonds at ±30°, rings with vertical sides
     (the most bonds at 30° + n·60°), then the most bonds on the 30° grid, then a layout
-    wider than tall, then the smallest turn. All-collinear molecules lie horizontal."""
+    wider than tall, then the smallest turn. All-collinear molecules lie horizontal.
+    `near`: only rotations within 30° of it (orient_to's fitted angle), the closest last."""
     angles = _bond_angles(mol, pts)
     if not angles:
-        return 0.0
+        return 0.0 if near is None else near
+    turn = (lambda r: _off(r, 360)) if near is None else (lambda r: _off(r - near, 360))
     if all(_off(a - angles[0], 180) < 0.5 for a in angles):
-        return -angles[0]
+        return min((-angles[0], 180 - angles[0]), key=turn)
     best = None
     for a in angles:
         for target in range(-180, 180, 30):
             r = target - a
+            if near is not None and turn(r) > 30 + 1e-6:
+                continue
             zig = sum(1 for b in angles if _off(b + r, 60, 30) < 0.5)
             grid = sum(1 for b in angles if _off(b + r, 30) < 0.5)
             rp = [rotate(p, r) for p in pts]
             w = max(p[0] for p in rp) - min(p[0] for p in rp)
             h = max(p[1] for p in rp) - min(p[1] for p in rp)
-            key = (-zig, -grid, w < h - 1e-6, _off(r, 360))
+            key = (-zig, -grid, w < h - 1e-6, turn(r))
             if best is None or key < best[0]:
                 best = (key, r)
     return best[1]
@@ -708,15 +712,29 @@ def _mcs_copy(mol: Chem.Mol) -> Chem.Mol:
 
 
 def correspondence(ref: Chem.Mol, mol: Chem.Mol) -> list[tuple[int, int]]:
-    """(reference atom idx, atom idx) pairs: shared atom-map numbers if at least two, else the
-    maximum common substructure (same elements and abbreviations, same bond orders with
-    aromatic rings matched as aromatic, complete rings only). Fewer than 3 atoms: none."""
+    """(reference atom idx, atom idx) pairs. With at least two shared atom-map numbers: a maximum
+    common substructure seeded by them (each shared map its own atom type, other atoms by element
+    or abbreviation, any bond order, rings only to rings, so cyclohexene's C=C still matches
+    norcarane's C–C and its unmapped CH2s count), or the map pairs alone if that MCS leaves a map
+    out. Else the maximum common substructure (same elements and abbreviations, same bond orders
+    with aromatic rings matched as aromatic, complete rings only). Fewer than 3 atoms: none."""
     maps_r = {a.GetAtomMapNum(): a.GetIdx() for a in ref.GetAtoms() if a.GetAtomMapNum()}
     maps_m = {a.GetAtomMapNum(): a.GetIdx() for a in mol.GetAtoms() if a.GetAtomMapNum()}
     common = sorted(maps_r.keys() & maps_m.keys())
-    if len(common) >= 2:
-        return [(maps_r[k], maps_m[k]) for k in common]
     r, m = _mcs_copy(ref), _mcs_copy(mol)
+    if len(common) >= 2:
+        by_map = [(maps_r[k], maps_m[k]) for k in common]
+        for k in common:
+            r.GetAtomWithIdx(maps_r[k]).SetIsotope(1000 + k)
+            m.GetAtomWithIdx(maps_m[k]).SetIsotope(1000 + k)
+        res = rdFMCS.FindMCS([r, m], atomCompare=rdFMCS.AtomCompare.CompareIsotopes,
+                             bondCompare=rdFMCS.BondCompare.CompareAny, ringMatchesRingOnly=True,
+                             timeout=MCS_TIMEOUT)
+        if res.numAtoms <= len(common):
+            return by_map
+        patt = Chem.MolFromSmarts(res.smartsString)
+        pairs = list(zip(r.GetSubstructMatch(patt), m.GetSubstructMatch(patt)))
+        return pairs if set(by_map) <= set(pairs) else by_map
     res = rdFMCS.FindMCS([r, m], atomCompare=rdFMCS.AtomCompare.CompareIsotopes,
                          bondCompare=rdFMCS.BondCompare.CompareOrder, ringMatchesRingOnly=True,
                          completeRingsOnly=True, timeout=MCS_TIMEOUT)
@@ -766,10 +784,11 @@ def stable_core(ref: Chem.Mol, mol: Chem.Mol, pairs: list[tuple[int, int]]) -> l
     """The matched atoms worth pinning: those whose neighbor count is unchanged, and of them only
     the largest connected group. An atom that changes its neighbors (the sp3 C of a sigma
     complex becoming sp2 in nitrobenzene) and what hangs off it are laid out afresh, so their
-    bonds get proper angles. All pairs if that leaves fewer than 3 atoms."""
+    bonds get proper angles. None if that leaves fewer than 3 atoms (prepare then orients
+    the species' own layout instead of pinning it)."""
     keep = {m: r for r, m in pairs if ref.GetAtomWithIdx(r).GetDegree() == mol.GetAtomWithIdx(m).GetDegree()}
     if len(keep) == len(pairs):
-        return pairs
+        return pairs if len(pairs) >= 3 else []
     groups, seen = [], set()
     for start in keep:
         if start in seen:
@@ -785,11 +804,13 @@ def stable_core(ref: Chem.Mol, mol: Chem.Mol, pairs: list[tuple[int, int]]) -> l
         groups.append(group)
     best = max(groups, key=len, default=set())
     if len(best) < 3:
-        return pairs
+        return []
     return [(r, m) for r, m in pairs if m in best]
 
 
 LINEAR_TOL = 10.0  # degrees an sp atom may deviate from 180° after alignment (a choice, not a style value)
+BOND_TOL = 0.15  # fraction a pinned layout's bond may differ from its median (a choice, not a style value)
+ANGLE_TOL = 15.0  # degrees a pinned acyclic 2- or 3-bond atom's narrowest gap may fall below 120° (a choice)
 
 
 def bent_linear_atoms(mol: Chem.Mol) -> list[int]:
@@ -811,15 +832,95 @@ def bent_linear_atoms(mol: Chem.Mol) -> list[int]:
     return out
 
 
+def uneven_bonds(mol: Chem.Mol) -> list[int]:
+    """Bonds longer or shorter than the median by more than BOND_TOL (a ring closed across
+    pinned atoms, as in perkin's tetrahedral intermediate)."""
+    pts = _coords(mol)
+    lengths = [math.dist(pts[b.GetBeginAtomIdx()], pts[b.GetEndAtomIdx()]) for b in mol.GetBonds()]
+    if not lengths:
+        return []
+    med = statistics.median(lengths)
+    return [i for i, d in enumerate(lengths) if abs(d / med - 1) > BOND_TOL]
+
+
+def crowded_atoms(mol: Chem.Mol) -> list[int]:
+    """Acyclic atoms with 2 or 3 neighbors whose narrowest angle between bonds is under
+    120° - ANGLE_TOL (a trigonal anion pinned to a tetrahedral drawing's 60° gap)."""
+    pts = _coords(mol)
+    ring = mol.GetRingInfo()
+    out = []
+    for a in mol.GetAtoms():
+        if a.GetDegree() not in (2, 3) or ring.NumAtomRings(a.GetIdx()):
+            continue
+        p = pts[a.GetIdx()]
+        dirs = sorted(math.degrees(math.atan2(-(pts[n.GetIdx()][1] - p[1]), pts[n.GetIdx()][0] - p[0])) % 360
+                      for n in a.GetNeighbors())
+        gaps = [b - a_ for a_, b in zip(dirs, dirs[1:])] + [360 - dirs[-1] + dirs[0]]
+        if min(gaps) < 120 - ANGLE_TOL:
+            out.append(a.GetIdx())
+    return out
+
+
+def _fit_angle(pts: list[Point], ref_pts: list[Point], pairs) -> tuple[float, float]:
+    """(rotation in deg, residual): the rigid rotation that best carries the matched atoms of
+    `pts` onto `ref_pts` (2D Kabsch on centered points; screen frame, as geometry.rotate)."""
+    p = [pts[m] for _, m in pairs]
+    q = [ref_pts[r] for r, _ in pairs]
+    cp = (statistics.fmean(x for x, _ in p), statistics.fmean(y for _, y in p))
+    cq = (statistics.fmean(x for x, _ in q), statistics.fmean(y for _, y in q))
+    p = [(x - cp[0], -(y - cp[1])) for x, y in p]  # y up, so the angle is counter-clockwise
+    q = [(x - cq[0], -(y - cq[1])) for x, y in q]
+    dot = sum(a[0] * b[0] + a[1] * b[1] for a, b in zip(p, q))
+    cross = sum(a[0] * b[1] - a[1] * b[0] for a, b in zip(p, q))
+    t = math.degrees(math.atan2(cross, dot))
+    k = math.cos(math.radians(t))
+    s_ = math.sin(math.radians(t))
+    res = sum((a[0] * k - a[1] * s_ - b[0]) ** 2 + (a[0] * s_ + a[1] * k - b[1]) ** 2 for a, b in zip(p, q))
+    return t, res
+
+
+def _collinear(pts: list[Point]) -> bool:
+    if len(pts) < 3:
+        return True
+    a = pts[0]
+    b = max(pts, key=lambda p: math.dist(p, a))
+    d = math.dist(a, b)
+    return d < 1e-9 or all(abs((b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0])) / d < 0.05 * d
+                           for p in pts)
+
+
+def orient_to(mol: Chem.Mol, ref: Chem.Mol, pairs: list[tuple[int, int]], relayout: bool = True) -> None:
+    """Orient mode: the species' own layout (CoordGen, unless `relayout` is off: a molfile keeps
+    its coordinates), turned (and mirrored, when at least 3 non-collinear atoms are matched and
+    `relayout` is on) to best fit the matched atoms onto the reference's, then snapped to the
+    best auto_rotation within 30° of that fit, so bonds sit on ChemDraw's grid and still point
+    the way the reactant's did. Nothing is pinned."""
+    if relayout:
+        layout_2d(mol)
+    pts, ref_pts = _coords(mol), _coords(ref)
+    fits = [(pts, *_fit_angle(pts, ref_pts, pairs))]
+    if relayout and not _collinear([ref_pts[r] for r, _ in pairs]):
+        mirrored = [(-x, y) for x, y in pts]
+        fits.append((mirrored, *_fit_angle(mirrored, ref_pts, pairs)))
+    pts, t, _ = min(fits, key=lambda f: f[2])
+    r = auto_rotation(mol, pts, near=t)
+    _set_coords(mol, [rotate(p, r) for p in pts])
+
+
 def prepare(mol: Chem.Mol, name: str, bond_length: float, abbreviate: list[str] | None = None,
             from_file: bool = False, rotate_deg: float | str | None = None, flip_h: bool = False,
             flip_v: bool = False, refs: list[Prepared] | None = None, chair: ChairSpec | None = None) -> Prepared:
-    """Condense abbreviations, then lay out: aligned to the best of `refs` (most matched atoms)
-    when one shares at least 3 atoms, else on its own (SMILES: CoordGen + orientation, default
-    auto; molfile: its own layout, oriented as asked). An alignment that bends an sp atom
-    (nitronium pinned to bent HNO3 atoms) is dropped for the species' own layout. A `chair` species
-    is laid out by chair.layout and aligns to nothing; nothing aligns to a chair either (its
-    pseudo-3D coordinates would bend a flat drawing)."""
+    """Condense abbreviations, then lay out against the best of `refs`: the one whose stable
+    core (stable_core) is largest, then with the most matched atoms. Pin mode: with a core of at
+    least 3 atoms, those atoms keep the reference's coordinates (align_coords); with no core, all
+    matched atoms (≥ 3) do, which suits a trigonal center turning tetrahedral (acetone to the
+    cyanohydrin alkoxide). Either is rejected if it bends an sp atom (nitronium on bent HNO3
+    atoms), stretches a bond (a ring closed across pinned atoms) or crowds an acyclic atom's
+    bonds (a trigonal anion on chloroform's tetrahedron). Otherwise orient mode (orient_to): the species' own layout, turned the way the
+    matched atoms point in the reference; nothing pinned. No reference: its own layout (SMILES:
+    CoordGen + orientation, default auto; molfile: its own layout, oriented as asked). A `chair`
+    species is laid out by chair.layout and aligns to nothing; nothing aligns to a chair either
+    (its pseudo-3D coordinates would bend a flat drawing)."""
     mol = condense(mol, abbreviate, name)
     if chair is not None:
         from . import chair as chair_mod
@@ -831,14 +932,23 @@ def prepare(mol: Chem.Mol, name: str, bond_length: float, abbreviate: list[str] 
         if ref.chair_ring is not None:
             continue
         pairs = correspondence(ref.mol, mol)
-        if pairs and (best is None or len(pairs) > len(best[1])):
-            best = (ref, pairs)
+        if not pairs:
+            continue
+        core = stable_core(ref.mol, mol, pairs)
+        key = (len(core) >= 3, len(core), len(pairs))
+        if best is None or key > best[0]:
+            best = (key, ref, pairs, core)
     if best:
-        ref, pairs = best
-        pairs = stable_core(ref.mol, mol, pairs)  # `matched` holds the pinned atoms
-        align_coords(mol, ref.mol, pairs)
-        if not bent_linear_atoms(mol):
-            return Prepared(mol, name, bond_length, ref.scale, ref.name, pairs)
+        _, ref, pairs, core = best
+        for pins in [core] + ([pairs] if not core and len(pairs) >= 3 else []):
+            if not pins:
+                continue
+            pinned = Chem.Mol(mol)
+            align_coords(pinned, ref.mol, pins)
+            if not (bent_linear_atoms(pinned) or uneven_bonds(pinned) or crowded_atoms(pinned)):
+                return Prepared(pinned, name, bond_length, ref.scale, ref.name, pins)  # `matched`: the pinned atoms
+        orient_to(mol, ref.mol, pairs, relayout=not from_file)
+        return Prepared(mol, name, bond_length, layout_scale(mol, bond_length), ref.name)
     if from_file:
         _orient_molfile(mol, rotate_deg or 0.0, flip_h, flip_v)
     else:

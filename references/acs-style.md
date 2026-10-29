@@ -692,7 +692,7 @@ Module `src/acs_chem_svg/draw_mol.py` unless noted.
 | Rich text: auto sub/superscripts, italics, escapes; consecutive runs; kerning within runs | §3.2 | `richtext.parse`, `richtext.layout_line` |
 | Line pitch | §3.2 | `richtext.line_pitch` (fitted subscript increments, Open 9) |
 | Abbreviations (OMe, OBn, …) | §3.3 notes, §2.1 | `chem.condense` (rdAbbreviations on an aromatic copy, collapsed on the Kekulé mol); `draw_mol.layout_abbreviation` |
-| Products aligned to their reactant | — (design.md §10) | `chem.prepare` / `chem.correspondence` (atom maps, else MCS) / `chem.align_coords` (CoordGen, else RDKit matching depiction, exact) |
+| Products aligned to their reactant | — (design.md §10) | `chem.prepare` / `chem.correspondence` (MCS seeded by atom maps, else MCS) / pin: `chem.stable_core` + `chem.align_coords` (CoordGen, else RDKit matching depiction, exact) / orient: `chem.orient_to` (own layout, fitted rotation snapped to the 30° grid) |
 | Row layout: vertical rule, gaps, plus, conditions, arrow length, numbers | §3.3 | `layout.build_scheme` (gaps on `Group.ink_bbox`, the exact stroke box) |
 | Overlap and width checks | design.md §6.4 | `geometry_checks.check_scheme`, `scripts/validate.py` |
 | Comparison with ChemDraw | — | `tests/test_scheme_vs_chemdraw.py` (exact, 0.1 pt), `scripts/compare.py --spec` (approx, reported) |

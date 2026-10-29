@@ -610,3 +610,30 @@ removed renders pixel-identical to the approved `m4_nitration_x1.0`. Inbox triag
 - **Arrow order is part of the layout.** In the SNAr example the excursion took the space the
   N=O → O⁻ arrow needed, and no override cleared it. Listing the N=O arrow first did. The ×0.6
   copy was left out: at that size every candidate in the bracket clashes.
+
+
+## 2026-10-29 (scheme alignment: pin or orient)
+
+- **Triaged from issues/inbox.md: 7,7-dichloronorcarane drawn tilted.** `chem.prepare` picked
+  the carbene over cyclohexene as the reference: correspondence counted only the shared maps (3
+  vs 2), so cyclohexene's unmapped CH2s didn't count. With no unchanged core of 3 atoms,
+  `stable_core` pinned every pair and the product took the carbene's bent Cl–C–Cl. Fixed three
+  ways: the map-seeded MCS counts unmapped atoms; the reference is the one with the largest
+  stable core; and a pinned layout that distorts the product is replaced by its own layout,
+  turned the way the shared atoms point in the reference (orient mode, `chem.orient_to`).
+  `test_norcarane_aligns_to_cyclohexene`, `test_orient_mode`.
+- **Pinning every pair isn't always wrong.** Dropping that fallback outright turned the
+  cyanohydrin alkoxide lopsided: acetone's O and methyls carry over to a tetrahedral center
+  unchanged. It stays as a second try after the core, kept only if no sp atom bends, no bond
+  strays > 15 % from the median and no acyclic 2- or 3-bond atom has a gap under 105°
+  (`chem.crowded_atoms`, which is what the trigonal-from-tetrahedral cases fail).
+- **Positions don't always carry over; orientation does.** The same pin-everything fallback is
+  why the trichloromethyl anion, the tBu radical and nitronium needed `align: false`; they
+  don't now. A pinned layout that bends an sp atom or stretches a bond (> 15 % off the median)
+  also falls back to orient mode.
+- **Not every workaround should go.** Perkin's tetrahedral intermediate, oriented to the
+  alkoxide, turned the next intermediate with it and crossed its curved arrows; it keeps
+  `align: false`. Check the downstream species, not just the one that changed.
+- **A faithful orientation can still look lopsided.** The row-1 dichlorocarbene, oriented to
+  the anion it came from, keeps one C–Cl vertical (the leaving Cl was the third arm); the snap
+  only looks within 30° of the fitted angle, so it doesn't swing to the symmetric V.

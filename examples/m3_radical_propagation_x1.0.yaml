@@ -6,7 +6,7 @@ species:
   br:        {smiles: "[Br:1]", show_lone_pairs: [1]}
   isobutane: {smiles: "[CH3:2][C:3]([CH3:4])([CH3:5])[H:6]"}
   hbr:       {smiles: "[H:6][Br:1]"}
-  tbu:       {smiles: "[CH3:2][C:3]([CH3:4])[CH3:5]", align: false}
+  tbu:       {smiles: "[CH3:2][C:3]([CH3:4])[CH3:5]"}
 steps:
   - from: [br, isobutane]
     to: [hbr, tbu]

@@ -801,7 +801,7 @@ def molecules(spec: Spec, base_dir: Path) -> list[chem.Molecule]:
 
 def reference_for(spec: Spec, name: str) -> str | None:
     """The species `name` takes its orientation from: align_to, else the step source it shares
-    the most atoms with (chem.best_reference), else none (its own layout)."""
+    the most atoms with (chem.prepare picks among the sources), else none (its own layout)."""
     sp = spec.species[name]
     if sp.align_to:
         return sp.align_to

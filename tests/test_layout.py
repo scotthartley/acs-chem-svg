@@ -139,6 +139,42 @@ def test_alignment_holds_matched_atoms():
         "ester": None, "bnbr": None, "ether": "ester", "alcohol": "ether", "aldehyde": "alcohol"}
 
 
+def _bonds_on_grid(mol) -> bool:
+    return all(chem._off(a, 30) < 0.5 for a in chem._bond_angles(mol, chem._coords(mol)))
+
+
+def test_correspondence_seeds_mcs_with_maps():
+    """Cyclohexene -> norcarane: the shared maps 7, 8 plus the four unmapped ring CH2s."""
+    ref = chem.parse_smiles("[CH:7]1=[CH:8]CCCC1")
+    mol = chem.parse_smiles("[Cl:2][C:1]1([Cl:3])[CH:7]2CCCC[CH:8]12")
+    pairs = chem.correspondence(ref, mol)
+    assert len(pairs) == 6
+    maps = {(ref.GetAtomWithIdx(r).GetAtomMapNum(), mol.GetAtomWithIdx(m).GetAtomMapNum()) for r, m in pairs}
+    assert {(7, 7), (8, 8)} <= maps
+
+
+def test_norcarane_aligns_to_cyclohexene():
+    """inbox 2026-10-29: norcarane was pinned to the carbene's bent Cl–C–Cl and drawn tilted."""
+    p = scheme_prepared(load_spec(EX / "m4_cyclopropanation_x1.0.yaml"), EX)["norcarane"]
+    assert p.aligned_to == "cyclohexene"
+    assert len(p.matched) >= 4
+    ring = next(r for r in p.mol.GetRingInfo().BondRings() if len(r) == 6)
+    angles = chem._bond_angles(p.mol, chem._coords(p.mol))
+    assert all(chem._off(angles[b], 30) < 0.5 for b in ring)
+
+
+@pytest.mark.parametrize("example, name, ref", [
+    ("m3_radical_propagation_x1.0", "tbu", "isobutane"),
+    ("m4_cyclopropanation_x1.0", "anion", "chloroform"),
+])
+def test_orient_mode(example, name, ref):
+    """No unchanged core of 3 atoms: own layout turned to the reference, nothing pinned."""
+    p = scheme_prepared(load_spec(EX / f"{example}.yaml"), EX)[name]
+    assert p.aligned_to == ref and p.matched == []
+    assert chem.uneven_bonds(p.mol) == []
+    assert _bonds_on_grid(p.mol)
+
+
 def test_alignment_opt_out():
     spec = Spec.model_validate({"species": {"a": {"smiles": "OCc1ccccc1"},
                                             "b": {"smiles": "O=Cc1ccccc1", "align": False}},

@@ -80,12 +80,12 @@ def test_the_reported_bow_reproduces_the_default():
         assert [(a.p0, a.p3, a.bow) for a in again.curved] == [(a.p0, a.p3, a.bow) for a in lay.curved], name
 
 
-def test_an_alignment_that_bends_nitronium_is_dropped():
+def test_an_alignment_that_bends_nitronium_only_orients():
     # r0 nitration (x0.8): nitronium aligned to bent HNO3 atoms was drawn bent
     from acs_chem_svg import chem
     ref = chem.prepare(chem.parse_smiles("[O:1]=[N+:2]([O-:3])[OH+:4][H:10]"), "nitric_h", 14.4)
     p = chem.prepare(chem.parse_smiles("[O:1]=[N+:2]=[O:3]"), "nitronium", 14.4, refs=[ref])
-    assert p.aligned_to is None
+    assert p.aligned_to == "nitric_h" and p.matched == []  # orient mode: own layout, nothing pinned
     assert chem.bent_linear_atoms(p.mol) == []
     pinned = Chem.Mol(chem.parse_smiles("[O:1]=[N+:2]=[O:3]"))
     chem.align_coords(pinned, ref.mol, chem.correspondence(ref.mol, pinned))
