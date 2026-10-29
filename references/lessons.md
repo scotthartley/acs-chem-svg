@@ -577,3 +577,36 @@ removed renders pixel-identical to the approved `m4_nitration_x1.0`. Inbox triag
   must not be a symbol: digits and oxidation states became text, odd Lewis electrons ovals. The
   first gate showed this; a file that RDKit reads correctly before ChemDraw opens it proves
   nothing.
+
+## 2026-10-29 (inbox: short curved arrows in tight spots, and E2 on a chair)
+
+- **Triaged from issues/inbox.md, two items with one cause.** The Meisenheimer middle
+  contributor's `lp(C⁻) -> between(C, N)` came out as a bare arrowhead. This is the 2026-10-28
+  nitro junction again. An E2 on a chair (`bond(3-4) -> between(2,3)`) could not ship: its
+  pass-through crossed the C3–C4 ring bond. The planner sized every hook from its chord and
+  searched only ±20° around one landing. A chord of a few pt left it no candidate that both
+  showed a stroke and found open space.
+- **A threshold has to catch something.** The planned 1.5 head lengths of visible stroke caught
+  none of the bad arrows (they showed 1.51–1.72), and at 1.75 the planner found a variant at
+  1.77 that looked just as bad. Survey every arrow's number first (stroke shown, apex), then
+  pick a value from the gap. The user chose 2.0. The approved ring hooks at ×0.6 (1.82) are
+  exempt: RING_SLIDE is their own stroke rule.
+- **Equal handles on a near-zero chord give a needle.** When the exit and the landing are
+  nearly antiparallel, the loop is a thin teardrop. They must open at least 60°
+  (EXCURSION_OPEN). The reach, 0.65 bond lengths off the chord, was picked from renders at
+  0.5, 0.65 and 0.8.
+- **Rank fallbacks after flips, not only after picks.** The excursion with the default bow first
+  beat the user-approved pass-through, which needed the flipped bow. Excursions now add
+  EXCURSION_RANK to the flip count, so every default candidate, flipped or not, comes first.
+- **The first fix was legal but not natural** (user review of the gallery). The chair
+  pass-through, which now validated, looped back on itself through two bonds. A chemist draws one
+  arc of about 120° from the C–H across the ring bond onto the near side of C2–C3. That arc now
+  comes first. Its tip slides out along C2–C3, where the angle to the ring bond opens, and only
+  the stroke may cross the ring bond, not the head. The Meisenheimer loop showed a stroke, but
+  its tail left the pair at an angle. A small arc that leaves straight off the pair, with its tip
+  slid along C–N toward N, reads better. These slid arcs come before the open-space loops, and a
+  lone pair's loop keeps the pair's direction. Show the whole drawing, not only the number the
+  rule was written for.
+- **Arrow order is part of the layout.** In the SNAr example the excursion took the space the
+  N=O → O⁻ arrow needed, and no override cleared it. Listing the N=O arrow first did. The ×0.6
+  copy was left out: at that size every candidate in the bracket clashes.

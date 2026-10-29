@@ -211,6 +211,59 @@ def test_ring_hook_inside_the_ring(stem, index):
     assert not a.crosses and check_mechanism(lay) == []
 
 
+
+@pytest.mark.parametrize("stem", ["m4_snar_x1.0", "m4_snar_x0.8"])
+def test_short_hook_shows_its_stroke(stem):
+    # inbox 2026-10-29: lp(C⁻) -> C-N in the Meisenheimer middle contributor. Its chord is a few
+    # pt, so a chord-sized hook was a bare head. Its tip slides along the bond away from C, the
+    # stroke leaves along the pair's direction and shows at least MIN_STROKE head lengths
+    # (user decisions 2026-10-29)
+    from acs_chem_svg.mechanism import MIN_STROKE, stroke_shown
+    lay = scheme(stem)
+    pr = lay.preset
+    a = next(x for x in lay.curved if x.step == 2 and x.spec.from_ == "lp(4)")
+    c4, n8 = (_map_point(lay, "sigma_b", m) for m in (4, 8))
+    assert stroke_shown(a) >= MIN_STROKE * pr.curved_arrow.head_length
+    assert angle_deg(sub(a.c1, a.p0), sub(a.p0, c4)) < 10  # straight off the pair
+    u = unit(sub(n8, c4))
+    assert dot(sub(a.tip, c4), u) > 0.5 * length(sub(n8, c4))  # past the midpoint, toward N
+    assert check_mechanism(lay) == []
+
+
+def test_chair_e2_hook_crosses_only_the_ring():
+    # inbox 2026-10-29 and user review: the axial C3-H -> C2-C3 arrow on a chair comes down in
+    # one arc of about 120°, across the C3-C4 ring bond (between its source and target bonds: not
+    # a clash), onto the near side of C2-C3. It doesn't pass through C2-C3, nor cross the
+    # equatorial C3-H, and its head clears the ring bond
+    lay = scheme("m3_e2_chair_x1.0")
+    a = next(x for x in lay.curved if x.step == 1 and x.index == 1)
+    sp = lay.species["bromide_chair"]
+    mol = sp.mol
+    pos = {at.idx: add(at.p, sp.offset) for at in mol.atoms}
+    c2, c3 = (next(at.idx for at in mol.atoms if at.map == m) for m in (2, 3))
+    assert len(a.crosses) == 1
+    hub, end = a.crosses[0]
+    assert length(sub(hub, pos[c3])) < 1e-6
+    nbrs = [b.b if b.a == c3 else b.a for b in mol.bonds if c3 in (b.a, b.b)]
+    toward = min(nbrs, key=lambda i: angle_deg(sub(end, hub), sub(pos[i], hub)))
+    assert mol.atoms[toward].element == "C" and toward != c2 and mol.atoms[toward].map is None
+    n = perp(unit(sub(pos[c2], pos[c3])))
+    assert (dot(sub(a.tip, pos[c3]), n) > 0) == (dot(sub(a.p0, pos[c3]), n) > 0)  # the tail's side
+    assert angle_deg(sub(a.c1, a.p0), sub(a.p3, a.c2)) == pytest.approx(120, abs=30)
+    assert check_mechanism(lay) == []
+
+
+@pytest.mark.parametrize("d,t1,reach", [((0.0, -1.0), (0.0, 1.0), 6.0), ((0.6, -0.8), (-0.6, 0.8), 9.0),
+                                        ((1.0, 0.0), (0.0, 1.0), 4.0)])
+def test_excursion_controls_reach(d, t1, reach):
+    # the apex stands `reach` off the chord; the ends leave along d and arrive along t1
+    from acs_chem_svg.mechanism import apex, excursion_controls
+    tail, end = (0.0, 0.0), (3.0, 0.5)
+    c1, c2 = excursion_controls(tail, d, end, t1, reach)
+    assert apex(tail, c1, c2, end) == pytest.approx(reach, abs=0.01)
+    assert angle_deg(sub(c1, tail), d) < 1e-6 and angle_deg(sub(end, c2), t1) < 1e-6
+
+
 def test_bond_tail_at_the_drawn_bond_midpoint():
     # H-C -> C (radical propagation, item 3): the H label shortens the drawn bond; the tail sits
     # beside the middle of what is drawn, and the loop stays compact

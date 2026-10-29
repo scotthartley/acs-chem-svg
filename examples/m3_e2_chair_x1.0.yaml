@@ -1,0 +1,14 @@
+preset: acs1996
+species:
+  hydroxide: {smiles: "[H][O-:1]"}
+  bromide_chair: {smiles: "[H:4][CH:3]1CCCC[CH:2]1[Br:5]", chair: {axial: [5, 4]}}
+  water: {smiles: "[H:4][O:1][H]"}
+  cyclohexene: {smiles: "[CH:3]1=[CH:2]CCCC1"}
+  bromide: {smiles: "[Br-:5]"}
+steps:
+  - from: [hydroxide, bromide_chair]
+    to: [water, cyclohexene, bromide]
+    arrows:
+      - {from: "lp(1)", to: "between(1,4)"}
+      - {from: "bond(3-4)", to: "between(2,3)"}
+      - {from: "bond(2-5)", to: "atom(5)"}

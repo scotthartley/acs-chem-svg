@@ -16,7 +16,7 @@ Cases:
 - equilibrium_x<k>.png, arrows_large_x1.0.png: our equilibrium, forward and ↔ arrows on
   ChemDraw's, with the captions (no structures: the references' "B" is a stand-in atom).
 - m4_*.png: examples/m4_*.yaml with our own layout (m4_nitration_x<k>: the M4 acceptance;
-  m4_perkin_x1.0: omit / over).
+  m4_perkin_x1.0: omit / over; m4_snar_x<k>: a short lone-pair hook as an excursion).
 
 - cdxml/m1_smiles_x1.0.cdxml, cdxml/m1_charges_x1.0.cdxml, cdxml/m2_scheme_basic_x1.0.cdxml,
   cdxml/m2_equilibrium_x1.0.cdxml, cdxml/m3_sn2_x1.0.cdxml, cdxml/m3_radical_propagation_x1.0.cdxml,
@@ -72,13 +72,13 @@ SPECS = ["examples/m1_smiles_x1.0.yaml", "examples/m1_smiles_x0.8.yaml", "exampl
          "examples/m2_suzuki_x1.0.yaml", "examples/m2_stages_x1.0.yaml", "examples/m2_stages3_x1.0.yaml",
          "examples/m2_equilibrium_x1.0.yaml", "examples/m2_equilibrium_x0.8.yaml", "examples/m2_equilibrium_x0.6.yaml",
          "examples/m3_sn2_x1.0.yaml", "examples/m3_sn2_x0.8.yaml", "examples/m3_sn2_x0.6.yaml",
-         "examples/m3_e2_x1.0.yaml", "examples/m3_carbonyl_addition_x1.0.yaml",
+         "examples/m3_e2_x1.0.yaml", "examples/m3_e2_chair_x1.0.yaml", "examples/m3_carbonyl_addition_x1.0.yaml",
          "examples/m3_radical_initiation_x1.0.yaml", "examples/m3_radical_propagation_x1.0.yaml",
          "examples/m3_radical_propagation_2_x1.0.yaml", "examples/m3_proton_transfer_x1.0.yaml",
          "examples/m4_nitration_x1.0.yaml", "examples/m4_nitration_x0.8.yaml", "examples/m4_nitration_x0.6.yaml",
          "examples/m4_resonance_x1.0.yaml", "examples/m4_resonance_x0.8.yaml", "examples/m4_resonance_x0.6.yaml",
          "examples/m4_wrap_x1.0.yaml", "examples/m4_wrap_x0.8.yaml", "examples/m4_wrap_x0.6.yaml",
-         "examples/m4_perkin_x1.0.yaml",
+         "examples/m4_perkin_x1.0.yaml", "examples/m4_snar_x1.0.yaml", "examples/m4_snar_x0.8.yaml",
          "examples/benchmarks/nitration_accepted.yaml"]
 
 

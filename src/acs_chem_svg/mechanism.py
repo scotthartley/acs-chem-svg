@@ -49,11 +49,22 @@ Hand-placed (§4.2, round placement defaults):
     tail lies inside the angle between the two bonds (cramped: C-H -> C-C), the hook passes
     through the target bond and curls back onto it from the far side, its head turned
     CROSS_TILT toward the shared atom, handles at least CROSS_REACH bond lengths; that
-    crossing isn't a clash (MechArrow.crosses). A hook between two bonds of one ring
+    crossing isn't a clash (MechArrow.crosses). On a chair a ring bond lies in that angle
+    (Planner.swept: the C3-C4 bond of an E2): the hook first lands on the near side, one arc
+    across that ring bond with its tip slid RING_SLIDE out along the target bond; the stroke may
+    cross it, the head may not. The pass-through, crossing it too, is the fallback. When the
+    best hook still costs something (a clash, or a stroke too short to show), the planner tries,
+    after every default candidate, slid arcs (the tip slid RING_SLIDE away from the shared atom,
+    handles at least SLID_REACH), then excursions: the exit turned up to ±75° (EXCURSION_SCAN;
+    a lone pair's stays on the pair's direction), the landing EXCURSION_LAND, opening at least
+    EXCURSION_OPEN, with equal handles scaled so the apex stands EXCURSION_REACH bond lengths
+    off the chord (excursion_controls; user decisions 2026-10-29). A hook between two bonds of one ring
     (ring_center) bows into the ring: leaving one bond's inward normal and landing across the
     next is a 120° turn, drawn as a circular arc (no HOOK_REACH minimum), with both ends slid
     RING_SLIDE bond lengths along their bonds away from the shared atom, so a small preset's
     head still leaves a stroke showing (user decision 2026-10-27).
+  Every arrow whose stroke shows less than MIN_STROKE head lengths outside its head
+  (stroke_shown) costs like a miss; ring hooks are exempt (RING_SLIDE is their rule).
   When the default clashes, the planner also tries h (a hook: its handles) × 0.75 and × 0.5
   (SOFTER), and tips FARTHER out. A head that doesn't aim (aims: into a labeled target's ink
   box past its dots and within MISS_LABEL_DEG of its center, else within MISS_DEG of the
@@ -94,6 +105,16 @@ CROSS_REACH = 0.9  # a cramped hook's handles (through the bond and back): at le
 RING_SLIDE = 0.25  # a ring hook's ends move this × bond_length along their bonds, away from the shared atom (user choice 2026-10-27)
 RING_SIZE = 8  # ring_center looks for rings of at most this many atoms
 CROSS_TILT = 30.0  # degrees its head turns from the target bond's normal toward the shared atom (user choice 2026-10-26, option D)
+EXCURSION_REACH = 0.65  # an excursion's apex stands at least this × bond_length off its chord (user decision 2026-10-29; unmeasured)
+EXCURSION_GROW = (0.0, 0.15, 0.3)  # added to EXCURSION_REACH, in rank order
+EXCURSION_SCAN = (0.0, 15.0, -15.0, 30.0, -30.0, 45.0, -45.0, 60.0, -60.0, 75.0, -75.0)  # exit directions, degrees off the natural exit
+EXCURSION_OPEN = 60.0  # degrees an excursion's exit and reversed landing open at least, so it is a loop, not a needle (user decision 2026-10-29; unmeasured)
+EXCURSION_LAND = (0.0, 10.0, -10.0, 20.0, -20.0, 30.0, -30.0, 40.0, -40.0)  # landing directions, degrees off the bond's normal
+EXCURSION_LP_SCAN = (0.0,)  # a lone pair's excursion leaves along the pair's direction
+SLID_REACH = 0.45  # a slid arc's handles: at least this × bond_length (user choice 2026-10-29; unmeasured)
+SLID_RANK = 100  # excursions rank after every slid arc
+EXCURSION_RANK = 10  # added to an excursion's flip count: it ranks after every default candidate, flipped or not
+MIN_STROKE = 2.0  # a stroke showing less than this × head_length beyond its head costs like a miss (user decision 2026-10-29; unmeasured)
 
 
 def bezier(p0: Point, c1: Point, c2: Point, p3: Point, t: float) -> Point:
@@ -169,7 +190,7 @@ class MechArrow:
     target_atom: tuple | None = None  # (species, atom index) the head lands on, for atom targets
     target_dots: list = field(default_factory=list)  # that atom's dot centers
     bow: str = ""  # the side chosen, "left" | "right" of tail -> head (as overrides.arrows write it)
-    crosses: tuple = ()  # (a, b): the target bond a cramped hook passes through (not a clash)
+    crosses: tuple = ()  # ((a, b), ...): bonds a cramped hook passes through (not a clash): a pass-through's target bond first
 
     @property
     def tip(self) -> Point:
@@ -185,7 +206,7 @@ class MechArrow:
         self.p0, self.c1, self.c2, self.p3 = mv(self.p0), mv(self.c1), mv(self.c2), mv(self.p3)
         self.head = [mv(p) for p in self.head]
         self.target_dots = [mv(p) for p in self.target_dots]
-        self.crosses = tuple(mv(p) for p in self.crosses)
+        self.crosses = tuple(tuple(mv(p) for p in seg) for seg in self.crosses)
         if self.target and self.target[0] == "box":
             b = self.target[1]
             self.target = ("box", (b[0] + dx, b[1] + dy, b[2] + dx, b[3] + dy))
@@ -244,25 +265,29 @@ def clashes(arrow: "MechArrow", parts: dict[str, Parts], others: list["MechArrow
     sw, margin = preset.curved_arrow.stroke_width, preset.lengths.margin_width
     stroke, head = _segments(arrow.polyline()), _segments(arrow.head, True)
     segs = [(a, b, _seg_box(a, b)) for a, b in stroke + head]
+    heads = segs[len(stroke):]
     whole = (min(s[2][0] for s in segs), min(s[2][1] for s in segs), max(s[2][2] for s in segs), max(s[2][3] for s in segs))
 
-    def near(c, d, limit) -> bool:  # does any arrow segment come within `limit` of segment cd?
+    def near(c, d, limit, among=None) -> bool:  # does any arrow segment (of `among`) come within `limit` of segment cd?
         box = _seg_box(c, d)
         if _box_gap(whole, box) >= limit:
             return False
-        return any(_box_gap(sb, box) < limit and segment_distance(a, b, c, d) < limit for a, b, sb in segs)
+        return any(_box_gap(sb, box) < limit and segment_distance(a, b, c, d) < limit for a, b, sb in among or segs)
 
-    def crossed(c, d) -> bool:  # a line of the bond the arrow passes through (forming a π bond)
-        if not arrow.crosses or length(sub(d, c)) < 1e-9:
+    def crossed(c, d) -> bool:  # a line of a bond the arrow passes through: the forming π bond, and on a
+        if length(sub(d, c)) < 1e-9:  # chair the shared atom's bonds between source and target (Planner.swept)
             return False
-        a, b = arrow.crosses
-        u, L = unit(sub(b, a)), length(sub(b, a))
-        return abs(dot(unit(sub(d, c)), u)) > 0.999 and abs(dot(sub(c, a), perp(u))) < 0.3 * L \
-            and all(-0.01 <= dot(sub(q, a), u) <= L + 0.01 for q in (c, d))
+        for a, b in arrow.crosses:
+            u, L = unit(sub(b, a)), length(sub(b, a))
+            if abs(dot(unit(sub(d, c)), u)) > 0.999 and abs(dot(sub(c, a), perp(u))) < 0.3 * L \
+                    and all(-0.01 <= dot(sub(q, a), u) <= L + 0.01 for q in (c, d)):
+                return True
+        return False
 
     out = []
     for sp, pt in parts.items():
-        hit = next((src for c, d, hw, src in pt.bonds if not crossed(c, d) and near(c, d, hw + sw / 2)), None)
+        hit = next((src for c, d, hw, src in pt.bonds  # the stroke may cross a crossed bond, the head may not
+                    if near(c, d, hw + sw / 2, heads if crossed(c, d) else None)), None)
         if hit:
             out.append(f"crosses a bond of {sp} ({hit})")
         for box, text, _ in pt.labels:
@@ -424,14 +449,37 @@ class Planner:
         ring: there the near side is the ring's interior (ring_center)."""
         if arr.source.kind != "bond" or self.ring_inside(arr, tail):
             return False
+        c, ua, ub = self.vertex(arr)
+        return _between(ua, ub, sub(tail, c))
+
+    def vertex(self, arr: CurvedArrow) -> tuple[Point, Point, Point]:
+        """A hook's shared atom and the unit directions from it to the source and target bonds."""
         (s,) = set(arr.source.atoms) & set(arr.target.atoms)
         c = self.atoms[s].p
-        ua, ub = (unit(sub(self.atoms[next(m for m in e.atoms if m != s)].p, c)) for e in (arr.source, arr.target))
-        w = sub(tail, c)
+        return c, *(unit(sub(self.atoms[next(m for m in e.atoms if m != s)].p, c)) for e in (arr.source, arr.target))
 
-        def cross(x, y):
-            return x[0] * y[1] - x[1] * y[0]
-        return cross(ua, w) * cross(ua, ub) > 0 and cross(ub, w) * cross(ub, ua) > 0
+    def swept(self, arr: CurvedArrow) -> list[tuple[Point, Point]]:
+        """The shared atom's other bonds whose direction lies inside the angle a cramped hook
+        sweeps from its source bond to its target bond (the C3-C4 ring bond of an E2 on a chair):
+        a pass-through crosses them too, which isn't a clash (user decision 2026-10-29). Each as
+        (shared atom, the far end of its drawn line), from the species' drawn bond lines."""
+        c, ua, ub = self.vertex(arr)
+        L = self.preset.lengths.bond_length
+        out = []
+        for p, q, _, _ in self.parts.get(self.atoms[next(iter(arr.source.atoms))].species, Parts()).bonds:
+            if length(sub(q, p)) < 1e-9:
+                continue
+            u = unit(sub(q, p))
+            if abs(dot(sub(c, p), perp(u))) > 0.25 * L:  # not a line of a bond on c
+                continue
+            near, far = sorted((p, q), key=lambda x: length(sub(x, c)))
+            v = unit(sub(far, c))
+            if length(sub(near, c)) > 0.5 * L or max(dot(v, ua), dot(v, ub)) > 0.99 or not _between(ua, ub, v):
+                continue
+            end = add(c, mul(v, dot(sub(far, c), v)))
+            if all(angle_deg(v, unit(sub(e, c))) > 1.0 for _, e in out):
+                out.append((c, end))
+        return out
 
     def default_bow(self, arr: CurvedArrow, o: ArrowOverride, s0: Point, p: Point) -> Point:
         u = unit(sub(p, s0))
@@ -487,16 +535,32 @@ class Planner:
         if not bows:
             return None
         best, r = None, self.preset.lone_pair.dot_radius
-        picks = len(HOOK_SCAN) if self.hook(arr, o) else ROOTS
+        hook = self.hook(arr, o)
+        picks = len(HOOK_SCAN) if hook else ROOTS
+
+        def ranked(bow: Point) -> list:  # the tail sets, the one facing the bow and the target first
+            return sorted(sets, key=lambda d: 0.0 if d is None else -(dot(d.direction, bow) + 0.5 * dot(d.direction, u0)))
+
+        def consider(cand: MechArrow, rest: tuple) -> None:
+            nonlocal best
+            off = 0.0 if aims(cand, r) else 0.5 + miss(cand) / 360.0  # under a clash; the closer miss first
+            if stroke_shown(cand) < MIN_STROKE * self.preset.curved_arrow.head_length \
+                    and not (hook and self.ring_inside(arr, add(s0, bow))):  # ring hooks: RING_SLIDE shows theirs
+                off += 0.5  # the head hides the stroke
+            if best is not None and (off, *rest) >= best[0]:
+                return  # can't win even without clashes
+            score = (len(clashes(cand, self.parts, self.done, self.preset)) + off, *rest)
+            if best is None or score < best[0]:
+                best = (score, cand, bow, ds)
+
         for rank_b, bow in enumerate(bows):
             sides = (0,)  # a bond target: its tail's side, else the far one; a cramped hook first crosses it
             if self.target(arr)[0] == "bond":
-                sides = (0, 1, 2) if self.hook(arr, o) and src.kind == "bond" \
-                    and self.cramped(arr, add(s0, self.bond_normal(src, bow))) \
-                    else (0, 1)
-            ranked = sorted(sets, key=lambda d: 0.0 if d is None else
-                            -(dot(d.direction, bow) + 0.5 * dot(d.direction, u0)))
-            for rank_s, ds in enumerate(ranked):
+                sides = (0, 1)
+                if hook and src.kind == "bond" and self.cramped(arr, add(s0, self.bond_normal(src, bow))):
+                    # on a chair a ring bond lies in the angle: cross it and land on the near side first
+                    sides = (1, 0, 2) if self.swept(arr) else (0, 1, 2)
+            for rank_s, ds in enumerate(ranked(bow)):
                 for rank_f, soft in enumerate(SOFTER if o.curvature is None else (1.0,)):
                     for rank_x, extra in enumerate(FARTHER):
                         ends: dict = {}  # solve_end's roots, shared by the picks
@@ -507,15 +571,36 @@ class Planner:
                                 if far == sides[-1]:
                                     break
                                 continue
-                            off = 0.0 if aims(cand, r) else 0.5 + miss(cand) / 360.0  # under a clash; the closer miss first
-                            rest = (flip + 2 * (same and not o.bow), rank_b + rank_s + rank_f + rank_x + pick + far)
-                            if best is not None and (off, *rest) >= best[0]:
-                                continue  # can't win even without clashes
-                            score = (len(clashes(cand, self.parts, self.done, self.preset)) + off, *rest)
-                            if best is None or score < best[0]:
-                                best = (score, cand, bow, ds)
+                            consider(cand, (flip + 2 * (same and not o.bow),
+                                            rank_b + rank_s + rank_f + rank_x + pick + sides.index(far)))
                         if best[0][0] == 0 and rank_x == 0:
                             break  # the head clears everything at head_gap
+        if hook and best[0][0] > 0:  # short or clashing: slid arcs, then excursions into open space
+            for rank_b, bow in enumerate(bows):
+                if self.ring_inside(arr, add(s0, bow)):
+                    continue  # ring hooks keep their arc
+                for rank_s, ds in enumerate(ranked(bow)):
+                    for pick, far in itertools.product(range(len(HOOK_SCAN)), (0, 1)):
+                        cand = self.build(step, index, arr, o, name, bow, ds, s0, p_anchor, pick, 1.0, 0.0, far, same,
+                                          slid=True)
+                        consider(cand, (flip + 2 * (same and not o.bow) + EXCURSION_RANK, rank_b + rank_s + pick + far))
+                    if best[0][0] == 0:
+                        break
+            for rank_b, bow in enumerate(bows if best[0][0] > 0 else ()):
+                if self.ring_inside(arr, add(s0, bow)):
+                    continue
+                for rank_s, ds in enumerate(ranked(bow)):
+                    for rank_g, grow in enumerate(EXCURSION_GROW):
+                        for rank_d, turn in enumerate(EXCURSION_SCAN if ds is None else EXCURSION_LP_SCAN):
+                            for pick, far in itertools.product(range(len(EXCURSION_LAND)), (0, 1)):
+                                cand = self.build(step, index, arr, o, name, bow, ds, s0, p_anchor, pick, 1.0, 0.0,
+                                                  far, same, exc=(turn, EXCURSION_REACH + grow))
+                                if cand is None:
+                                    continue
+                                consider(cand, (flip + 2 * (same and not o.bow) + EXCURSION_RANK,
+                                                SLID_RANK + rank_b + rank_s + rank_g + rank_d + pick + far))
+                        if best[0][0] == 0:
+                            break
         score, arrow, bow, ds = best
         arrow.bow = "right" if dot(bow, perp(u0)) >= 0 else "left"
         if key is not None:
@@ -565,14 +650,19 @@ class Planner:
         return tail
 
     def build(self, step, index, arr, o, name, bow, ds, s0, p_anchor, pick=0, soft=1.0,
-              extra=0.0, far=0, same=False, ends: dict | None = None) -> MechArrow | None:
+              extra=0.0, far=0, same=False, ends: dict | None = None, slid: bool = False,
+              exc: tuple | None = None) -> MechArrow | None:
         """The arrow for one bow, tail set and solve_end root (`pick`; a hook: its ranked
         landing direction), its curvature times `soft` and its tip `extra` beyond head_gap;
         None past the last root. A bond target's tip goes on the tail's side of the bond, or
         with `far` the other side (a ring bond next to the tail's bond, where the tail's side
         is inside the ring). A cramped hook (C-H -> C-C) takes far 0 as passing through the
         bond and curling back onto it from the far side, then 1 and 2 as the tail's side and the
-        other. `ends` (a dict) keeps solve_end's roots for the arrow's later picks."""
+        other. `ends` (a dict) keeps solve_end's roots for the arrow's later picks. `slid` (a
+        hook): its tip slides RING_SLIDE along the target bond away from the shared atom and its
+        handles are at least SLID_REACH. `exc` (a hook's excursion: exit turn in degrees, reach
+        in bond lengths) leaves along the natural exit turned that far and stands that far off
+        its chord (excursion_controls); its landing is EXCURSION_LAND[pick]."""
         P = self.preset
         ca, r = P.curved_arrow, P.lone_pair.dot_radius
         src = arr.source
@@ -589,14 +679,18 @@ class Planner:
         else:
             tail = add(ds.center, mul(ds.direction, r + ca.tail_gap))
         tkind, tdata = self.target(arr)
-        cross = False
+        cross = near = False  # a cramped hook through the bond and back, or onto its near side
         if tkind == "bond":
             a, b = tdata
             m = add(self.bond_mid(*arr.target.atoms), slide)
             nb = perp(unit(sub(b.p, a.p)))
-            if self.hook(arr, o) and self.cramped(arr, tail):  # 0: through and back, 1: the tail's side, 2: the far side
-                cross, far = far == 0, far == 2
+            if self.hook(arr, o) and not slid and exc is None and self.cramped(arr, tail):  # 0: through and back, 1: the tail's side, 2: the far side
+                cross, near, far = far == 0, far == 1, far == 2
             nb = nb if (dot(nb, sub(tail, m)) >= 0) != (bool(far) or cross) else mul(nb, -1)
+            if near or slid:  # out along the target bond, away from the shared atom (a chair: where the angle to the ring bond opens)
+                (shared,) = set(src.atoms) & set(arr.target.atoms)
+                fb = next(x for x in (a, b) if x.idx != self.atoms[shared].idx)
+                m = add(m, mul(unit(sub(fb.p, self.atoms[shared].p)), RING_SLIDE * P.lengths.bond_length))
             fixed_tip, target = add(m, mul(nb, ca.head_gap)), ("bond", a.p, b.p)
         elif tdata.idx == -1 and tdata.box:  # a plus sign where fishhooks meet: just past it, on the bow side
             fixed_tip, (_, nm) = None, self.meeting(arr)
@@ -633,10 +727,15 @@ class Planner:
                 (shared,) = set(src.atoms) & set(arr.target.atoms)
                 toward = unit(sub(self.atoms[shared].p, m))
                 d = max((rotate(d, CROSS_TILT), rotate(d, -CROSS_TILT)), key=lambda v: dot(v, toward))
-            d = rotate(d, HOOK_SCAN[pick])
+            d = rotate(d, EXCURSION_LAND[pick] if exc is not None else HOOK_SCAN[pick])
             end = sub(fixed_tip, mul(d, ca.head_inset))
-            reach = CROSS_REACH if cross else 0.0 if ring else HOOK_REACH
-            c1, c2 = hook_controls(tail, t0, end, d, soft, reach * P.lengths.bond_length)
+            if exc is not None:
+                if angle_deg(rotate(t0, exc[0]), mul(d, -1)) < EXCURSION_OPEN:
+                    return None
+                c1, c2 = excursion_controls(tail, rotate(t0, exc[0]), end, d, exc[1] * P.lengths.bond_length)
+            else:
+                reach = CROSS_REACH if cross else 0.0 if ring else SLID_REACH if slid else HOOK_REACH
+                c1, c2 = hook_controls(tail, t0, end, d, soft, reach * P.lengths.bond_length)
 
         def controls(end: Point) -> tuple[Point, Point]:
             ch = sub(end, tail)
@@ -671,8 +770,17 @@ class Planner:
         out = MechArrow(step, index, arr, tail, c1, c2, end, g, g.children[0].head_leaves()[0].points, src.kind, target,
                         hit, dots)
         if tkind == "bond" and cross:
-            out.crosses = (tdata[0].p, tdata[1].p)
+            out.crosses = ((tdata[0].p, tdata[1].p), *self.swept(arr))
+        elif tkind == "bond" and near:  # a chair: across the ring bond onto the near side
+            out.crosses = tuple(self.swept(arr))
         return out
+
+
+def _between(ua: Point, ub: Point, w: Point) -> bool:
+    """Whether w points inside the angle (under 180°) between unit directions ua and ub."""
+    def cross(x, y):
+        return x[0] * y[1] - x[1] * y[0]
+    return cross(ua, w) * cross(ua, ub) > 0 and cross(ub, w) * cross(ub, ua) > 0
 
 
 def hook_controls(tail: Point, t0: Point, end: Point, t1: Point, soft: float = 1.0,
@@ -685,6 +793,43 @@ def hook_controls(tail: Point, t0: Point, end: Point, t1: Point, soft: float = 1
     L = length(sub(end, tail))
     k = soft * max(reach, L * (1 / 3 if th < 1e-6 else 2 / 3 * math.tan(th / 4) / math.sin(th / 2)))
     return add(tail, mul(t0, k)), sub(end, mul(t1, k))
+
+
+def apex(p0: Point, c1: Point, c2: Point, p3: Point, n: int = 24) -> float:
+    """The curve's farthest distance from its chord p0 -> p3 (sampled)."""
+    return max(seg_point_dist(bezier(p0, c1, c2, p3, k / n), p0, p3) for k in range(n + 1))
+
+
+def excursion_controls(tail: Point, d: Point, end: Point, t1: Point, reach: float) -> tuple[Point, Point]:
+    """Controls of an excursion: a hook that leaves `tail` along unit d and reaches `end` along
+    unit t1 with equal handles (a circular arc's ratio), scaled by bisection so the curve's
+    farthest point from the chord stands `reach` off it, whatever the chord's length."""
+    def at(k: float) -> tuple[Point, Point]:
+        return add(tail, mul(d, k)), sub(end, mul(t1, k))
+    lo, hi = 0.0, max(reach, length(sub(end, tail)))
+    for _ in range(8):
+        if apex(tail, *at(hi), end) >= reach:
+            break
+        hi *= 2
+    for _ in range(24):
+        mid = (lo + hi) / 2
+        lo, hi = (lo, mid) if apex(tail, *at(mid), end) >= reach else (mid, hi)
+    return at(hi)
+
+
+def stroke_shown(arrow: MechArrow) -> float:
+    """The stroke's length outside its head: what the reader sees of it."""
+    pts, head = arrow.polyline(), arrow.head
+    return sum(length(sub(b, a)) for a, b in zip(pts, pts[1:]) if not (_inside(a, head) and _inside(b, head)))
+
+
+def _inside(p: Point, poly: list[Point]) -> bool:
+    """Whether p lies inside the polygon (even-odd rule)."""
+    out = False
+    for a, b in zip(poly, poly[1:] + poly[:1]):
+        if (a[1] > p[1]) != (b[1] > p[1]) and p[0] < a[0] + (p[1] - a[1]) * (b[0] - a[0]) / (b[1] - a[1]):
+            out = not out
+    return out
 
 
 def clear_along(c: Point, d: Point, box: tuple | None, dots: list[Point], r: float, gap: float) -> float:

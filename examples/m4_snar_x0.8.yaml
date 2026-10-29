@@ -1,0 +1,30 @@
+# M4: SNAr of 2,4-dinitrofluorobenzene with methoxide. Row A: addition at the C-F carbon;
+# row B: the Meisenheimer complex's resonance bracket (charge ortho C, then para C, then the
+# para nitronate); row C: fluoride leaves. The lp(C⁻) -> C-N arrow of the middle contributor is
+# the short hook of the 2026-10-29 inbox item (mechanism.excursion_controls).
+preset: acs1996_x0.8
+species:
+  dnfb:      {smiles: "[F:7][C:1]1=[CH:6][CH:5]=[C:4]([N+:8](=[O:9])[O-:10])[CH:3]=[C:2]1[N+](=O)[O-]"}
+  methoxide: {smiles: "[CH3][O-:11]"}
+  sigma_a:   {smiles: "[F:7][C:1]1([O:11][CH3])[CH-:6][CH:5]=[C:4]([N+:8](=[O:9])[O-:10])[CH:3]=[C:2]1[N+](=O)[O-]"}
+  sigma_b:   {smiles: "[F:7][C:1]1([O:11][CH3])[CH:6]=[CH:5][C-:4]([N+:8](=[O:9])[O-:10])[CH:3]=[C:2]1[N+](=O)[O-]"}
+  sigma_c:   {smiles: "[F:7][C:1]1([O:11][CH3])[CH:6]=[CH:5][C:4](=[N+:8]([O-:9])[O-:10])[CH:3]=[C:2]1[N+](=O)[O-]"}
+  sigma_a_2: {smiles: "[F:7][C:1]1([O:11][CH3])[CH-:6][CH:5]=[C:4]([N+:8](=[O:9])[O-:10])[CH:3]=[C:2]1[N+](=O)[O-]", align_to: sigma_a}
+  product:   {smiles: "[CH3][O:11][C:1]1=[CH:6][CH:5]=[C:4]([N+:8](=[O:9])[O-:10])[CH:3]=[C:2]1[N+](=O)[O-]"}
+  fluoride:  {smiles: "[F-:7]"}
+steps:
+  - from: [dnfb, methoxide]
+    to: sigma_a
+    arrows:
+      - {from: "lp(11)", to: "between(11,1)"}
+      - {from: "bond(1=6)", to: "atom(6)"}
+  - resonance: [sigma_a, sigma_b, sigma_c]
+    arrows:
+      - [{from: "lp(6)", to: "between(5,6)"}, {from: "bond(4=5)", to: "atom(4)"}]
+      - [{from: "bond(8=9)", to: "atom(9)"}, {from: "lp(4)", to: "between(4,8)"}]
+  - new_row: true
+    from: sigma_a_2
+    to: [product, fluoride]
+    arrows:
+      - {from: "lp(6)", to: "between(1,6)"}
+      - {from: "bond(1-7)", to: "atom(7)"}
