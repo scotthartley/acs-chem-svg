@@ -40,10 +40,12 @@ references by scripts/cdxml_headers.py; this module types no style numbers. Per 
   cdxml.circled_box_dx (ChemDraw sizes the drawn ring from the box). ChemDraw binds every sign
   symbol to the nearest atom on open and resets that atom's charge from it (phase 4b gate), so
   the drawing keeps each sign nearest its own atom (Drawer._nearest_atom). Digits (2+, a
-  charge_labels text such as +3, a Lewis oxidation state) are one free <t> instead ("2+",
-  "+3", "+"; digit size, its ink centered where the drawing centers digits and bars), written
-  after the fragments (user decision 2026-10-28; ChemDraw has no multiple-charge symbol, a free
-  sign symbol gets bound, and "O2-" typed into a label loses the atom).
+  charge_labels text such as +3, a Lewis oxidation state) are one free <t> instead with
+  InterpretChemically="no" ("2+", "+3", "+"; digit size, its ink centered where the drawing
+  centers digits and bars), written after the fragments (user decisions 2026-10-28/29; ChemDraw
+  has no multiple-charge symbol, a free sign symbol gets bound, and a free "+" text is read as
+  a charge). ChemDraw drops the Charge of a node with no sign symbol (Fe2+ opens as Fe): the
+  CDXML is for appearance, not chemistry.
 - Dots (phase 3, mech_basic_x*), each bound to its atom by <represent attribute="Radical">: a
   lone pair is <graphic SymbolType="LonePair"> with BoundingBox the two dot centers,
   counterclockwise on screen around the atom; a radical dot SymbolType="Electron", BoundingBox
@@ -333,6 +335,17 @@ class _Writer:
         frag.set("Z", self.ids.next_z())
         return box
 
+    def digit_text(self, d: Drawer, a, off: Point) -> tuple[str, Point, tuple]:
+        """Atom a's drawn charge digits and sign ("2+", "+3"): the text, its origin with its ink
+        centered where the drawing centers it, and its ink box."""
+        sign, center = d.charge_sign(a.idx), d.charge_center(a.idx)
+        mark = "+" if sign.sign > 0 else "\u2212"
+        text = sign.digits + mark if sign.digits_first else mark + sign.digits
+        b = sign.face.text_ink_bounds(text, sign.size)
+        x = center[0] - (b[0] + b[2]) / 2 + off[0]
+        y = center[1] + (b[1] + b[3]) / 2 + off[1]
+        return text, (x, y), (x + b[0], y - b[3], x + b[2], y - b[1])
+
     def charge(self, frag, d: Drawer, a, off: Point, nid: str) -> None:
         """Atom a's drawn charge (§13.4). A plain ±1 or circled sign is ChemDraw's symbol bound to
         the node (<represent attribute="Charge">), box (center, center x - charge_box_dx /
@@ -344,15 +357,11 @@ class _Writer:
         center = d.charge_center(a.idx)
         if sign.digits or a.charge_label is not None:
             # free text: ChemDraw binds any sign symbol to the nearest atom and resets its charge
-            # to the symbol's (phase 4b gate: Fe2+ came back Fe+, every oxidation-state H a H+)
-            mark = "+" if sign.sign > 0 else "\u2212"
-            text = sign.digits + mark if sign.digits_first else mark + sign.digits
-            b = sign.face.text_ink_bounds(text, sign.size)
-            x = center[0] - (b[0] + b[2]) / 2 + off[0]
-            y = center[1] + (b[1] + b[3]) / 2 + off[1]
-            t = etree.Element("t", {"id": self.ids.new(), "p": pts(x, y),
-                                    "BoundingBox": pts(x + b[0], y - b[3], x + b[2], y - b[1]),
-                                    "Z": self.ids.next_z(), "LineHeight": "auto"})
+            # to the symbol's (phase 4b gate: Fe2+ came back Fe+, every oxidation-state H a H+),
+            # and reads a "+" text beside an atom as a charge unless told not to (gate round 2)
+            text, (x, y), box = self.digit_text(d, a, off)
+            t = etree.Element("t", {"id": self.ids.new(), "p": pts(x, y), "BoundingBox": pts(*box),
+                                    "Z": self.ids.next_z(), "InterpretChemically": "no", "LineHeight": "auto"})
             etree.SubElement(t, "s", {"font": self.s_attrs["font"], "size": f"{sign.size:g}",
                                       "color": self.s_attrs["color"]}).text = text
             self.digit_texts.append(t)

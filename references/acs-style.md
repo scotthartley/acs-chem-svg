@@ -939,13 +939,13 @@ them. Measured with `measure_refs.py --charges-lewis`.
 |---|---|---|
 | Circled ⊕ / ⊖ | `<graphic SymbolType="CirclePlus\|CircleMinus">`, `<represent attribute="Charge">`, BoundingBox (center, center x − 7.5 / 6.0 / 4.5, center y); drawn ring 3.59 / 2.89 / 2.24, bars 3.93 / 3.27 / 2.60 | the same; dx `cdxml.circled_box_dx` |
 | Symbol size | ChemDraw draws a symbol from its box dx: Plus / Minus bars 3.93 at dx 7.5, 3.27 at 6.0, 2.60 at 4.5, 2.73 at 4.8, 1.80 at 2.7; Electron dot radius dx / 9 (0.833, 0.667, 0.533, 0.5). A symbol the user adds gets 0.75 × LabelSize; m1_set_x\*'s and mech_basic_x\*'s have their own dx | plain signs and dots keep `charge_box_dx` / `electron_box_dx` (their drawn sizes match §2.2 and §4.2's dots) |
-| 2+ / 2− | no symbol: the user typed "Fe2+" into the label (superscript run, face 64; `Charge="2"` kept), but "O2−" lost the atom ("ChemDraw can't interpret this label": no Element, no Charge; RDKit reads C) | `Charge` ±2 and one free `<t>` "2+" / "2−" at digit size, its ink centered where the drawing centers digits and bars; no symbol (user decision 2026-10-28, after the gate below) |
-| "+3" (charge_labels) | the user typed "Fe+2" into the label, `Charge="2"` | `Charge` from the SMILES; one free `<t>` "+3" |
+| 2+ / 2− | no symbol: the user typed "Fe2+" into the label (superscript run, face 64; `Charge="2"` kept), but "O2−" lost the atom ("ChemDraw can't interpret this label": no Element, no Charge; RDKit reads C) | `Charge` ±2 and one free `<t>` "2+" / "2−" at digit size with `InterpretChemically="no"`, its ink centered where the drawing centers digits and bars; no symbol (user decisions 2026-10-28 and 2026-10-29, after the gates below) |
+| "+3" (charge_labels) | the user typed "Fe+2" into the label, `Charge="2"` | `Charge` from the SMILES; one free `<t>` "+3", `InterpretChemically="no"` |
 | Two unpaired electrons (CH₂) | two Electron symbols bound to the node; ChemDraw sets `Radical="Singlet"`; RDKit reads two radical electrons | the same |
 | Lewis, dots for bonds | bonds `Visible="no"`: ChemDraw hides them and keeps the chemistry. Shared pairs: free LonePair symbols, kept | the same |
 | Lewis, bond lines | ordinary bonds, lone pairs bound LonePairs | the same |
 | Assigned electrons | an Electron near a node becomes a radical: ChemDraw set `Radical` on HCN's C (Singlet), N and H (Doublet), and RDKit reads `[H][C]#[N]` | pairs: free LonePairs; an odd electron: a filled oval, `<graphic GraphicType="Oval" OvalType="Circle Filled">`, BoundingBox (center, center x + r, center y), Center3D / MajorAxisEnd3D / MinorAxisEnd3D, r = `lone_pair.dot_radius` (unmeasured form, user decision 2026-10-28) |
-| Oxidation states | the user drew "+" with the charge tool (bound: every H got `Charge="1"`, RDKit reads `[H+]`) and "2−" as free text | free `<t>`s ("+", "2−"); `Charge` unchanged |
+| Oxidation states | the user drew "+" with the charge tool (bound: every H got `Charge="1"`, RDKit reads `[H+]`) and "2−" as free text | free `<t>`s ("+", "2−"), `InterpretChemically="no"`; `Charge` unchanged |
 
 ChemDraw flags many Lewis atoms "This atom has an unusual number of lone pairs" (CO₂, nitrate,
 HCN, in both forms), but keeps them. Molecules RDKit reads from the reference (row 1, the user's
@@ -982,6 +982,14 @@ fixed):**
     back O (RDKit `[Fe]`, `O`).
   - It read each free "+" text next to an H as a charge: the text disappeared and the H became
     H⁺. The "2−" texts (U+2212) it left alone.
-- Next (round 3, not yet written): `InterpretChemically="no"` on the free charge texts (ChemDraw
-  writes it on two scheme_wrap_x1.0 captions), and real ±2 charges as ChemDraw's own label run
-  ("Fe" plus a superscript "2+", as the user drew Fe2+), which keeps `Charge`.
+- Round 3 (2026-10-29, re-saves of m1_charges and m1_lewis_assigned): `InterpretChemically="no"`
+  on the free charge texts (ChemDraw writes it on two scheme_wrap_x1.0 captions) **does not
+  help**: ChemDraw still converted all six oxidation-state "+" texts beside H into charges
+  (the text gone, the H a H⁺). "2+", "2−" and "+3" texts survive unchanged; O²⁻'s O gets "An atom
+  in this label has an invalid valence" once its charge is dropped. Still open: a lone "+" or
+  "−" text next to an atom.
+- Not fixed, by decision (user, 2026-10-29: "SVG is the primary output, and CDXML is for the
+  appearance, not the chemistry"): an atom whose charge is drawn as text (2+ / 2−, a
+  `charge_labels` text, an oxidation state on a formally charged atom) has no sign symbol, so
+  ChemDraw drops its `Charge`. ChemDraw's own form, a superscript label run ("Fe" + "2+"), keeps
+  the charge but sits lower than our placement, and a true minus in it ("O2−") loses the atom.

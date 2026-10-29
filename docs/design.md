@@ -325,7 +325,7 @@ M1 species, and phase 2, M2 schemes (arrows, conditions, plus signs, numbers, `<
 and multi-row specs that use them (§13.3), is implemented and passed its ChemDraw gate (2026-10-28). Phase
 4b, Lewis structures (dots or bond lines) and the remaining charge forms (circled signs, 2+ / 2−,
 `charge_labels`, oxidation states, two unpaired electrons; §13.4, from the user's
-charges_lewis_x\* reference), is implemented. Its ChemDraw gate is open: Lewis structures and ±1 signs pass, but ChemDraw still drops ±2 charges and reads a free "+" text as a charge (acs-style.md §13.4).
+charges_lewis_x\* reference), is implemented. Its ChemDraw gate is open: Lewis structures and ±1 signs pass; a lone "+" text beside an atom still becomes a charge (round 3: `InterpretChemically="no"` doesn't stop it). ChemDraw drops the charge of an atom whose charge is text (2+, +3): the CDXML is for appearance (acs-style.md §13.4).
 
 ---
 

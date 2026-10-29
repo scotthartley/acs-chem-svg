@@ -192,8 +192,9 @@ def _symbols(frag, kind=None) -> list:
 
 def test_charge_objects():
     """§13.4 on m1_charges_x1.0: circled signs are ChemDraw's CirclePlus / CircleMinus bound to
-    the node, box dx cdxml.circled_box_dx; 2+ / 2- and the +3 label are one free <t> and no
-    symbol (ChemDraw rebinds any sign symbol), the node keeping its SMILES Charge; CH2's two
+    the node, box dx cdxml.circled_box_dx; 2+ / 2- and the +3 label are one free <t> with
+    InterpretChemically="no" and no symbol (ChemDraw rebinds any sign symbol), the node
+    keeping its SMILES Charge; CH2's two
     unpaired electrons are two bound Electron symbols with Radical="Singlet", as ChemDraw wrote
     them."""
     text = exported("examples/m1_charges_x1.0.yaml")
@@ -207,11 +208,12 @@ def test_charge_objects():
         assert round(x0 - x1, 3) == cx.circled_box_dx and g.find("represent").get("attribute") == "Charge"
     assert [g.get("SymbolType") for g in _symbols(frags["plain"])] == ["Plus", "Minus"] or \
         sorted(g.get("SymbolType") for g in _symbols(frags["plain"])) == ["Minus", "Plus"]
-    texts = ["".join(x.text for x in t.iter("s")) for t in root.find("page").findall("t")]
+    texts = root.find("page").findall("t")
     for name, charge in (("iron", "2"), ("oxide", "-2"), ("iron_iii", "2")):
         (n,) = frags[name].findall("n")
         assert n.get("Charge") == charge and not _symbols(frags[name])
-    assert sorted(texts) == ["+3", "2+", "2\u2212"]
+    assert sorted("".join(x.text for x in t.iter("s")) for t in texts) == ["+3", "2+", "2\u2212"]
+    assert {t.get("InterpretChemically") for t in texts} == {"no"}
     (ch2,) = frags["methylene"].findall("n")
     assert ch2.get("Radical") == "Singlet"
     assert [g.find("represent").get("object") for g in _symbols(frags["methylene"], "Electron")] == [ch2.get("id")] * 2

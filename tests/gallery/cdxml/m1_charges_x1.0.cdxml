@@ -150,13 +150,13 @@
         <represent attribute="Radical" object="54"/>
       </graphic>
     </fragment>
-    <t id="46" p="249.79 15.53" BoundingBox="250.02 10.26 258.12 15.53" Z="44" LineHeight="auto">
+    <t id="46" p="249.79 15.53" BoundingBox="250.02 10.26 258.12 15.53" Z="44" InterpretChemically="no" LineHeight="auto">
       <s font="21" size="7.5" color="0">2+</s>
     </t>
-    <t id="49" p="281.12 15.42" BoundingBox="281.36 10.15 289.45 15.42" Z="47" LineHeight="auto">
+    <t id="49" p="281.12 15.42" BoundingBox="281.36 10.15 289.45 15.42" Z="47" InterpretChemically="no" LineHeight="auto">
       <s font="21" size="7.5" color="0">2−</s>
     </t>
-    <t id="52" p="315.87 15.45" BoundingBox="316.20 10.20 324.09 15.59" Z="50" LineHeight="auto">
+    <t id="52" p="315.87 15.45" BoundingBox="316.20 10.20 324.09 15.59" Z="50" InterpretChemically="no" LineHeight="auto">
       <s font="21" size="7.5" color="0">+3</s>
     </t>
   </page>

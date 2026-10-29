@@ -190,31 +190,31 @@
       <graphic id="79" BoundingBox="373.38 37.06 373.38 33.31" Z="77" GraphicType="Symbol" SymbolType="LonePair"/>
       <graphic id="80" BoundingBox="360.72 33.31 360.72 37.06" Z="78" GraphicType="Symbol" SymbolType="LonePair"/>
     </fragment>
-    <t id="55" p="265.32 31.78" BoundingBox="265.56 26.52 273.65 31.78" Z="53" LineHeight="auto">
+    <t id="55" p="265.32 31.78" BoundingBox="265.56 26.52 273.65 31.78" Z="53" InterpretChemically="no" LineHeight="auto">
       <s font="21" size="7.5" color="0">2−</s>
     </t>
-    <t id="56" p="291.77 32.14" BoundingBox="292.01 26.87 300.10 32.14" Z="54" LineHeight="auto">
+    <t id="56" p="291.77 32.14" BoundingBox="292.01 26.87 300.10 32.14" Z="54" InterpretChemically="no" LineHeight="auto">
       <s font="21" size="7.5" color="0">2−</s>
     </t>
-    <t id="57" p="237.77 32.63" BoundingBox="238.10 28.80 241.92 32.63" Z="55" LineHeight="auto">
+    <t id="57" p="237.77 32.63" BoundingBox="238.10 28.80 241.92 32.63" Z="55" InterpretChemically="no" LineHeight="auto">
       <s font="21" size="7.5" color="0">+</s>
     </t>
-    <t id="58" p="264.27 6.13" BoundingBox="264.60 2.30 268.42 6.13" Z="56" LineHeight="auto">
+    <t id="58" p="264.27 6.13" BoundingBox="264.60 2.30 268.42 6.13" Z="56" InterpretChemically="no" LineHeight="auto">
       <s font="21" size="7.5" color="0">+</s>
     </t>
-    <t id="59" p="264.27 59.13" BoundingBox="264.60 55.30 268.42 59.13" Z="57" LineHeight="auto">
+    <t id="59" p="264.27 59.13" BoundingBox="264.60 55.30 268.42 59.13" Z="57" InterpretChemically="no" LineHeight="auto">
       <s font="21" size="7.5" color="0">+</s>
     </t>
-    <t id="60" p="317.27 32.63" BoundingBox="317.60 28.80 321.42 32.63" Z="58" LineHeight="auto">
+    <t id="60" p="317.27 32.63" BoundingBox="317.60 28.80 321.42 32.63" Z="58" InterpretChemically="no" LineHeight="auto">
       <s font="21" size="7.5" color="0">+</s>
     </t>
-    <t id="74" p="370.68 31.01" BoundingBox="370.92 25.75 379.01 31.01" Z="72" LineHeight="auto">
+    <t id="74" p="370.68 31.01" BoundingBox="370.92 25.75 379.01 31.01" Z="72" InterpretChemically="no" LineHeight="auto">
       <s font="21" size="7.5" color="0">2−</s>
     </t>
-    <t id="75" p="396.18 31.51" BoundingBox="396.51 27.68 400.33 31.51" Z="73" LineHeight="auto">
+    <t id="75" p="396.18 31.51" BoundingBox="396.51 27.68 400.33 31.51" Z="73" InterpretChemically="no" LineHeight="auto">
       <s font="21" size="7.5" color="0">+</s>
     </t>
-    <t id="76" p="343.18 31.51" BoundingBox="343.51 27.68 347.33 31.51" Z="74" LineHeight="auto">
+    <t id="76" p="343.18 31.51" BoundingBox="343.51 27.68 347.33 31.51" Z="74" InterpretChemically="no" LineHeight="auto">
       <s font="21" size="7.5" color="0">+</s>
     </t>
   </page>
