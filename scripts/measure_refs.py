@@ -352,7 +352,10 @@ def load_cdxml(doc: Doc, path: Path, off):
             t = n.find("t")
             label = "".join(s.text or "" for s in t.iter("s")) if t is not None else None
             el = ELEMENTS.get(int(n.get("Element", "6")), "?")
-            nick = n.get("NodeType") in ("Fragment", "Nickname")
+            # a label typed into a structure that ChemDraw expanded (metals_x* PPh3) is Unspecified
+            # with the expansion inside: drawn and justified as a nickname
+            nick = n.get("NodeType") in ("Fragment", "Nickname") or (
+                n.get("NodeType") == "Unspecified" and n.find("fragment") is not None)
             if nick:  # the attachment atom of the nickname sits at the node (OMe: O)
                 el = next((ELEMENTS.get(int(m.get("Element", "6")), "?") for m in n.iter("n")
                            if m is not n and m.get("p") == n.get("p")), "X")
@@ -1926,11 +1929,11 @@ def mech_summary(name: str) -> dict:
     return out
 
 
-ABBREV_REFS = ["abbrev_x1.0", "abbrev_x0.8", "abbrev_x0.6"]
+ABBREV_REFS = ["abbrev_x1.0", "abbrev_x0.8", "abbrev_x0.6", "metals_x1.0", "metals_x0.8", "metals_x0.6"]  # metals_x*: PPh3
 
 
 def abbrev_summary(name: str) -> dict:
-    """§3.5: per abbreviation (abbrev_x*), each drawn form: displayed text, ChemDraw's
+    """§3.5: per abbreviation (abbrev_x*; PPh3 from metals_x*), each drawn form: displayed text, ChemDraw's
     LabelJustification, which glyph's advance center sits on the atom (its offset), baseline −
     atom y, and each bond end with its residual against the §2.1 model (preset values) on the
     anchor glyphs label_glyphs picks."""

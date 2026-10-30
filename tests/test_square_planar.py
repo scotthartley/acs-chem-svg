@@ -118,6 +118,26 @@ def test_cross_label_is_centered(smiles):
     assert float(t.get("p").split()[0]) == pytest.approx(metal.x, abs=0.006)
 
 
+@pytest.mark.parametrize("key, text", [("PMe3", "Me3P"), ("PPh3", "Ph3P")])
+def test_phosphine_abbreviation_on_a_dative_bond(key, text):
+    """chem.condense finds a phosphine bonded P->Pd (rdAbbreviations misses a dative attachment;
+    issues 2026-10-30), keeps the cross, and the CDXML writes each as a nickname node."""
+    from lxml import etree
+    from acs_chem_svg.cdxml_writer import to_cdxml
+    full = OXADD if key == "PMe3" else OXADD.replace("P(C)(C)C", "P(c1ccccc1)(c1ccccc1)c1ccccc1")
+    m = chem.from_smiles(full, "m", P.lengths.bond_length, abbreviate=[key])
+    ab = [a for a in m.atoms if a.abbrev]
+    assert [a.abbrev for a in ab] == [key, key] and len(m.atoms) == 10
+    pd = next(a for a in m.atoms if a.element == "Pd")
+    assert all([j for j, _ in m.neighbors(a.idx)] == [pd.idx] for a in ab)
+    d = Drawer(m, P)
+    assert {"".join(r.text for r in d.labels[a.idx].runs) for a in ab} <= {key, text}
+    root = etree.fromstring(to_cdxml([(m, d, (0.0, 0.0))], "acs1996", warn=lambda msg: None).encode())
+    nodes = [n for n in root.iter("n") if n.get("NodeType") == "Unspecified"]
+    assert ["".join(x.text for x in n.find("t").iter("s")) for n in nodes] == [key, key]
+    assert all(n.find("fragment") is not None for n in nodes)
+
+
 METALS = {"metals_x1.0": "acs1996", "metals_x0.8": "acs1996_x0.8", "metals_x0.6": "acs1996_x0.6"}
 # the bond straight down from Pd: our §2.1 clip model stops 0.17-0.24 pt short of ChemDraw's
 # (acs-style.md §2.1, Open 25); every other direction within TOL
@@ -175,3 +195,42 @@ def test_overlaid_layouts_are_reported():
     same = _mol([(0, 0), (10, 0), (20, 0), (10, 0.5)], [(0, 1), (1, 2), (2, 3)])
     assert any("on top of each other" in p for p in check_overlaid("x", same))
     assert check_overlaid("x", _mol([(0, 0), (10, 0), (20, 0)], [(0, 1), (1, 2)])) == []
+
+
+@pytest.mark.skipif(not mr.REF_DIR.exists(), reason="ChemDraw references (reference_renders/) are local only")
+@pytest.mark.parametrize("ref", METALS)
+def test_pph3_vs_chemdraw(ref):
+    """metals_x*'s PPh3 ligands (chem.ABBREVIATIONS, both forms: PPh3, and Ph3P with its bond to
+    the right) redrawn at ChemDraw's atom positions: the same text, each run's first glyph origin
+    and the bond end within 0.1 pt of ChemDraw's."""
+    doc = mr.load(ref)
+    preset = load_preset(METALS[ref])
+    bad, forms = [], set()
+    for a in doc.atoms.values():
+        if not (a.nickname and a.label.endswith("PPh3")):
+            continue
+        (b,) = [b for b in doc.bonds if a.id in (b.a, b.b)]
+        o = doc.atoms[b.b if b.a == a.id else b.a]
+        m = Molecule("m", [Atom(0, "1", "P", *a.p, abbrev="PPh3"), Atom(1, "2", o.element, *o.p)], [Bond(0, 0, 1)])
+        d = Drawer(m, preset)
+        _, whole = mr.label_glyphs(doc, a)
+        text = "".join(g.ch for g in whole)
+        runs = d.labels[0].runs
+        forms.add(text)
+        if "".join(r.text for r in runs) != text:
+            bad.append(f"{a.id}: ours {''.join(r.text for r in runs)!r}, ChemDraw {text!r}")
+            continue
+        k = 0
+        for r in runs:
+            g = whole[k]
+            if max(abs(r.x - g.x), abs(r.y - g.base), abs(r.size - g.size)) > TOL:
+                bad.append(f"{a.id} {text} glyph {g.ch}: ours ({r.x:.3f}, {r.y:.3f}) ChemDraw ({g.x:.3f}, {g.base:.3f})")
+            k += len(r.text)
+        u, n = mr.unit(sub(o.p, a.p)), math.dist(a.p, o.p)  # not beyond o: x0.6's bonds are under 15 pt
+        ends = [min((q[0] - a.p[0]) * u[0] + (q[1] - a.p[1]) * u[1] for q in s.pts) for s in doc.shapes
+                if s.kind == "poly" and not s.curved
+                and max(abs((q[0] - a.p[0]) * u[1] - (q[1] - a.p[1]) * u[0]) for q in s.pts) < 1.0
+                and all(-0.5 < (q[0] - a.p[0]) * u[0] + (q[1] - a.p[1]) * u[1] < n for q in s.pts)]
+        if abs(d.end_clip(m.bonds[0], 0) - ends[0]) > TOL:
+            bad.append(f"{a.id} {text}: bond end ours {d.end_clip(m.bonds[0], 0):.3f} ChemDraw {ends[0]:.3f}")
+    assert forms == {"PPh3", "Ph3P"} and not bad, "\n".join(bad)

@@ -16,6 +16,10 @@ form (bond leaving to the left), its NodeType (Fragment or Nickname) and IsNickn
 attachment atom (the inner node at the outer node's p) is at the origin; the
 ExternalConnectionPoint then lies on -x. Ids and attributes are ChemDraw's (cdxml_writer renumbers
 them); the right-justified form is the same fragment turned 180° (to 0.01 pt in abbrev_x*).
+PPh3 comes from metals_x<k> (EXTRA_NICKNAME_SOURCES), where it is a typed label ChemDraw expanded
+(NodeType Unspecified) and only its right-justified form has the connection point on the bond
+axis, so that form is taken turned 180°. PMe3 has no ChemDraw fragment: it is PPh3's P with the
+three ipso carbons as methyls (DERIVED_NICKNAMES; by analogy, unmeasured).
 
 Usage: uv run python scripts/cdxml_headers.py
 """
@@ -34,6 +38,8 @@ from acs_chem_svg.cdxml_writer import HEADER_DIR  # noqa: E402
 
 SOURCES = {"acs1996": "m1_set_x1.0", "acs1996_x0.8": "m1_set_x0.8", "acs1996_x0.6": "m1_set_x0.6"}
 NICKNAME_SOURCES = {"acs1996": "abbrev_x1.0", "acs1996_x0.8": "abbrev_x0.8", "acs1996_x0.6": "abbrev_x0.6"}
+EXTRA_NICKNAME_SOURCES = {"acs1996": "metals_x1.0", "acs1996_x0.8": "metals_x0.8", "acs1996_x0.6": "metals_x0.6"}
+DERIVED_NICKNAMES = {"PMe3": "PPh3"}  # key -> the template it is cut from (_methyls)
 PER_FILE_ROOT = ("CreationProgram", "Name", "BoundingBox")
 FONT_SOURCE = "scheme_multi_x1.0"
 CAPTION_FONTS = ("Helvetica Bold", "Helvetica Oblique")
@@ -69,37 +75,71 @@ def _xy(n) -> tuple[float, float]:
     return float(x), float(y)
 
 
-def nicknames(ref: str) -> bytes:
-    """The <nicknames> template: one <nickname key NodeType [IsNickname]> per ABBREVIATIONS key,
-    holding the inner <fragment> of its first left-justified node in `ref`, relative to the
-    attachment atom."""
-    from acs_chem_svg.chem import ABBREVIATIONS
+def _found(ref: str, found: dict, right_turned: bool = False) -> None:
+    """Add to `found` the inner <fragment> of each nickname node's first left-justified form in
+    `ref` (`right_turned`: of its right-justified form, turned 180°), relative to the attachment atom."""
     from acs_chem_svg.cdxml_writer import pts
-    found = {}
     for n in _parse(ref).getroot().iter("n"):
-        if n.get("NodeType") not in ("Fragment", "Nickname"):
+        inner = n.find("fragment")
+        if n.get("NodeType") not in ("Fragment", "Nickname", "Unspecified") or inner is None:
             continue
         key = "".join(s.text or "" for s in n.find("t").iter("s"))
         ax, ay = _xy(n)
-        inner = n.find("fragment")
         ecp = next(m for m in inner.findall("n") if m.get("NodeType") == "ExternalConnectionPoint")
         ex, ey = _xy(ecp)
-        if key in found or not (ex < ax and abs(ey - ay) < 0.005):  # the left-justified form
+        sign = -1 if right_turned else 1
+        if key in found or not (sign * (ex - ax) < 0 and abs(ey - ay) < 0.005):  # the form wanted
             continue
         frag = etree.fromstring(etree.tostring(inner))
         frag.attrib.clear()
         for m in frag.findall("n"):
             x, y = _xy(m)
-            m.set("p", pts(x - ax, y - ay))
+            m.set("p", pts(sign * (x - ax), sign * (y - ay)))
+            for t in m.findall("t"):  # a label ChemDraw kept on the inner atom (metals_x1.0's second P)
+                m.remove(t)
         el = etree.Element("nickname", {"key": key, "NodeType": n.get("NodeType")})
         if n.find("t").get("IsNickname"):
             el.set("IsNickname", n.find("t").get("IsNickname"))
         el.append(frag)
         found[key] = el
+
+
+def _methyls(src: etree._Element, key: str) -> etree._Element:
+    """`src`'s template cut to its attachment atom, connection point and the attachment atom's
+    other neighbors, each a methyl (PPh3 -> PMe3)."""
+    el = etree.fromstring(etree.tostring(src))
+    el.set("key", key)
+    frag = el.find("fragment")
+    nodes = {m.get("id"): m for m in frag.findall("n")}
+    attach = next(i for i, m in nodes.items() if m.get("p") == "0.00 0.00")
+    keep = {attach} | {b.get(k) for b in frag.findall("b") if attach in (b.get("B"), b.get("E")) for k in "BE"}
+    for b in frag.findall("b"):
+        if not {b.get("B"), b.get("E")} <= keep:
+            frag.remove(b)
+    for i, m in nodes.items():
+        if i not in keep:
+            frag.remove(m)
+        elif i != attach and m.get("NodeType") != "ExternalConnectionPoint":
+            m.set("NumHydrogens", "3")
+    return el
+
+
+def nicknames(ref: str, extra: str | None = None) -> bytes:
+    """The <nicknames> template: one <nickname key NodeType [IsNickname]> per ABBREVIATIONS key,
+    holding the inner <fragment> of its first left-justified node in `ref` (or `extra`, turned
+    from its right-justified form; or DERIVED_NICKNAMES), relative to the attachment atom."""
+    from acs_chem_svg.chem import ABBREVIATIONS
+    found = {}
+    _found(ref, found)
+    if extra:
+        _found(extra, found, right_turned=True)
+    for key, src in DERIVED_NICKNAMES.items():
+        if key not in found and src in found:
+            found[key] = _methyls(found[src], key)
     missing = [k for k in ABBREVIATIONS if k not in found]
     if missing:
         raise ValueError(f"{ref}: no left-justified nickname node for {', '.join(missing)}")
-    root = etree.Element("nicknames", {"source": f"{ref}.cdxml"})
+    root = etree.Element("nicknames", {"source": f"{ref}.cdxml" + (f" {extra}.cdxml" if extra else "")})
     root.extend(found[k] for k in ABBREVIATIONS)
     return etree.tostring(root, xml_declaration=True, encoding="UTF-8", pretty_print=True)
 
@@ -112,8 +152,9 @@ def main() -> int:
         print(f"wrote {path.relative_to(mr.REPO)} from {ref}.cdxml")
     for preset, ref in NICKNAME_SOURCES.items():
         path = HEADER_DIR / f"{preset}.nicknames.xml"
-        path.write_bytes(nicknames(ref))
-        print(f"wrote {path.relative_to(mr.REPO)} from {ref}.cdxml")
+        extra = EXTRA_NICKNAME_SOURCES[preset]
+        path.write_bytes(nicknames(ref, extra))
+        print(f"wrote {path.relative_to(mr.REPO)} from {ref}.cdxml and {extra}.cdxml")
     return 0
 
 

@@ -650,3 +650,25 @@ removed renders pixel-identical to the approved `m4_nitration_x1.0`. Inbox triag
   the bonds 14.4 pt: lengthening them was wrong. `draw_mol.centered_label`. Inbox 2026-10-30.
 - **Step labels need more room from each other than from structures.** At 4 pt two cycle labels
   side by side read as one line; `cycle.label_pair_clear` is one caption em.
+
+## 2026-10-30 (inbox: overlaid alignment, phosphine labels, NH justification)
+
+- **A pinned layout can be clean by every other test and still lay one group over another.**
+  `chem.prepare` now rejects a pin that `overlaid_atoms` flags (atoms within
+  `OVERLAID_PER_BOND` × median bond, or crossing bonds): 3-bromo-3-ethylpentane's core,
+  pinned for its tolyl product, laid the tolyl across an ethyl; it is oriented instead. The Suzuki `trans` no longer needs
+  `align: false` (the square-planar layout fixed that one). Inbox 2026-10-30.
+- **rdAbbreviations misses a group attached by a dative bond.** `condense` searches a copy with
+  dative bonds made single; the drawn bond stays dative. PPh₃ (metals_x\*) and PMe₃ (by analogy)
+  are abbreviations now.
+- **A label typed into a structure is `NodeType="Unspecified"`** with ChemDraw's expansion
+  inside (metals_x\* PPh₃), not Fragment / Nickname; `measure_refs` reads it as a nickname. Only
+  its right-justified form has the connection point on the bond axis (ChemDraw left one Left
+  form's pointing up), so `cdxml_headers.py` takes that form turned 180°.
+- **ChemDraw puts an NH's H above when both ring bonds leave downward** (proline, on re-saving
+  our CDXML). Our rule is left / right only; left as is until a reference shows the rule
+  (acs-style.md Open 27). Inbox 2026-10-30.
+- **Abbreviating the Suzuki cycle's PMe3 changes its layout, not just its labels.** CoordGen lays
+  the dummy atoms out differently: Pd(0)'s P–Pd–P bends to 120° (it was linear only by CoordGen's
+  choice), II and III pin to that bend and lose their cross, and without `@SP` the cross order
+  comes out cis. The example keeps PMe3 in full until there is a rule for two-coordinate metals.

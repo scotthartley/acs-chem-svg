@@ -36,14 +36,13 @@ from __future__ import annotations
 import itertools
 import math
 
-from .chem import Molecule
+from .chem import OVERLAID_PER_BOND, Molecule
 from .draw_mol import Drawer
 from .geometry import point_box_dist, seg_point_dist, segment_box_dist, segment_distance, segments_cross, union_box
 from .layout import SchemeLayout
 from .mechanism import clashes, species_parts
 from .scene import Group, Polyline
 
-OVERLAID_PER_BOND = 0.25  # check_overlaid: non-bonded atoms nearer than this x the median bond overlap (a choice)
 LABEL_TOL = 0.05  # pt; boxes that only touch, or a bond end grazing a label, don't count
 
 

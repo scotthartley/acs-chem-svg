@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<nicknames source="abbrev_x1.0.cdxml">
+<nicknames source="abbrev_x1.0.cdxml metals_x1.0.cdxml">
   <nickname key="OMe" NodeType="Fragment">
     <fragment>
       <n id="809" p="0.00 0.00" Element="8" NumHydrogens="0"/>
@@ -301,6 +301,65 @@
       <b id="1319" B="1301" E="1303"/>
       <b id="1320" B="1301" E="1304"/>
       <b id="1321" B="1311" E="1301"/>
+    </fragment>
+  </nickname>
+  <nickname key="PPh3" NodeType="Unspecified">
+    <fragment>
+      <n id="172" p="0.00 0.00" Element="15" NumHydrogens="0"/>
+      <n id="173" p="-7.18 -12.43"/>
+      <n id="174" p="0.00 -24.85"/>
+      <n id="175" p="-7.18 -37.28"/>
+      <n id="176" p="-21.53 -37.28"/>
+      <n id="177" p="-28.70 -24.85"/>
+      <n id="178" p="-21.53 -12.43"/>
+      <n id="179" p="-7.18 12.43"/>
+      <n id="180" p="-21.53 12.43"/>
+      <n id="181" p="-28.70 24.86"/>
+      <n id="182" p="-21.53 37.28"/>
+      <n id="183" p="-7.18 37.28"/>
+      <n id="184" p="0.00 24.86"/>
+      <n id="185" p="14.35 0.00"/>
+      <n id="186" p="21.52 12.43"/>
+      <n id="187" p="35.87 12.43"/>
+      <n id="188" p="43.05 0.00"/>
+      <n id="189" p="35.87 -12.43"/>
+      <n id="190" p="21.52 -12.43"/>
+      <n id="191" p="-14.35 0.00" NodeType="ExternalConnectionPoint"/>
+      <b id="192" B="189" E="190" Order="2"/>
+      <b id="193" B="188" E="189"/>
+      <b id="194" B="187" E="188" Order="2"/>
+      <b id="195" B="186" E="187"/>
+      <b id="196" B="185" E="186" Order="2"/>
+      <b id="197" B="185" E="190"/>
+      <b id="198" B="183" E="184" Order="2"/>
+      <b id="199" B="182" E="183"/>
+      <b id="200" B="181" E="182" Order="2"/>
+      <b id="201" B="180" E="181"/>
+      <b id="202" B="179" E="180" Order="2"/>
+      <b id="203" B="179" E="184"/>
+      <b id="204" B="177" E="178" Order="2"/>
+      <b id="205" B="176" E="177"/>
+      <b id="206" B="175" E="176" Order="2"/>
+      <b id="207" B="174" E="175"/>
+      <b id="208" B="173" E="174" Order="2"/>
+      <b id="209" B="173" E="178"/>
+      <b id="210" B="172" E="173"/>
+      <b id="211" B="172" E="179"/>
+      <b id="212" B="172" E="185"/>
+      <b id="213" B="191" E="172"/>
+    </fragment>
+  </nickname>
+  <nickname key="PMe3" NodeType="Unspecified">
+    <fragment>
+      <n id="172" p="0.00 0.00" Element="15" NumHydrogens="0"/>
+      <n id="173" p="-7.18 -12.43" NumHydrogens="3"/>
+      <n id="179" p="-7.18 12.43" NumHydrogens="3"/>
+      <n id="185" p="14.35 0.00" NumHydrogens="3"/>
+      <n id="191" p="-14.35 0.00" NodeType="ExternalConnectionPoint"/>
+      <b id="210" B="172" E="173"/>
+      <b id="211" B="172" E="179"/>
+      <b id="212" B="172" E="185"/>
+      <b id="213" B="191" E="172"/>
     </fragment>
   </nickname>
 </nicknames>

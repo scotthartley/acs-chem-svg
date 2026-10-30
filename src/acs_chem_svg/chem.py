@@ -36,7 +36,7 @@ from pathlib import Path
 from rdkit import Chem, rdBase, Geometry
 from rdkit.Chem import rdAbbreviations, rdCoordGen, rdDepictor, rdFMCS
 
-from .geometry import Point, add, rotate
+from .geometry import Point, add, rotate, segments_cross
 
 _SANITIZE = Chem.SanitizeFlags.SANITIZE_ALL ^ Chem.SanitizeFlags.SANITIZE_SETAROMATICITY
 # a dative bond (P->[Pd]) is drawn as a single bond; bond_order_sum gives its pair to the donor
@@ -54,16 +54,19 @@ ABBREVIATIONS = {
     "Et": "*CC", "Ac": "*C(C)=O",
     "TMS": "*[Si](C)(C)C", "TES": "*[Si](CC)(CC)CC", "TBS": "*[Si](C)(C)C(C)(C)C",
     "TIPS": "*[Si](C(C)C)(C(C)C)C(C)C",
+    "PPh3": "*P(c1ccccc1)(c1ccccc1)c1ccccc1", "PMe3": "*P(C)(C)C",  # ligands, through a dative bond (P->M)
 }
 # The right-justified form (bond leaving the label to the right), as ChemDraw displays each
 # nickname (abbrev_x1.0 SVG; the CDXML keeps the key text). Formula-like ones are reversed;
-# Ph, Bn, Et, Ac and the silyl groups keep their text.
+# Ph, Bn, Et, Ac and the silyl groups keep their text. PPh3 is measured on metals_x*; PMe3 by
+# analogy (unmeasured).
 ABBREVIATIONS_REVERSED = {
     "OMe": "MeO", "OEt": "EtO", "OBn": "BnO", "OPh": "PhO", "OAc": "AcO",
     "SMe": "MeS", "NHAc": "AcHN", "CO2Me": "MeO2C", "CO2Et": "EtO2C", "CO2H": "HO2C",
     "CF3": "F3C", "CN": "NC", "NO2": "O2N", "Ph": "Ph", "Bn": "Bn",
     "Et": "Et", "Ac": "Ac",
     "TMS": "TMS", "TES": "TES", "TBS": "TBS", "TIPS": "TIPS",
+    "PPh3": "Ph3P", "PMe3": "Me3P",
 }
 MCS_TIMEOUT = 2  # s
 # Pauling electronegativities (CRC Handbook of Chemistry and Physics, "Electronegativity of the
@@ -576,11 +579,12 @@ def condense(mol: Chem.Mol, labels: list[str] | None, name: str = "") -> Chem.Mo
     """Collapse each named group (ABBREVIATIONS) to one dummy atom carrying atomLabel, at the
     attachment atom (its index, coordinates and atom-map number are kept). Groups are found by RDKit
     rdAbbreviations on an aromatic copy (its patterns are aromatic); the Kekulé bonds drawn
-    are those of `mol`. Every label must be found."""
+    are those of `mol`. Every label must be found. rdAbbreviations misses a group attached by a
+    dative bond (PMe3 on Pd), so the copy has its dative bonds made single; the drawn bond stays dative."""
     if not labels:
         return mol
     defs = rdAbbreviations.ParseAbbreviations("\n".join(f"{lab} {ABBREVIATIONS[lab]}" for lab in labels))
-    ar = Chem.Mol(mol)
+    ar = Chem.Mol(_dative_as_single(mol))
     Chem.SetAromaticity(ar)
     found = Chem.GetMolSubstanceGroups(rdAbbreviations.LabelMolAbbreviations(ar, defs, maxCoverage=1.0))
     missing = [lab for lab in labels if lab not in {sg.GetProp("LABEL") for sg in found}]
@@ -948,6 +952,7 @@ def stable_core(ref: Chem.Mol, mol: Chem.Mol, pairs: list[tuple[int, int]]) -> l
 LINEAR_TOL = 10.0  # degrees an sp atom may deviate from 180° after alignment (a choice, not a style value)
 BOND_TOL = 0.15  # fraction a pinned layout's bond may differ from its median (a choice, not a style value)
 ANGLE_TOL = 15.0  # degrees a pinned acyclic 2- or 3-bond atom's narrowest gap may fall below 120° (a choice)
+OVERLAID_PER_BOND = 0.25  # non-bonded atoms nearer than this x the median bond overlap (a choice; geometry_checks too)
 
 
 def bent_linear_atoms(mol: Chem.Mol) -> list[int]:
@@ -996,6 +1001,27 @@ def crowded_atoms(mol: Chem.Mol) -> list[int]:
         if min(gaps) < 120 - ANGLE_TOL:
             out.append(a.GetIdx())
     return out
+
+
+def overlaid_atoms(mol: Chem.Mol) -> list[int]:
+    """Atoms of a layout that lays one group over another: non-bonded atoms nearer than
+    OVERLAID_PER_BOND x the median bond, or the ends of two bonds with no shared atom that
+    cross (a tolyl pinned across a PMe3 on the core shared with the reactant). The layout-time
+    twin of geometry_checks.check_overlaid."""
+    pts = _coords(mol)
+    ends = [(b.GetBeginAtomIdx(), b.GetEndAtomIdx()) for b in mol.GetBonds()]
+    if not ends:
+        return []
+    lim = OVERLAID_PER_BOND * statistics.median(math.dist(pts[i], pts[j]) for i, j in ends)
+    bonded = {frozenset(e) for e in ends}
+    out = set()
+    for i, j in itertools.combinations(range(mol.GetNumAtoms()), 2):
+        if frozenset((i, j)) not in bonded and math.dist(pts[i], pts[j]) < lim:
+            out |= {i, j}
+    for e1, e2 in itertools.combinations(ends, 2):
+        if not set(e1) & set(e2) and segments_cross(*(pts[i] for i in e1 + e2)):
+            out |= set(e1 + e2)
+    return sorted(out)
 
 
 def _fit_angle(pts: list[Point], ref_pts: list[Point], pairs) -> tuple[float, float]:
@@ -1052,8 +1078,9 @@ def prepare(mol: Chem.Mol, name: str, bond_length: float, abbreviate: list[str] 
     least 3 atoms, those atoms keep the reference's coordinates (align_coords); with no core, all
     matched atoms (≥ 3) do, which suits a trigonal center turning tetrahedral (acetone to the
     cyanohydrin alkoxide). Either is rejected if it bends an sp atom (nitronium on bent HNO3
-    atoms), stretches a bond (a ring closed across pinned atoms) or crowds an acyclic atom's
-    bonds (a trigonal anion on chloroform's tetrahedron). Otherwise orient mode (orient_to): the species' own layout, turned the way the
+    atoms), stretches a bond (a ring closed across pinned atoms), crowds an acyclic atom's
+    bonds (a trigonal anion on chloroform's tetrahedron) or lays one group over another
+    (overlaid_atoms: Suzuki's tolyl across a PMe3). Otherwise orient mode (orient_to): the species' own layout, turned the way the
     matched atoms point in the reference; nothing pinned. No reference: its own layout (SMILES:
     CoordGen + orientation, default auto; molfile: its own layout, oriented as asked). A `chair`
     species is laid out by chair.layout and aligns to nothing; nothing aligns to a chair either
@@ -1082,7 +1109,8 @@ def prepare(mol: Chem.Mol, name: str, bond_length: float, abbreviate: list[str] 
                 continue
             pinned = Chem.Mol(mol)
             align_coords(pinned, ref.mol, pins)
-            if not (bent_linear_atoms(pinned) or uneven_bonds(pinned) or crowded_atoms(pinned)):
+            if not (bent_linear_atoms(pinned) or uneven_bonds(pinned) or crowded_atoms(pinned)
+                    or overlaid_atoms(pinned)):
                 return Prepared(pinned, name, bond_length, ref.scale, ref.name, pins)  # `matched`: the pinned atoms
         orient_to(mol, ref.mol, pairs, relayout=not from_file)
         return Prepared(mol, name, bond_length, layout_scale(mol, bond_length), ref.name)

@@ -9,7 +9,7 @@ import pytest
 from acs_chem_svg import chem
 from acs_chem_svg.arrows import notch_x
 from acs_chem_svg.draw_mol import Drawer, draw_molecule
-from acs_chem_svg.geometry_checks import check_scheme
+from acs_chem_svg.geometry_checks import check_overlaid, check_scheme
 from acs_chem_svg.layout import build_scheme, render_spec
 from acs_chem_svg.preset import load_preset
 from acs_chem_svg.scene import Group
@@ -173,6 +173,27 @@ def test_orient_mode(example, name, ref):
     assert p.aligned_to == ref and p.matched == []
     assert chem.uneven_bonds(p.mol) == []
     assert _bonds_on_grid(p.mol)
+
+
+def test_overlaid_pin_falls_to_orient_mode():
+    """Pinning 3-ethylpentane's core lays the tolyl that replaces Br across an ethyl
+    (chem.overlaid_atoms, issues 2026-10-30): the pin is rejected and the species oriented."""
+    spec = Spec.model_validate({"species": {"a": {"smiles": "BrC(CC)(CC)CC"},
+                                            "b": {"smiles": "Cc1ccc(cc1)C(CC)(CC)CC"}},
+                                "steps": [{"from": "a", "to": "b"}]})
+    p = scheme_prepared(spec, REPO)["b"]
+    assert p.aligned_to == "a" and p.matched == []
+    assert chem.overlaid_atoms(p.mol) == []
+    assert check_overlaid("b", p.molecule()) == []
+
+
+def test_suzuki_trans_aligned_without_overlay():
+    """The Suzuki cycle's trans, aligned to oxadd, no longer lays the tolyl over a PMe3."""
+    spec = load_spec(EX / "m6_suzuki_cycle_x1.0.yaml")
+    assert spec.species["trans"].align
+    p = scheme_prepared(spec, EX)["trans"]
+    assert p.aligned_to == "oxadd" and p.matched
+    assert check_overlaid("trans", p.molecule()) == []
 
 
 def test_alignment_opt_out():

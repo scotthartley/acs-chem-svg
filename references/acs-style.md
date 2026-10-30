@@ -308,13 +308,17 @@ Notes:
 - Conditions sit as in §3.3 (above 4.50–5.75, below 11.36–12.50); compound numbers share one
   baseline per row (3 is 0.18 pt high, by hand).
 
-### 3.5 Abbreviations (source: abbrev_x1.0 / x0.8 / x0.6)
+### 3.5 Abbreviations (source: abbrev_x1.0 / x0.8 / x0.6; PPh₃: metals_x1.0 / x0.8 / x0.6)
 
-Method: `uv run python scripts/measure_refs.py --abbrev`. Each of the 21 `chem.ABBREVIATIONS` on
+Method: `uv run python scripts/measure_refs.py --abbrev`. Each of 21 `chem.ABBREVIATIONS` on
 a benzene ring, once with the bond leaving the label to the left (ring on the right) and once
 to the right, plus OMe, CO₂Me and NO₂ at ±30°. ChemDraw justified them itself
 (`LabelJustification` Left / Right); the CDXML keeps the key text in both forms, and the SVG
-shows the reversed text.
+shows the reversed text. PPh₃ is a label typed on Pd in metals_x\* (`NodeType="Unspecified"`
+with ChemDraw's expansion inside, read as a nickname), PPh₃ with its bond to the left and
+below, Ph₃P with it to the right: the same rules as the table below, first / last P on the atom
+within 0.004, bond ends model − end −0.08 to +0.06 (`test_pph3_vs_chemdraw`). PMe₃ follows
+PPh₃ by analogy (Me₃P reversed): **unmeasured**.
 
 | Parameter | ×1.0 | ×0.8 | ×0.6 | Class |
 |---|---|---|---|---|
@@ -333,7 +337,8 @@ Reversed text (ChemDraw's display; `chem.ABBREVIATIONS_REVERSED`):
 | OBn | BnO | CO₂Et | EtO₂C | TMS, TES, TBS, TIPS | unchanged |
 | OPh | PhO | CO₂H | HO₂C | | |
 | OAc | AcO | CF₃ | F₃C | | |
-| SMe | MeS | CN | NC | | |
+| SMe | MeS | CN | NC | PPh₃ | Ph₃P (metals_x\*) |
+| | | | | PMe₃ | Me₃P (unmeasured) |
 
 ### 3.6 Equilibrium arrows (source: equilibrium_x1.0 / x0.8 / x0.6, arrows_large_x1.0)
 
@@ -633,6 +638,14 @@ Rules (M4; unmeasured, user decisions 2026-10-25, flagged at review):
     0.24 / 0.16 / 0.17 pt nearer the atom than ChemDraw (5.11 vs 5.35 at x1.0); the other
     directions at Pd and Si are within 0.1. A refit (`measure_refs.py --fit-clip`) with
     metals_x\* might close it.
+26. **Ligand abbreviations other than PPh₃** (§3.5): PMe₃ is drawn by analogy with PPh₃
+    (unmeasured; its CDXML nickname fragment is PPh₃'s cut to the ipso carbons). PCy₃, P(t-Bu)₃,
+    a generic L and LₙPd have no reference: a metals-style file with them on Pd in both
+    justifications, at x0.6 / 0.8 / 1.0, would settle them.
+27. **H above or below an NH / OH** (§2): our labels put the H left or right only. ChemDraw
+    re-justifies proline's NH (both ring bonds leaving N downward) with the H above when it
+    re-saves our CDXML (§15.3 gate). Wanted: a reference with an NH and an OH whose bonds both
+    leave downward, and both upward (H below), at x0.6 / 0.8 / 1.0.
 
 ## 7. Design-brief (docs/design.md) discrepancies (references win)
 
@@ -916,7 +929,7 @@ and `test_scheme_reference_diff` on scheme_wrap_x\*.
 
 | Item | ChemDraw's files | Ours |
 |---|---|---|
-| Abbreviation node | `<n NodeType="Fragment">` for formula-like groups (OMe, CO2Me, NO2, CF3, CN, NHAc, …), `NodeType="Nickname"` with `IsNickname="yes"` on the `<t>` for Ph, Bn, Et, Ac, TMS, TES, TBS, TIPS; no `Element`; `NeedsClean="yes"` | the same, NodeType and IsNickname from the template |
+| Abbreviation node | `<n NodeType="Fragment">` for formula-like groups (OMe, CO2Me, NO2, CF3, CN, NHAc, …), `NodeType="Nickname"` with `IsNickname="yes"` on the `<t>` for Ph, Bn, Et, Ac, TMS, TES, TBS, TIPS; `NodeType="Unspecified"` for PPh3 (metals_x\*, a typed label) and PMe3 (by analogy, its fragment PPh3's cut to the ipso carbons, unmeasured); no `Element`; `NeedsClean="yes"` | the same, NodeType and IsNickname from the template |
 | Inner fragment | the group's atoms at real coordinates (Element, NumHydrogens, Charge: NO2's N+ and O−), plus a `NodeType="ExternalConnectionPoint"` 14.35 / 11.50 / 8.60 pt from the attachment atom toward the outer neighbor (0.05 pt short of BondLength) and bonded to it. The right-justified form is the left one turned 180°, to 0.01 pt | `presets/cdxml/<preset>.nicknames.xml`: each key's left-justified inner fragment from abbrev_x\<k\>, attachment atom at the origin (`scripts/cdxml_headers.py`), turned and moved rigidly onto the atom and its neighbor |
 | Inner node attributes | abbrev_x\*: id, p, Element, NumHydrogens, Charge (a methyl C has NumHydrogens="3"). scheme_multi_x1.0's (expanded and contracted by the user): also Z, NeedsClean and ExternalConnectionNum, and no NumHydrogens on carbon | abbrev_x\*'s |
 | Label `<t>` | the key text (OMe) in both forms, one face-96 `<s>`; Left: p.x the first glyph origin; Right (drawn MeO): `Justification="Right"`, p.x the end of the drawn text's advance (+3.89 = half the O); p.y as §13 (NO2, TMS: 3.68 for the O / S; Ph 3.60); BoundingBox the drawn text's ink in the stored frame | the same, from `Label.runs`, within 0.02 pt |

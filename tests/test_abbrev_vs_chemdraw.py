@@ -17,6 +17,9 @@ pytestmark = pytest.mark.skipif(not (mr.REF_DIR / "abbrev_x1.0.cdxml").exists(),
 
 TOL = 0.1
 REFS = ["abbrev_x1.0", "abbrev_x0.8", "abbrev_x0.6"]
+# keys abbrev_x* doesn't hold: PPh3 is checked on metals_x* (test_square_planar.test_pph3_vs_chemdraw),
+# PMe3 has no reference (acs-style.md §3.5, unmeasured)
+ELSEWHERE = {"PPh3", "PMe3"}
 
 
 @lru_cache(maxsize=None)
@@ -34,7 +37,8 @@ def _glyphs(doc, atom):
 def test_every_abbreviation_in_both_forms(ref):
     r, _, _ = measured(ref)
     shown = {(a.label, "".join(c for c, *_ in _glyphs(r.ref, a))) for a in r.ref.atoms.values() if a.nickname}
-    assert shown == {(k, k) for k in ABBREVIATIONS} | {(k, v) for k, v in ABBREVIATIONS_REVERSED.items()}
+    assert shown == ({(k, k) for k in ABBREVIATIONS if k not in ELSEWHERE}
+                     | {(k, v) for k, v in ABBREVIATIONS_REVERSED.items() if k not in ELSEWHERE})
 
 
 @pytest.mark.parametrize("ref", REFS)
