@@ -1,6 +1,7 @@
 """Validate a spec (design.md §6): schema, chemistry (RDKit sanitize, abbreviations, alignment),
 electron bookkeeping for curved arrows (electrons.check_spec), then scheme and mechanism
-geometry (geometry_checks). Prints one line per problem; exit 1 if any.
+geometry (geometry_checks). A catalytic cycle gets its schema (closure, names), each species'
+label checks and its crowded tails (cycle.check_cycle). Prints one line per problem; exit 1 if any.
 
 When the arrows of a step don't give its declared products, it also prints what they do give,
 one `suggested: <name>: {smiles: "..."}` line per molecule, ready to paste into `species:`
@@ -23,6 +24,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
+from acs_chem_svg.cycle import build_cycle, check_cycle
 from acs_chem_svg.electrons import StepCheck, check_spec
 from acs_chem_svg.geometry_checks import (check_labels, check_lewis, check_line_end_dots, check_mechanism,
                                           check_scheme)
@@ -42,6 +44,12 @@ def checked(path: Path) -> tuple[list[str], list[StepCheck]]:
         return [f"schema: {err['loc']}: {err['msg']}" for err in e.errors()], []
     except (OSError, ValueError) as e:
         return [f"schema: {e}"], []
+    if spec.cycle is not None:
+        try:
+            lay = build_cycle(spec, path.parent, path.stem)
+        except (ValueError, NotImplementedError, RuntimeError, FileNotFoundError) as e:
+            return [f"chemistry/layout: {e}"], []
+        return [f"geometry: {p}" for p in check_cycle(lay)], []
     try:
         if not spec.steps:
             return [f"geometry: {p}" for d in m1_drawers(spec, path.parent)

@@ -91,6 +91,15 @@ placement:
   - bracket.gap_below
   - scheme.row_gap
   - lewis.bond_length
+  - cycle.clear
+  - cycle.tail_room
+  - cycle.tail_join_in              # dimensionless, the same at every preset
+  - cycle.tail_join_out
+  - cycle.tail_radius
+  - cycle.tail_turn                 # degrees, the same at every preset
+  - cycle.tail_text_gap
+  - cycle.label_gap
+  - cycle.label_clear
 
 lengths:
   bond_length: 14.40                # m1_set_x1.0: CDXML atom distances, median 14.399 (n=32)
@@ -213,6 +222,17 @@ scheme:                             # hand-placed in the references (measure_ref
   number_gap: 6.5                   # placement default (user decision 2026-10-24); row's lowest structure ink -> number ink top; measured scheme_*_x1.0 median 6.709 (n=11, 6.39-6.87)
   row_gap: 34.5                     # placement default (user decision 2026-10-25); row ink bottom (incl. numbers) -> next row ink top (incl. conditions); measured scheme_wrap_x1.0 34.73 (measure_refs.py --wrap)
   wrap_width: 504.0                 # user decision 2026-10-25 (7 in, ACS double column); rows break between steps to stay within it; layout.width overrides
+
+cycle:                              # catalytic cycles (acs-style.md §15.2); no reference: ChemDraw has no cycle layout
+  clear: 9.0                          # unmeasured placement default (user decision 2026-10-29, cycle spike): species ink <-> arc arrow tail / tip, along the circle; also between species
+  tail_room: 24.0                     # unmeasured placement default (user decision 2026-10-29, cycle spike): free arc a step needs beyond scheme.arrow_min_length per tail on its busier side; also the spacing of tails on one side
+  tail_join_in: 0.4                 # unmeasured placement default (user decision 2026-10-29, cycle spike 0.38, on the 0.1 grid): where the last entering tail meets the arc (fraction of the arc); dimensionless
+  tail_join_out: 0.6                # unmeasured placement default (user decision 2026-10-29, cycle spike 0.62, on the 0.1 grid): where the first leaving tail meets the arc; dimensionless
+  tail_radius: 20.0                   # unmeasured placement default (user decision 2026-10-29, cycle spike): a tail is an arc of this radius, tangent to the circle from outside
+  tail_turn: 80.0                   # unmeasured placement default (user decision 2026-10-29, cycle spike): degrees a tail turns from its join to its free end; dimensionless, the same at every preset
+  tail_text_gap: 2.5                  # unmeasured placement default (user decision 2026-10-29, cycle spike): a tail's free end -> its text or structure ink, along the tail
+  label_gap: 6.0                      # unmeasured placement default (user decision 2026-10-29, cycle spike): the circle -> a step label's ink (inside), at the arc's middle
+  label_clear: 4.0                    # unmeasured placement default (user decision 2026-10-29, cycle spike): step label ink <-> species ink, other labels, the center text (the radius grows to keep it)
 
 chair:                              # chair_x1.0 (measure_refs.py --chair); ChemDraw Conformers templates, exact; acs-style.md §14.1
   vertices: [[0, 0], [-7.2, 12.47], [6.65, 8.51], [20.57, 12.47], [27.78, 0], [13.93, 3.96]]  # fragment 1 (chair): vertex offsets from vertex 1, pt, y down; the flipped chair is its exact mirror (ChemDraw's own flipped template, fragment 2, is not: its middle vertices sit 0.31 pt from the mirror; not used, §14.1)

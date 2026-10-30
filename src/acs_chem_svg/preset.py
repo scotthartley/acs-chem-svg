@@ -157,6 +157,19 @@ class Scheme(_Section):
     wrap_width: float
 
 
+class Cycle(_Section):
+    """Catalytic-cycle placement (acs-style.md §15.2): unmeasured defaults, pt unless noted."""
+    clear: float
+    tail_room: float
+    tail_join_in: float  # fraction of the arc
+    tail_join_out: float
+    tail_radius: float
+    tail_turn: float  # degrees
+    tail_text_gap: float
+    label_gap: float
+    label_clear: float
+
+
 class Chair(_Section):
     """ChemDraw's chair template (acs-style.md §14.1). The flipped chair is its exact mirror: its
     vertex k mirrors vertex (4 - k) mod 6 of `vertices` (0-based). ChemDraw's own flipped template
@@ -202,6 +215,7 @@ class Preset(_Section):
     bracket: Bracket
     resonance: Resonance
     scheme: Scheme
+    cycle: Cycle
     chair: Chair
     cdxml: Cdxml
 

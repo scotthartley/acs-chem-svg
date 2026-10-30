@@ -594,8 +594,12 @@ def curved_arrows(lay: SchemeLayout, spec: Spec, aset: ArrowSet, row: list[str] 
 
 
 def render_spec(path: Path) -> Group:
-    """Scene for a spec file: M1 side-by-side species, or an M2 scheme when it has steps."""
+    """Scene for a spec file: M1 side-by-side species, an M2 scheme when it has steps, or a
+    catalytic cycle (cycle.build_cycle)."""
     spec = load_spec(path)
+    if spec.cycle is not None:
+        from .cycle import render_cycle  # cycle imports layout
+        return render_cycle(spec, path.parent, path.stem)
     if not spec.steps:
         return m1_row(spec, path.parent, path.stem)
     return build_scheme(spec, path.parent, path.stem).root

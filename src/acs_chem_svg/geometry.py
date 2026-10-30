@@ -175,3 +175,28 @@ def union_box(boxes):
         return None
     return (min(b[0] for b in boxes), min(b[1] for b in boxes),
             max(b[2] for b in boxes), max(b[3] for b in boxes))
+
+
+def arc_point(center, r, a):
+    """The point at angle `a` (radians, counter-clockwise on screen from +x) on the circle."""
+    return (center[0] + r * math.cos(a), center[1] - r * math.sin(a))
+
+
+def arc_tangent(a, direction=1.0):
+    """Unit tangent at angle `a` along the travel: direction +1 counter-clockwise on screen, -1 clockwise."""
+    return (-math.sin(a) * direction, -math.cos(a) * direction)
+
+
+def arc_segments(center, r, a0, a1):
+    """The arc a0 -> a1 (radians, either way round) as ("M", p) and ("C", c1, c2, p) segments:
+    equal pieces of at most 90°, handles 4/3 tan(piece / 4) r (radial error < 0.03 % of r)."""
+    n = max(1, math.ceil(abs(a1 - a0) / (math.pi / 2) - 1e-9))
+    d = (a1 - a0) / n
+    k = 4 / 3 * math.tan(abs(d) / 4) * r
+    s = 1.0 if d >= 0 else -1.0
+    out = [("M", arc_point(center, r, a0))]
+    for i in range(n):
+        p, q = a0 + i * d, a0 + (i + 1) * d
+        out.append(("C", add(arc_point(center, r, p), mul(arc_tangent(p, s), k)),
+                    sub(arc_point(center, r, q), mul(arc_tangent(q, s), k)), arc_point(center, r, q)))
+    return out

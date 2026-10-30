@@ -285,8 +285,14 @@ def combine(mols: list[Chem.Mol]) -> Chem.Mol:
 
 def canonical(mol: Chem.Mol) -> str:
     """Canonical SMILES with maps, charges and radicals; H atoms removed (mapped ones too)
-    and stereo dropped, so explicit and implicit H compare equal."""
+    and stereo dropped, so explicit and implicit H compare equal. A dative bond (P->[Pd]) is
+    written as the single bond the arrows make: + on the donor, − on the acceptor."""
     m = Chem.RWMol(mol)
+    for b in m.GetBonds():
+        if b.GetBondType() == Chem.BondType.DATIVE:
+            for a, dq in ((b.GetBeginAtom(), 1), (b.GetEndAtom(), -1)):
+                a.SetFormalCharge(a.GetFormalCharge() + dq)
+            b.SetBondType(Chem.BondType.SINGLE)
     m.UpdatePropertyCache(strict=False)
     for a in m.GetAtoms():
         a.SetNumExplicitHs(a.GetTotalNumHs())  # keep each atom's H count as given (implicit H of `C` too):

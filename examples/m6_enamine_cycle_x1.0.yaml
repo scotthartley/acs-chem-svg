@@ -1,0 +1,14 @@
+# Proline-catalyzed aldol reaction as a catalytic cycle (acs-style.md §15): four species,
+# clockwise from proline; two equilibrium steps, tails entering and leaving.
+preset: acs1996
+species:
+  proline:  {smiles: "OC(=O)[C@@H]1CCCN1"}
+  iminium:  {smiles: "OC(=O)[C@@H]1CCC[N+]1=C1CCCCC1"}
+  enamine:  {smiles: "OC(=O)[C@@H]1CCCN1C1=CCCCC1"}
+  adduct:   {smiles: "OC(=O)[C@@H]1CCC[N+]1=C1CCCCC1C(O)c1ccccc1"}
+cycle:
+  steps:
+    - {from: proline, to: iminium, label: condensation, arrow_type: equilibrium, in: cyclohexanone, out: H2O}
+    - {from: iminium, to: enamine, label: tautomerization, arrow_type: equilibrium, out: "H+"}
+    - {from: enamine, to: adduct, label: C–C bond formation, in: [PhCHO, "H+"]}
+    - {from: adduct, to: proline, label: hydrolysis, in: H2O, out: aldol product}

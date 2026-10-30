@@ -623,6 +623,10 @@ Rules (M4; unmeasured, user decisions 2026-10-25, flagged at review):
 23. **Carbenes** (§10): carbene pair and triplet dot placement on skeletal carbons and the singlet CDXML
     (`LonePair` + `Radical="Singlet"`) are unmeasured; no reference (user decision 2026-10-29).
 
+24. **Arc arrows** (§15.1): clockwise heads in arcs_x\* are the measured shape rescaled by
+    −2.8 to +3.1 % with no pattern found; ours keeps the measured head both ways. ChemDraw has no
+    arc equilibrium arrow, so ours (§15.1) applies the straight rules along the arc.
+
 ## 7. Design-brief (docs/design.md) discrepancies (references win)
 
 1. **Bond drawing.** design.md §3.3 says "stroked line, butt caps". ChemDraw draws filled polygons
@@ -1068,3 +1072,61 @@ ChemDraw reads its ring stereocenters as undefined.
 |---|---|---|
 | M1 items on the chair templates (bond lengths, line widths and offsets, labels, ends at labels, wedge) | 0.076 / 0.069 / 0.075 pt | `tests/test_chair_vs_chemdraw.py::test_exact_geometry_within_tolerance` |
 | Cut ends, distance from the front axis, both corners | 0.014 / 0.006 / 0.010 pt | `tests/test_chair_vs_chemdraw.py::test_crossing_cuts_within_tolerance` |
+
+## 15. Catalytic cycles (source: arcs_x1.0 / x0.8 / x0.6, ChemDraw 26.1.0.6801)
+
+arcs_x\* (the user, redrawn 2026-10-30): ChemDraw arc arrows (the arc tool) at 60°, 120° and
+180° (59.6–60.1° as drawn), each tail and tip level, drawn counterclockwise and clockwise (not
+flipped: a flipped copy keeps a stale Center3D and its MinorAxisEnd3D turns to −r); x1.0 has them
+with large and standard heads, x0.8 and x0.6 with standard heads. ChemDraw has no cycle layout and no arc equilibrium arrow, so everything else in
+a cycle is our placement (§15.2). Method: `measure_refs.py --arc` (`arc_summary`).
+
+### 15.1 Arc arrows (exact)
+
+| Item | x1.0 | x0.8 | x0.6 | Notes |
+|---|---|---|---|---|
+| Circle | the center on the chord's bisector, R = chord / (2 sin(\|AngularSize\| / 2)), on the page's left of tail → head for a positive AngularSize (`measure_refs.arc_circle`): Center3D and the `<graphic>`'s stored center within 0.07 (Head3D, Tail3D and AngularSize are rounded) | same | same | AngularSize = the sweep, + counterclockwise on the page, − clockwise |
+| Tip | Head3D, on the circle | same | same | |
+| Notch | on the circle (within 0.005), the chord to the tip = `head_inset` (7.878–7.879 large, 5.250–5.251 standard; counterclockwise) | 5.247–5.255 | 5.228–5.230 | the arc from notch to tip is 0.005–0.014 longer |
+| Head axis | the chord notch → tip (within 0.01°): the straight head, not bent, symmetric about the chord | same | same | 2.1–5.9° off the tangent at the tip (x0.6: up to 7.2°); the back corners stand 1.43–2.43 off the circle, the outer one farther |
+| Head shape | the straight head (§3.1) of the same variant: length 9.00 / 6.00, half-width 2.31–2.32 / 1.55–1.57, the same back edge and 0.05 hairline (counterclockwise) | 6.00, 1.57 | 5.98, 1.56 | `arrow.heads` |
+| Shaft | width 0.60, a stroked path between Tail3D (within 0.007) and the notch, always stroked counterclockwise: from the tail on a counterclockwise arc, from the notch on a clockwise one | same | same | `measure_refs.arc_shaft` |
+| Clockwise heads | the same shape (inset / length 0.875) on the chord (within 0.01°), the tip on Head3D, but scaled: length / measured 0.980, 0.983, 0.972 (standard) and 1.031, 0.991, 1.028 (large) at 60°, 120°, 180° | 0.979, 1.011, 0.973 | 1.028, 1.010, 1.021 | no pattern found (not radius, sweep or chord; x0.6's counterclockwise heads also moved from 1.000 to 0.996 between two saves of the same arcs): ours is the measured head both ways |
+| Shaft cubics | ≤ 90° pieces from the tail; the 90° ones with handle 0.551915 r, the last (to the notch) 1–3.5 % shorter than an exact arc's, no closed form found. Up to **0.33 pt off the circle** (180°; 0.15 at 60°, 0.015 at 120°) | 0.24 | 0.15 | ChemDraw's approximation of its own circle: ours is the circle (`geometry.arc_segments`, equal pieces ≤ 90°, error < 0.03 % of r) |
+| CDXML `<arrow>` | `AngularSize` (− clockwise), `Center3D` = the center, `MajorAxisEnd3D` = center + (r, 0), `MinorAxisEnd3D` = center + (0, r) (y down) in both directions, Head3D, Tail3D; head attributes as §13.1 | same | same | phase 5 |
+| CDXML `<graphic>` | `GraphicType="Arc"`, `SupersededBy` the arrow, `BoundingBox` = Head3D then the true center, `AngularSize` 90 for the 59.6–60.1° arcs (120 and 180 for the others; −90, −120, −180 clockwise) | same | same | the 60° value is unexplained (a default kept from the tool?) |
+| `<arrow>` BoundingBox | 0.46–0.47 out from the ink on the tail side and top; the bottom 1.3–5.9 **inside** the ink for 60° and 120° arcs | | | not modelled (ChemDraw recomputes boxes, §13.1 gate) |
+
+Implemented as `arrows.arc_arrow`: the shaft is the arc from the tail to the notch, and the head
+is the straight `head_marker` with its origin at the notch, turned in the marker frame by the
+angle from the arc's end tangent to the chord (`arc_turn`, one `<marker>` id per turn, so SVG's
+`orient="auto"` puts it on the chord). `arrows.arc_equilibrium_arrow` (unmeasured, Open 24)
+draws two concentric shafts `equilibrium.shaft_spacing` apart, the forward one on the left of travel
+(outside for a clockwise arrow). The stagger and the unbalanced ratio are measured along the center
+circle, and each half head sits on its own shaft's chord.
+
+| Check | Worst | Test |
+|---|---|---|
+| Shaft start and notch (counterclockwise; clockwise: the start, and ChemDraw's notch on the circle) | 0.006 / 0.006 / 0.022 pt | `tests/test_arc_vs_chemdraw.py::test_arc_shaft_ends_and_circle` |
+| Head vertices and controls (tip, corners, back edge, notch), counterclockwise | 0.053 / 0.053 / 0.073 pt (the mean half-width, §3.1) | `tests/test_arc_vs_chemdraw.py::test_arc_head_on_the_chord` |
+| Clockwise: tip; head on its chord; shape, scaled ≤ 3.5 % | within 0.1 pt; 0.05°; inset / length within 0.005 | the same test |
+
+### 15.2 Cycle layout (ours, unmeasured; `cycle.py`, presets' `cycle:` keys)
+
+Rules settled on the spike renders (`scripts/cycle_spike.py`; user decisions 2026-10-29: equal
+free arcs, labels inside the circle, tails as tangent arcs). Values at x1.0; x0.8 / x0.6 are x1.0
+× k rounded to the 0.5 grid (`tail_join_in`, `tail_join_out` and `tail_turn` unchanged; the spike's 0.38 / 0.62 joins rounded to the 0.1 grid).
+
+| Rule | Key (x1.0) |
+|---|---|
+| Species box = its ink plus its compound number, centered on the circle; the first at 12 o'clock, then round in `direction` | — |
+| The arc arrows end `clear` from a species' ink (Euclidean, so a box corner is rounded); boxes keep `clear` from each other | `cycle.clear` 9.0 |
+| Equal free arcs: each θk is set so every arrow is the same length (a wide species takes more of the circle) | — |
+| Radius: the smallest one where the arrow length ≥ `scheme.arrow_min_length` + `tail_room` × (tails on the step's busier side), for the most demanding step | `cycle.tail_room` 24.0 |
+| Step labels inside, on the inward line through the arc's middle, every ink corner ≥ `label_gap` inside the circle; the radius grows until labels keep `label_clear` from species, each other and the center text | `cycle.label_gap` 6.0, `cycle.label_clear` 4.0 |
+| Tails: an arc of `tail_radius` tangent to the circle from outside, turning `tail_turn`; entering ones join at `tail_join_in` of the arc (earlier ones `tail_room` further back), leaving ones at `tail_join_out` (later ones further on); a leaving tail is an arc arrow (§15.1). Tails don't change the radius | `cycle.tail_radius` 20.0, `cycle.tail_turn` 80°, `cycle.tail_join_in` / `_out` 0.4 / 0.6 |
+| Tail text or structure `tail_text_gap` beyond the free end, along the tail; consecutive texts share a tail (", ") | `cycle.tail_text_gap` 2.5 |
+| A crowded tail (path or item within `label_clear` of a species, label, earlier tail or the arrows) tries radius ×1.3 / ×1.6, turns 65° / 100° / 50° / 120° and joins ±0.06 / −0.12; still crowded: a `validate.py` problem | — |
+
+Held by `tests/test_cycle.py` (equal arcs within 0.05 pt, θ0 = 90°, no species within `clear` of
+an arrow, the radius growing with count, size and labels, tail text not moving the radius).

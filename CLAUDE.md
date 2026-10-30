@@ -65,7 +65,7 @@ they disagree, `acs-style.md` (the ChemDraw references) wins.
   bracket and row items. resonance_x* also gets our ↔ arrows and brackets on ChemDraw's. Arrows take the head
   variant of their CDXML HeadSize; equilibrium_x* and arrows_large_x* draw our arrows and captions only.
 - `uv run python scripts/render.py spec.yaml [--out DIR] [--crops] [--maps] [--cdxml]` renders a spec: an M2–M4 scheme
-  (`examples/m2_*.yaml` … `examples/m4_*.yaml`) or M1 species (`examples/m1_smiles_x*.yaml`). `--crops` adds
+  (`examples/m2_*.yaml` … `examples/m4_*.yaml`), a catalytic cycle (`examples/m6_*_cycle_*.yaml`; no `--cdxml` yet) or M1 species (`examples/m1_smiles_x*.yaml`). `--crops` adds
   16 px/pt crops of curved arrows, charged or dotted labels, ↔ arrows, equilibrium arrow ends and bracket corners; `--maps` adds
   `<stem>_maps.png` with map numbers beside the atoms (preview only). It prints each curved arrow's bow.
   `--cdxml` (every spec kind) adds `<stem>.cdxml` for ChemDraw (`cdxml_writer`, acs-style.md §13).
@@ -79,6 +79,8 @@ they disagree, `acs-style.md` (the ChemDraw references) wins.
   charges and Lewis, `phase5/` for chairs and crossings); `--diff` compares ChemDraw's re-saves (`resaved/`) with them (acs-style.md §13–§13.4, gate).
   `--lewis-draft` writes `build/cdxml_spike/lewis_draft/charges_lewis_draft_x*.cdxml`, the draft the user edited into
   the charges_lewis_x* reference (never overwrites).
+- `uv run python scripts/measure_refs.py --arc` prints arcs_x*'s arc arrows: circle, sweep, notch and head on the chord, ChemDraw's cubics (acs-style.md §15.1).
+- `uv run python scripts/cycle_spike.py` re-renders the catalytic-cycle geometry spike (`spike/cycle/`); the module is `cycle.py` (acs-style.md §15.2).
 - `uv run python scripts/measure_refs.py --chair` prints chair_x*'s templates, axial and equatorial bonds per vertex, and the chairs' crossings (acs-style.md §14.1).
 - `uv run python scripts/measure_refs.py --crossing` prints every crossing's front bond (by Z) and the rear bond's cut ends (acs-style.md §14.2).
 - `uv run python scripts/measure_refs.py --charges-lewis` prints charges_lewis_x*'s circled signs, symbol sizes per box,

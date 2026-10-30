@@ -1170,7 +1170,9 @@ RESONANCE_KNOWN = {
     # ChemDraw writes one of resonance_x1.0's three sign boxes mirrored (dx -7.5; preset comment)
     ("resonance_x1.0", "charge box dx", "node 31"): 15.01,
 }
-ALL_SPECS = sorted(str(p.relative_to(mr.REPO)) for p in (mr.REPO / "examples").glob("*.yaml"))
+# catalytic cycles (m6_*_cycle_*) are not exported yet (acs-style.md §15, phase 5)
+ALL_SPECS = sorted(str(p.relative_to(mr.REPO)) for p in (mr.REPO / "examples").glob("*.yaml")
+                   if "_cycle_" not in p.name)
 
 
 @needs_refs

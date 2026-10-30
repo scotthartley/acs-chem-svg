@@ -1,0 +1,11 @@
+# expect: must be the `from` of the first step
+preset: acs1996
+species:
+  cat: {smiles: "c1ccccc1"}
+  int: {smiles: "Cc1ccccc1"}
+  prod: {smiles: "CCc1ccccc1"}
+cycle:
+  steps:
+    - {from: cat, to: int}
+    - {from: int, to: prod}
+    - {from: prod, to: int}

@@ -203,6 +203,50 @@ Drawing (acs-style.md §3.4, §4.3):
 - **Groups:** `row-<r>` (only with several rows), `bracket-step-<n>` (`-left`, `-right`),
   `resonance-arrow-step-<n>-<k>`, `numbers-row-<r>` (several rows; else `numbers`).
 
+## Catalytic cycles
+
+```yaml
+species:
+  pd0:    {smiles: "CP(C)(C)->[Pd]<-P(C)(C)C"}
+  oxadd:  {smiles: "Br[Pd](c1ccccc1)(<-P(C)(C)C)<-P(C)(C)C"}
+  trans:  {smiles: "...", align: false}
+  biaryl: {smiles: "Cc1ccc(cc1)-c1ccccc1"}
+numbers: {pd0: I, oxadd: II, trans: III}
+cycle:
+  start: pd0                       # at 12 o'clock; default: the first step's `from`
+  direction: clockwise             # or counterclockwise
+  center: "Pd(0)"                  # optional text in the middle
+  steps:                           # in order round the circle; the last returns to the first
+    - {from: pd0, to: oxadd, label: oxidative addition, in: PhBr}
+    - {from: oxadd, to: trans, label: transmetalation, in: "ArB(OH)2, base", out: "B(OH)3, Br–"}
+    - {from: trans, to: pd0, label: reductive elimination, out: {species: biaryl}}
+```
+
+| Key | Type | Meaning |
+|---|---|---|
+| `cycle` | — | A catalytic cycle, in place of `steps` (not both). Example: `examples/m6_suzuki_cycle_x1.0.yaml`, `examples/m6_enamine_cycle_x1.0.yaml`. |
+| `cycle.steps` | list of ≥ 3 | Each `to` is the next step's `from`, and the last `to` is the first `from`. Each species appears once round the circle (a second copy needs its own name). |
+| `cycle.steps[].label` | text | Drawn inside the circle by the step's arrow (richtext). The radius grows until every label clears the species, the other labels and the center text. |
+| `cycle.steps[].in` / `out` | text, `{text: ...}`, `{species: name}`, or a list of them | Entering tails join the arc in its first half; leaving tails branch off in its second half and end in a head. Consecutive texts on one side share one tail ("PhCHO, H+"); each species gets its own tail and is drawn as a structure. A tail species must not be one of the cycle's species. |
+| `cycle.steps[].arrow_type` | as `steps[].arrow_type` | `equilibrium` and the unbalanced forms draw two concentric arcs (unmeasured, acs-style.md §15.1); tails join the outer one. |
+| `cycle.start` / `direction` / `center` | name / `clockwise` \| `counterclockwise` / text | See the example. Steps are numbered from `start` round (groups `cycle-arc-<n>`). |
+| `numbers` | as for schemes | Bold, under each cycle species; counted in its box on the circle. |
+
+Every species is aligned to the one before it round the circle (`align: false` or `align_to`
+to change that). Metal complexes: bind a neutral ligand by a dative bond (`P(C)(C)C->[Pd]`,
+or `[Pd]<-P(C)(C)C`), drawn as a single bond with the donor's pair counted as the bond's (a
+bracketed `[P](C)(C)C` would draw a radical dot on P). The electron check compares a dative
+bond as the P⁺–Pd⁻ single bond that `lp(P)` → `between(P, Pd)` makes. Set `align: false` when an aligned
+complex crowds a ligand (`validate.py` doesn't catch that overlap).
+
+Drawing (acs-style.md §15): species centered on a circle, the first at 12 o'clock, spaced so
+every arrow between neighbours is the same length; arc arrows with the measured head on the
+chord; tails as small arcs tangent to the circle from outside. A tail that would touch
+something tries other shapes, never moving the species; one still crowded is a `validate.py`
+problem. CDXML export of cycles is not written yet (`--cdxml` refuses them).
+Groups: `species-<name>`, `numbers`, `cycle-arc-<n>`, `cycle-in-<n>-<i>`, `cycle-out-<n>-<i>`,
+`cycle-label-<n>`, `cycle-center`.
+
 ## Single species
 
 ```yaml

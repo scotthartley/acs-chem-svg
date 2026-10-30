@@ -9,7 +9,8 @@ from acs_chem_svg import fontmetrics
 
 PRESETS = Path(__file__).resolve().parents[1] / "presets"
 # dimensionless placement defaults (control offset / chord): the same in every preset
-RATIO_PLACEMENT = ("curved_arrow.curvature", "curved_arrow.loop_curvature")
+RATIO_PLACEMENT = ("curved_arrow.curvature", "curved_arrow.loop_curvature", "cycle.tail_join_in", "cycle.tail_join_out",
+                   "cycle.tail_turn")  # dimensionless: the same at every preset
 
 
 def _flat(d, prefix=""):

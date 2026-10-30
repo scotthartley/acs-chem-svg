@@ -465,6 +465,82 @@ AnyStep = Annotated[Union[Annotated[Step, Tag("reaction")], Annotated[ResonanceS
                                   or isinstance(v, ResonanceStep) else "reaction")]
 
 
+class CycleTail(BaseModel):
+    """A species entering or leaving a cycle step: drawn text, or a species drawn as a structure."""
+    model_config = ConfigDict(extra="forbid")
+    text: str | None = None
+    species: str | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _shorthand(cls, data):
+        return {"text": data} if isinstance(data, str) else data
+
+    @model_validator(mode="after")
+    def _one(self):
+        if (self.text is None) == (self.species is None):
+            raise ValueError("a tail gives exactly one of text or species")
+        return self
+
+
+class CycleStep(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    from_: str = Field(alias="from")
+    to: str
+    label: str | None = None  # drawn inside the circle, by the arc
+    in_: list[CycleTail] = Field(default_factory=list, alias="in")  # entering: a tail that joins the arc
+    out: list[CycleTail] = Field(default_factory=list)  # leaving: a tail that branches off it, with a head
+    arrow_type: ArrowType = "forward"
+
+    @field_validator("in_", "out", mode="before")
+    @classmethod
+    def _listify(cls, v):
+        return [v] if isinstance(v, (str, dict)) else v
+
+
+class Cycle(BaseModel):
+    """A catalytic cycle (references/scheme-schema.md, acs-style.md §15): species on a circle,
+    `start` at 12 o'clock, the steps in order round it, the last back to the first."""
+    model_config = ConfigDict(extra="forbid")
+    start: str | None = None  # default: the first step's `from`
+    direction: Literal["clockwise", "counterclockwise"] = "clockwise"
+    center: str | None = None  # text in the middle
+    steps: list[CycleStep] = Field(min_length=3)
+
+    @property
+    def members(self) -> list[str]:
+        """The species round the circle, from `start` in the direction of travel."""
+        names = [st.from_ for st in self.steps]
+        k = names.index(self.start) if self.start in names else 0
+        return names[k:] + names[:k]
+
+    def ordered_steps(self) -> list[CycleStep]:
+        """The steps from `start` on (step k leaves members[k])."""
+        k = [st.from_ for st in self.steps].index(self.members[0])
+        return self.steps[k:] + self.steps[:k]
+
+    @property
+    def tail_species(self) -> list[str]:
+        return [t.species for st in self.steps for t in st.in_ + st.out if t.species]
+
+    @model_validator(mode="after")
+    def _closed(self):
+        for k, st in enumerate(self.steps):
+            nxt = self.steps[(k + 1) % len(self.steps)]
+            if st.to != nxt.from_:
+                last = k == len(self.steps) - 1
+                raise ValueError(f"cycle step {k + 1}: `to` {st.to!r} must be the `from` of "
+                                 f"{'the first step (the cycle closes)' if last else f'step {k + 2}'} ({nxt.from_!r})")
+        names = [st.from_ for st in self.steps]
+        dup = sorted({n for n in names if names.count(n) > 1})
+        if dup:
+            raise ValueError(f"cycle: {', '.join(dup)} appear{'s' if len(dup) == 1 else ''} twice round the circle; "
+                             "each species is drawn once (a second copy needs its own name)")
+        if self.start is not None and self.start not in names:
+            raise ValueError(f"cycle: start {self.start!r} is not one of the cycle's species ({', '.join(names)})")
+        return self
+
+
 class Layout(BaseModel):
     model_config = ConfigDict(extra="forbid")
     width: float | None = Field(None, gt=0)  # pt; rows wrap to stay within it (default: preset scheme.wrap_width)
@@ -496,6 +572,7 @@ class Spec(BaseModel):
     preset: str = "acs1996"
     species: dict[str, Species] = Field(min_length=1)
     steps: list[AnyStep] | None = None
+    cycle: Cycle | None = None  # a catalytic cycle, in place of steps
     layout: Layout = Field(default_factory=Layout)
     numbers: dict[str, int | str] | None = None
     align: Literal["auto"] | bool = "auto"
@@ -528,6 +605,8 @@ class Spec(BaseModel):
             if n not in names:
                 raise ValueError(f"{key}: unknown species {n!r}")
         lewis = [n for n, sp in self.species.items() if sp.lewis_mode]
+        if self.cycle is not None:
+            return self._check_cycle(names, lewis)
         if self.steps and lewis:
             raise ValueError(f"lewis species are M1-only for now (a spec without steps): {', '.join(lewis)}")
         if not self.steps:
@@ -614,6 +693,33 @@ class Spec(BaseModel):
                                  "(steps are 1-based, arrow indices 0-based; a resonance step counts its lists in order)")
         return self
 
+    def _check_cycle(self, names: set[str], lewis: list[str]):
+        c = self.cycle
+        if self.steps:
+            raise ValueError("give either steps (a scheme) or cycle, not both")
+        if lewis:
+            raise ValueError(f"lewis species are M1-only for now (a spec without steps): {', '.join(lewis)}")
+        if self.overrides.arrows:
+            raise ValueError("overrides.arrows need steps with arrows; a cycle has no curved arrows")
+        for k, st in enumerate(c.steps, 1):
+            for n in (st.from_, st.to):
+                if n not in names:
+                    raise ValueError(f"cycle step {k}: unknown species {n!r}")
+            for t in st.in_ + st.out:
+                if t.species is not None and t.species not in names:
+                    raise ValueError(f"cycle step {k}: tail species {t.species!r} is not in species")
+                if t.species in c.members:
+                    raise ValueError(f"cycle step {k}: {t.species!r} is on the circle; a tail's species is drawn "
+                                     "outside it (give it its own name, or write it as text)")
+        tails = c.tail_species
+        dup = sorted({n for n in tails if tails.count(n) > 1})
+        if dup:
+            raise ValueError(f"cycle: tail species {', '.join(dup)} used twice; each is drawn once")
+        unused = sorted(names - set(c.members) - set(tails))
+        if unused:
+            raise ValueError(f"species not used in the cycle: {', '.join(unused)}")
+        return self
+
     def arrow_override(self, step: int, index: int) -> ArrowOverride:
         for o in self.overrides.arrows:
             if (o.step, o.index) == (step, index):
@@ -621,7 +727,10 @@ class Spec(BaseModel):
         return ArrowOverride(step=step, index=index)
 
     def order(self) -> list[str]:
-        """Species in drawing order, left to right and row by row."""
+        """Species in drawing order, left to right and row by row (a cycle: round the circle from
+        its start, then the tails' species)."""
+        if self.cycle is not None:
+            return self.cycle.members + self.cycle.tail_species
         if not self.steps:
             return list(self.species)
         out: list[str] = []
@@ -805,6 +914,9 @@ def reference_for(spec: Spec, name: str) -> str | None:
     sp = spec.species[name]
     if sp.align_to:
         return sp.align_to
+    if spec.cycle is not None:  # each species round the circle after the start: the one before it
+        m = spec.cycle.members
+        return m[m.index(name) - 1] if spec.align is not False and sp.align and name in m[1:] else None
     if spec.align is False or not sp.align or not spec.steps:
         return None
     for st in spec.steps:

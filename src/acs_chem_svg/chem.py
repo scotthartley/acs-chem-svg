@@ -37,7 +37,8 @@ from rdkit.Chem import rdAbbreviations, rdCoordGen, rdDepictor, rdFMCS
 from .geometry import Point, add, rotate
 
 _SANITIZE = Chem.SanitizeFlags.SANITIZE_ALL ^ Chem.SanitizeFlags.SANITIZE_SETAROMATICITY
-_ORDER = {Chem.BondType.SINGLE: 1, Chem.BondType.DOUBLE: 2, Chem.BondType.TRIPLE: 3}
+# a dative bond (P->[Pd]) is drawn as a single bond; bond_order_sum gives its pair to the donor
+_ORDER = {Chem.BondType.SINGLE: 1, Chem.BondType.DOUBLE: 2, Chem.BondType.TRIPLE: 3, Chem.BondType.DATIVE: 1}
 _MOLFILE_STEREO = {1: "wedge", 6: "hash"}
 _CARBON_ALIAS = re.compile(r"C(H\d?)?|H\d?C")  # CH3, H3C, CH2, CH, C
 STANDARD_BOND = 1.5  # A; molfile bond length that maps exactly onto the preset bond length
@@ -260,9 +261,29 @@ def auto_rotation(mol: Chem.Mol, pts: list[Point], near: float | None = None) ->
     return best[1]
 
 
+def _dative_as_single(mol: Chem.Mol) -> Chem.Mol:
+    """mol itself, or a copy with its dative bonds made single, to lay out: CoordGen lays a
+    dative bond out as a single bond anyway, but logs "unrecognized bond type" for each."""
+    if not any(b.GetBondType() == Chem.BondType.DATIVE for b in mol.GetBonds()):
+        return mol
+    m = Chem.RWMol(mol)
+    for b in m.GetBonds():
+        if b.GetBondType() == Chem.BondType.DATIVE:
+            b.SetBondType(Chem.BondType.SINGLE)
+    return m
+
+
+def _take_conformer(mol: Chem.Mol, laid: Chem.Mol) -> None:
+    if laid is not mol:
+        mol.RemoveAllConformers()
+        mol.AddConformer(Chem.Conformer(laid.GetConformer()), assignId=True)
+
+
 def layout_2d(mol: Chem.Mol) -> None:
     rdDepictor.SetPreferCoordGen(True)
-    rdDepictor.Compute2DCoords(mol)
+    m = _dative_as_single(mol)
+    rdDepictor.Compute2DCoords(m)
+    _take_conformer(mol, m)
 
 
 def orient(mol: Chem.Mol, rotate_deg: float | str | None = None, flip_h: bool = False,
@@ -356,8 +377,14 @@ def valence_electrons(a: Chem.Atom) -> int:
 
 
 def bond_order_sum(a: Chem.Atom) -> int:
-    """Bond orders to every neighbor, plus one per implicit or counted H."""
-    return sum(_ORDER[b.GetBondType()] for b in a.GetBonds()) + a.GetTotalNumHs(includeNeighbors=False)
+    """Electrons the atom puts into its bonds: the bond orders to every neighbor, plus one per
+    implicit or counted H. A dative bond's pair is all the donor's (2) and none of the acceptor's,
+    so P in P->[Pd] keeps no lone pair and Pd keeps its d electrons."""
+    def share(b: Chem.Bond) -> int:
+        if b.GetBondType() == Chem.BondType.DATIVE:
+            return 2 if b.GetBeginAtomIdx() == a.GetIdx() else 0
+        return _ORDER[b.GetBondType()]
+    return sum(share(b) for b in a.GetBonds()) + a.GetTotalNumHs(includeNeighbors=False)
 
 
 def lone_pairs(a: Chem.Atom) -> int:
@@ -766,14 +793,17 @@ def align_coords(mol: Chem.Mol, ref: Chem.Mol, pairs: list[tuple[int, int]]) -> 
     params = rdCoordGen.CoordGenParams()
     params.SetCoordMap({m: Geometry.Point2D(conf.GetAtomPosition(r).x, conf.GetAtomPosition(r).y)
                         for r, m in pairs})
-    rdCoordGen.AddCoords(mol, params)
+    m = _dative_as_single(mol)
+    rdCoordGen.AddCoords(m, params)
+    _take_conformer(mol, m)
     if _max_deviation(mol, ref, pairs) <= ALIGN_TOL:
         return
     pts = _coords(ref)
     med = statistics.median(math.dist(pts[b.GetBeginAtomIdx()], pts[b.GetEndAtomIdx()]) for b in ref.GetBonds())
-    tmp = Chem.Mol(ref)
+    tmp = Chem.Mol(_dative_as_single(ref))
     _scale_conformer(tmp, STANDARD_BOND / med)
-    rdDepictor.GenerateDepictionMatching2DStructure(mol, tmp, list(pairs), -1, True)
+    rdDepictor.GenerateDepictionMatching2DStructure(m, tmp, list(pairs), -1, True)
+    _take_conformer(mol, m)
     _scale_conformer(mol, med / STANDARD_BOND)
     dev = _max_deviation(mol, ref, pairs)
     if dev > ALIGN_TOL:

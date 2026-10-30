@@ -1,6 +1,6 @@
 ---
 name: acs-chem-svg
-description: Draw chemical structures, Lewis structures, reaction schemes, and arrow-pushing mechanisms in ACS (ChemDraw ACS Document 1996) style as editable SVG, with a PNG preview Claude inspects before delivering. Use when the user asks to draw a molecule, a Lewis structure, a reaction scheme, a mechanism with curved arrows, or resonance structures.
+description: Draw chemical structures, Lewis structures, reaction schemes, and arrow-pushing mechanisms in ACS (ChemDraw ACS Document 1996) style as editable SVG, with a PNG preview Claude inspects before delivering. Use when the user asks to draw a molecule, a Lewis structure, a reaction scheme, a mechanism with curved arrows, resonance structures, or a catalytic cycle.
 ---
 
 # acs-chem-svg
@@ -122,6 +122,13 @@ steps:
   adds it. A mechanism step's added reactants (a base) and its `over:` sit above its arrow.
 - Rows break only between steps; if a step plus a bracket can't fit, raise `layout.width`.
   Full rules: `references/scheme-schema.md` (Resonance, sequences, rows).
+
+## Catalytic cycles
+
+`cycle:` in place of `steps:`: `steps` of `{from, to, label, in, out, arrow_type}` round the
+circle (the last back to the first), `start` at 12 o'clock, `direction`, `center` text; `in` /
+`out` take text or `{species: name}`. Schema, example and limits (metal–ligand bonds):
+`references/scheme-schema.md` (Catalytic cycles). No CDXML for cycles yet.
 
 ## Known limits (raise errors rather than guess)
 

@@ -6,7 +6,10 @@ Layout is acs_chem_svg.layout.render_spec, shared with scripts/gallery.py. Write
 labeled atom with a charge or dots, every resonance arrow, both ends of every equilibrium arrow
 and every bracket corner: <stem>_crop_arrow-<step>-<index>.png, <stem>_crop_<species>-atom<id>.png,
 <stem>_crop_resonance-<step>-<k>.png, <stem>_crop_equilibrium-<step>-<tail|head>.png and
-<stem>_crop_bracket-<step>-<left|right>-<top|bottom>.png.
+<stem>_crop_bracket-<step>-<left|right>-<top|bottom>.png. A catalytic cycle gets each arc arrow's
+head (and an equilibrium arc's tail end), <stem>_crop_cycle-arc-<n>-<head|tail>.png, and each
+tail, <stem>_crop_cycle-<in|out>-<n>-<i>.png; its radius and free arc, and any tail still
+crowded, are printed.
 --maps also writes <stem>_maps.png: the drawing with every mapped atom's map number in small red
 type beside it, for choosing arrows and orientations. The overlay is preview only: it goes into
 a copy of the SVG text, never into <stem>.svg.
@@ -31,7 +34,8 @@ import sys
 from pathlib import Path
 
 from acs_chem_svg.cdxml_writer import CdxmlUnsupported, placed_cdxml, scheme_records, to_cdxml
-from acs_chem_svg.geometry import union_box
+from acs_chem_svg.cycle import CycleLayout, build_cycle
+from acs_chem_svg.geometry import arc_point, union_box
 from acs_chem_svg.layout import SchemeLayout, build_scheme, m1_placed, render_spec
 from acs_chem_svg.scene import Group
 from acs_chem_svg.preview import crops, rasterize, rasterize_file
@@ -71,6 +75,22 @@ def crop_boxes(lay: SchemeLayout, offset: tuple[float, float]) -> dict[str, tupl
             pts = g.children[0].points
             for corner, (x, y) in (("top", pts[1]), ("bottom", pts[2])):
                 out[f"bracket-{res.n}-{g.id.rsplit('-', 1)[-1]}-{corner}"] = moved((x - 6, y - 6, x + 6, y + 6))
+    return out
+
+
+def cycle_crop_boxes(cyc: CycleLayout, offset: tuple[float, float]) -> dict[str, tuple]:
+    """name -> box in the SVG frame: 12 pt round each arc arrow's tip (and an equilibrium arc's
+    tail too, where its back shaft's head is), and each tail (its path, without its item)."""
+    dx, dy = offset
+    out = {}
+    for a in cyc.arcs:
+        ends = [("head", a.a1)] + ([("tail", a.a0)] if a.kind != "forward" else [])
+        for end, ang in ends:
+            x, y = arc_point(cyc.center, cyc.radius, ang)
+            out[f"cycle-arc-{a.n}-{end}"] = (x - 6 + dx, y - 6 + dy, x + 6 + dx, y + 6 + dy)
+    for t in cyc.tails:
+        b = t.group.children[0].bbox()
+        out[f"cycle-{t.side}-{t.n}-{t.index}"] = (b[0] - 2 + dx, b[1] - 2 + dy, b[2] + 2 + dx, b[3] + 2 + dy)
     return out
 
 
@@ -118,9 +138,13 @@ def render(spec_path: Path, out_dir: Path | None = None, px_per_pt: float = 4.0,
            with_crops: bool = False, with_maps: bool = False, affinity: bool = False,
            with_cdxml: bool = False) -> list[Path]:
     spec = load_spec(spec_path)
+    if spec.cycle is not None and with_cdxml:
+        raise CdxmlUnsupported("catalytic cycles are not written to CDXML yet (acs-style.md §15, phase 5)")
+    cyc = build_cycle(spec, spec_path.parent, spec_path.stem) if spec.cycle is not None else None
     lay = build_scheme(spec, spec_path.parent, spec_path.stem) if spec.steps else None
     placed = m1_placed(spec, spec_path.parent) if with_cdxml and not lay else None
-    root = lay.root if lay else Group(spec_path.stem, [p.group for p in placed]) if placed else render_spec(spec_path)
+    root = (cyc.root if cyc else lay.root if lay else Group(spec_path.stem, [p.group for p in placed]) if placed
+            else render_spec(spec_path))
     svg, offset = to_svg(root, affinity=affinity)
     cdxml = None
     if with_cdxml:
@@ -140,6 +164,11 @@ def render(spec_path: Path, out_dir: Path | None = None, px_per_pt: float = 4.0,
     for a in lay.curved if lay else []:
         print(f"  curved arrow step {a.step} index {a.index} ({a.spec.from_} -> {a.spec.to}): bow {a.bow}",
               file=sys.stderr)
+    if cyc:
+        print(f"  cycle: radius {cyc.radius:.2f} pt, free arc {cyc.free:.2f} pt", file=sys.stderr)
+        for t in cyc.tails:
+            if t.clash:
+                print(f"  warning: cycle step {t.n} {t.side} tail {t.index}: {t.clash}", file=sys.stderr)
     paths = [svg_path, png_path]
     if cdxml is not None:
         cdxml_path = out_dir / f"{spec_path.stem}.cdxml"
@@ -147,6 +176,8 @@ def render(spec_path: Path, out_dir: Path | None = None, px_per_pt: float = 4.0,
         paths.append(cdxml_path)
     if with_crops and lay:
         paths += crops(svg, crop_boxes(lay, offset), out_dir, prefix=f"{spec_path.stem}_crop_")
+    if with_crops and cyc:
+        paths += crops(svg, cycle_crop_boxes(cyc, offset), out_dir, prefix=f"{spec_path.stem}_crop_")
     if with_maps and lay:
         maps_png = out_dir / f"{spec_path.stem}_maps.png"
         maps_png.write_bytes(rasterize(maps_svg(lay), px_per_pt))
