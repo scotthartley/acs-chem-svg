@@ -85,6 +85,7 @@ def test_labels_grow_the_radius_and_stay_clear():
     boxes = [_label_line(t, R, a0, a1, P, k).ink() for k, (t, (a0, a1)) in enumerate(zip(labels, arc_ends(th, al, -1.0)))]
     species = [_box_at(h, arc_point((0.0, 0.0), R, t)) for t, h in zip(th, halves)]
     assert all(_gap(a, b) >= P.cycle.label_clear - 1e-6 for a in boxes for b in species)
+    assert all(_gap(boxes[i], boxes[j]) >= P.cycle.label_pair_clear - 1e-6 for i in range(3) for j in range(i + 1, 3))
     for b in boxes:  # every corner label_gap inside the circle
         assert max(math.hypot(x, y) for x in (b[0], b[2]) for y in (b[1], b[3])) <= R - P.cycle.label_gap + 1e-3
 

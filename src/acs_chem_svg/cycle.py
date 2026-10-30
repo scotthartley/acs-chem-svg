@@ -13,8 +13,8 @@ arrows are measured (arrows.arc_arrow, §15.1).
   θ0 = 90°), so a wide species takes more of the circle.
 - Radius: the smallest one where the free arc reaches the longest step's need
   (scheme.arrow_min_length, plus tail_room per tail on that step's busier side), the boxes keep
-  `clear` from each other, and the step labels keep label_clear from the species, each other and
-  the center text. A label sits on the inward line through its arc's middle, as far out as its
+  `clear` from each other, and the step labels keep label_clear from the species and the center
+  text and label_pair_clear from each other. A label sits on the inward line through its arc's middle, as far out as its
   ink stays label_gap inside the circle. Tails never change the radius.
 - Arc arrows: each step's arrow fills its free arc (arrows.arc_step_arrow).
 - Tails: an arc of tail_radius, tangent to the circle from outside at its join, turning
@@ -235,7 +235,7 @@ def solve(halves: list[Point], need: float, preset: Preset, sign: float, labels:
               enumerate(zip(labels, arc_ends(s[0], s[1], sign))) if t]
         others = boxes + ([center_box] if center_box else [])
         return all(_gap(a, b) >= c.label_clear for a in lb for b in others) and \
-            all(_gap(lb[i], lb[j]) >= c.label_clear for i in range(len(lb)) for j in range(i + 1, len(lb)))
+            all(_gap(lb[i], lb[j]) >= c.label_pair_clear for i in range(len(lb)) for j in range(i + 1, len(lb)))
 
     lo, hi = 1.0, 40.0
     while not ok(hi):

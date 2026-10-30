@@ -168,6 +168,7 @@ class Cycle(_Section):
     tail_text_gap: float
     label_gap: float
     label_clear: float
+    label_pair_clear: float
 
 
 class Chair(_Section):

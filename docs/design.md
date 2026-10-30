@@ -320,8 +320,8 @@ approved without edits; fresh-agent trials of all six benchmark prompts are summ
 Catalytic cycles (`cycle:`, `references/acs-style.md` §15, 2026-10-29): arc arrows measured on
 the user's arcs_x\* reference (§15.1); the circle layout, labels and tails are our own placement
 (§15.2), with the rules settled on the spike (`scripts/cycle_spike.py`). CDXML export of cycles
-(phase 5, §15.3): ChemDraw arc arrows, gate passed 2026-10-30. Gallery cases (phase 6) are
-pending.
+(phase 5, §15.3): ChemDraw arc arrows, gate passed 2026-10-30. Gallery cases (phase 6):
+the Suzuki and proline/enamine cycles, approved 2026-10-30.
 
 CDXML export (the "Later" backend, `render.py --cdxml`, `references/acs-style.md` §13): phase 1,
 M1 species, and phase 2, M2 schemes (arrows, conditions, plus signs, numbers, `<scheme><step>`,

@@ -33,8 +33,9 @@ TOL = 0.1
 # meets their points within this, and their AngularSize within 0.25°
 HEADLESS_TOL = 0.25
 # the circle from Head3D / Tail3D (0.01 pt) and AngularSize (0.1°, as ChemDraw writes it) vs
-# Center3D: up to 0.04 on the enamine cycle's short arcs; ChemDraw's own, up to 0.07 (§15.1)
-CENTER_TOL = 0.07
+# Center3D: the coordinates' share, plus what half a 0.1° step in the sweep moves the center
+# (_sweep_shift; 0.12 pt on a 101 pt arc of 41.6°); ChemDraw's own arcs, up to 0.07 (§15.1)
+CENTER_TOL = 0.02
 ARC_REFS = ["arcs_x1.0", "arcs_x0.8", "arcs_x0.6", "arcs_eq_x1.0", "arcs_eq_x0.8", "arcs_eq_x0.6"]
 VARIANTS = {"1000": "standard", "1500": "large"}
 CYCLES = sorted(str(p.relative_to(mr.REPO)) for p in (mr.REPO / "examples").glob("m6_*_cycle_*.yaml"))
@@ -130,9 +131,18 @@ def test_cycle_arcs_are_chemdraw_arcs(spec):
     for _, a in _arcs(_export(spec)):
         c, R, _ = mr.arc_circle(a)
         center = _xy(a, "Center3D")
-        assert length(sub(c, center)) < CENTER_TOL
-        assert abs(_xy(a, "MajorAxisEnd3D")[0] - center[0] - R) < CENTER_TOL
-        assert length(sub(_xy(a, "MinorAxisEnd3D"), (center[0], center[1] + R))) < CENTER_TOL
+        tol = CENTER_TOL + _sweep_shift(R, float(a.get("AngularSize")))
+        assert length(sub(c, center)) < tol
+        assert abs(_xy(a, "MajorAxisEnd3D")[0] - center[0] - R) < tol
+        assert length(sub(_xy(a, "MinorAxisEnd3D"), (center[0], center[1] + R))) < tol
+
+
+def _sweep_shift(r: float, sweep_deg: float) -> float:
+    """How far the center of a circle through two fixed points moves when its sweep is off by
+    0.05° (AngularSize's rounding): the center's distance from the chord is (c/2)/tan(θ/2), so
+    its derivative is (c/4)/sin²(θ/2) with c = 2r sin(θ/2)."""
+    half = math.radians(abs(sweep_deg)) / 2
+    return r / (2 * math.sin(half)) * math.radians(0.05)
 
 
 @pytest.mark.parametrize("spec", CYCLES)

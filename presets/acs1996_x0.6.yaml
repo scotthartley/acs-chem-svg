@@ -100,6 +100,7 @@ placement:
   - cycle.tail_text_gap
   - cycle.label_gap
   - cycle.label_clear
+  - cycle.label_pair_clear
 
 lengths:
   bond_length: 8.64                 # m1_set_x0.6: CDXML atom distances, median 8.640 (n=32)
@@ -233,6 +234,7 @@ cycle:                              # catalytic cycles (acs-style.md §15.2); no
   tail_text_gap: 1.5                  # unmeasured placement default (user decision 2026-10-29, x1.0 x k, rounded): a tail's free end -> its text or structure ink, along the tail
   label_gap: 3.5                      # unmeasured placement default (user decision 2026-10-29, x1.0 x k, rounded): the circle -> a step label's ink (inside), at the arc's middle
   label_clear: 2.5                    # unmeasured placement default (user decision 2026-10-29, x1.0 x k, rounded): step label ink <-> species ink, other labels, the center text (the radius grows to keep it)
+  label_pair_clear: 6.0               # unmeasured placement default (user decision 2026-10-30: one caption em): step label ink <-> another step label (the radius grows to keep it)
 
 chair:                              # chair_x0.6 (measure_refs.py --chair); ChemDraw Conformers templates, exact; acs-style.md §14.1
   vertices: [[0, 0], [-4.32, 7.49], [3.99, 5.11], [12.33, 7.49], [16.66, 0], [8.35, 2.38]]  # fragment 1 (chair): vertex offsets from vertex 1, pt, y down; the flipped chair is its exact mirror (ChemDraw's own flipped template, fragment 2, is not: its middle vertices sit 0.19 pt from the mirror; not used, §14.1)
