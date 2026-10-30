@@ -547,7 +547,10 @@ Rules (M4; unmeasured, user decisions 2026-10-25, flagged at review):
 1. ~~**F with the bond leaving rightward** (§2.1).~~ **Resolved (abbrev_x*, 2026-10-27):** horizontal
    bonds clip against the whole glyph outline. Still open: where between 0° and 30° the band takes
    over (`draw_mol.HORIZONTAL_CLIP_DEG` = 15°, unmeasured); a reference with T or F bonds at 10° and
-   20° would settle it.
+   20° would settle it. The cut makes a bond end step by about 0.18 pt as a bond turns through
+   15° (into N: 5.25 → 5.07 at ×1.0). **Accepted (user decision, 2026-10-30):** labels don't
+   turn with the bonds, so bond ends vary with direction anyway, and ChemDraw has a cut of its
+   own (between 0° and 6°, Open 28); don't smooth it.
 2. **Hashes to unlabeled atoms with other bonds**: not in the references.
 3. **Label-to-label bonds** at angles other than 0° (clearance_x* has HO–OH and H₂N–NH₂ at
    0–90°). They are covered by the band model, but only as single-bond cases.
