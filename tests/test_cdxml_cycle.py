@@ -18,8 +18,8 @@ from lxml import etree
 from rdkit import Chem
 
 import measure_refs as mr
-from acs_chem_svg import richtext
-from acs_chem_svg.cdxml_writer import CdxArc, CdxScheme, spec_cdxml, to_cdxml
+from acs_chem_svg import chem, richtext
+from acs_chem_svg.cdxml_writer import CdxArc, CdxScheme, load_nicknames, spec_cdxml, to_cdxml
 from acs_chem_svg.cycle import build_cycle, tail_items
 from acs_chem_svg.arrows import arc_step_arrow
 from acs_chem_svg.geometry import arc_segments, length, sub
@@ -223,6 +223,9 @@ def _comparable(m: Chem.Mol, plain_bonds: bool) -> str:
             b.SetBondDir(Chem.BondDir.NONE)
         if plain_bonds and b.GetBondType() == Chem.BondType.DATIVE:
             b.SetBondType(Chem.BondType.SINGLE)
+    for a in m.GetAtoms():  # @SP is in the drawing's geometry; RDKit reads no square-planar stereo
+        if a.GetChiralTag() == Chem.ChiralType.CHI_SQUAREPLANAR:
+            a.SetChiralTag(Chem.ChiralType.CHI_UNSPECIFIED)
     if plain_bonds:
         for a in m.GetAtoms():
             a.SetNumExplicitHs(0)
@@ -231,11 +234,30 @@ def _comparable(m: Chem.Mol, plain_bonds: bool) -> str:
     return Chem.MolToSmiles(m)
 
 
+def _as_rdkit_reads(m: Chem.Mol, abbreviate, preset: str) -> Chem.Mol:
+    """`m` with each abbreviation written as an Unspecified node (PMe3, PPh3) a bare carbon:
+    RDKit reads those as C, ChemDraw's own (metals_x* PPh3) too; Fragment and Nickname nodes it
+    expands, so they stay in full."""
+    kinds = {k: t.get("NodeType") for k, t in load_nicknames(preset).items()}
+    keep = [k for k in abbreviate or [] if kinds.get(k) == "Unspecified"]
+    if not keep:
+        return m
+    rw = Chem.RWMol(chem.condense(m, keep))
+    for a in rw.GetAtoms():
+        if a.GetAtomicNum() == 0 and a.HasProp("atomLabel"):
+            a.SetAtomicNum(6)
+            a.ClearProp("atomLabel")
+    out = rw.GetMol()
+    Chem.SetAromaticity(out)  # condense keeps the Kekulé bonds
+    return out
+
+
 @pytest.mark.parametrize("spec", CYCLES)
 def test_cycle_round_trip(spec):
     """Every species reads back with RDKit as its spec's (_comparable; skeletons for every
     species of a spec with dative bonds)."""
-    mols = [Chem.MolFromSmiles(sp.smiles) for sp in load_spec(mr.REPO / spec).species.values()]
+    s = load_spec(mr.REPO / spec)
+    mols = [_as_rdkit_reads(Chem.MolFromSmiles(sp.smiles), sp.abbreviate, s.preset) for sp in s.species.values()]
     plain = any(b.GetBondType() == Chem.BondType.DATIVE for m in mols for b in m.GetBonds())
     got = Chem.MolsFromCDXML(etree.tostring(_export(spec)).decode())
     assert sorted(_comparable(m, plain) for m in got) == sorted(_comparable(m, plain) for m in mols)

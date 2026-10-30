@@ -668,7 +668,16 @@ removed renders pixel-identical to the approved `m4_nitration_x1.0`. Inbox triag
 - **ChemDraw puts an NH's H above when both ring bonds leave downward** (proline, on re-saving
   our CDXML). Our rule is left / right only; left as is until a reference shows the rule
   (acs-style.md Open 27). Inbox 2026-10-30.
-- **Abbreviating the Suzuki cycle's PMe3 changes its layout, not just its labels.** CoordGen lays
-  the dummy atoms out differently: Pd(0)'s P–Pd–P bends to 120° (it was linear only by CoordGen's
-  choice), II and III pin to that bend and lose their cross, and without `@SP` the cross order
-  comes out cis. The example keeps PMe3 in full until there is a rule for two-coordinate metals.
+- **Abbreviating the Suzuki cycle's PMe3 changed its layout, not just its labels.** CoordGen lays
+  the dummy atoms out differently: Pd(0)'s P–Pd–P bent to 120° (it had been linear only by
+  CoordGen's choice), and II and III pinned to that bend lost their cross. Rule (user decision,
+  2026-10-30): a two-coordinate d-block metal with two separate ligands is drawn straight
+  (`_square_planar`, `_ARM_STEP`). Pinning ignores both the arms and `@SP`, so `prepare`
+  rejects a pin that leaves a metal off its arms or in the wrong order (`off_arm_metals`), or
+  that RDKit can't hold (`AlignmentError`: a ligand's P pinned as a cross). Without `@SP` the
+  cross order is CoordGen's and came out cis: the example now writes `@SP2`.
+- **Orient mode could find no rotation for a cross**: `auto_rotation(near=…)` tried turns within
+  30° of the fit, but a cross allows only quarter turns. The window is 45° for a cross or a line.
+- **RDKit reads a CDXML `Unspecified` nickname node as a bare C**, ChemDraw's own (metals_x\*
+  PPh₃) included; it expands Fragment and Nickname nodes. The cycle round-trip test compares
+  PMe₃ that way.

@@ -239,7 +239,10 @@ bracketed `[P](C)(C)C` would draw a radical dot on P). The electron check compar
 bond as the P⁺–Pd⁻ single bond that `lp(P)` → `between(P, Pd)` makes. A four-coordinate
 d-block metal with four separate ligands is drawn as a cross on the axes, each ligand laid out
 on its own; `@SP1` / `@SP3` (cis) and `@SP2` (trans) in the SMILES choose which ligands are trans
-(`[NH3]->[Pt@SP2](<-[NH3])(Cl)Cl` is transplatin); without them the order is CoordGen's.
+(`[NH3]->[Pt@SP2](<-[NH3])(Cl)Cl` is transplatin); without them the order is CoordGen's, so
+write the `@SP` when it matters. A two-coordinate d-block metal with two separate ligands
+(`Pd(PMe3)2`, L–Au–Cl) is drawn straight, on an axis. A species aligned to another keeps the
+cross or line and its `@SP` order, or is laid out afresh and turned to match.
 Chelates (two donors on one ligand) keep CoordGen's layout. As in ChemDraw, a two-letter symbol
 (Pd, Si) is centered on its atom when it has a vertical or horizontal bond with another
 opposite it (a cross, a linear P–Pd–P); otherwise its first letter is. `validate.py` reports a layout that lays one group over another (atoms on one spot,

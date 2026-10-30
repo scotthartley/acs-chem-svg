@@ -8,7 +8,8 @@ The output is a plain `Molecule` in pt, y down, so drawing never touches RDKit.
   per `kekule` (pairs of atom-map numbers that are double bonds).
 - SMILES get CoordGen 2D coordinates. A molfile keeps its layout. A four-coordinate d-block
   metal with four separate ligands (Br[Pd](Ph)(PMe3)PMe3, cisplatin) is drawn as a cross, its
-  ligands laid out one by one; @SP1-3 in the SMILES choose cis or trans (_square_planar). Either way the median
+  ligands laid out one by one; @SP1-3 in the SMILES choose cis or trans (_square_planar). A
+  two-coordinate one with two separate ligands (Pd(PMe3)2, L-Au-Cl) is drawn straight. Either way the median
   bond is scaled to the preset bond length and y is flipped to the SVG frame.
 - Wedges come from the molfile when present, otherwise from RDKit's WedgeMolBonds.
 - Carbons are unlabeled unless asked for (ChemDraw's ShowTerminalCarbonLabels is off): a
@@ -80,6 +81,7 @@ LEWIS_MODES = ("shared", "formal_charge", "oxidation_state")
 LEWIS_SEARCH_LIMIT = 20000  # lewis_layout: placements tried before settling for the best found
 _D_BLOCK = set(range(21, 31)) | set(range(39, 49)) | {57} | set(range(72, 81))  # Sc-Zn, Y-Cd, La, Hf-Hg
 _SP_ORDER = {1: (0, 1, 2, 3), 2: (0, 2, 1, 3), 3: (0, 1, 3, 2)}  # @SP1-3: bond order round the square
+_ARM_STEP = {4: 90.0, 2: 180.0}  # _square_planar: degrees between a d-block metal's arms, by its degree (user decision 2026-10-30 for 2)
 CROSS_CROWDED_PER_BOND = 0.6  # _square_planar: atoms of two ligands nearer than this x bond length crowd (a choice, as chair.CROWDED_PER_BOND)
 ALIGN_TOL = 1e-4  # A; matched atoms must hold their reference position this closely
 
@@ -236,16 +238,22 @@ def _bond_angles(mol, pts):
             for b in mol.GetBonds()]
 
 
+def _arm_metal(mol: Chem.Mol, i: int) -> bool:
+    """A d-block atom _square_planar lays out: four (a cross) or two (a line) separate ligands."""
+    a = mol.GetAtomWithIdx(i)
+    return a.GetAtomicNum() in _D_BLOCK and a.GetDegree() in _ARM_STEP and _cross_ligands(mol, i) is not None
+
+
 def _cross_angles(mol: Chem.Mol, pts: list[Point]) -> list[float]:
-    """Directions (deg) of the bonds of metals drawn as a cross (_square_planar): four-coordinate
-    d-block atoms with four separate ligands and their bonds 90° apart."""
+    """Directions (deg) of the bonds of metals drawn on arms (_square_planar): a cross, bonds
+    90° apart, or a line, 180° apart."""
     out = []
     for a in mol.GetAtoms():
-        if a.GetAtomicNum() not in _D_BLOCK or a.GetDegree() != 4 or _cross_ligands(mol, a.GetIdx()) is None:
+        if not _arm_metal(mol, a.GetIdx()):
             continue
         c = pts[a.GetIdx()]
         dirs = [math.degrees(math.atan2(-(pts[n.GetIdx()][1] - c[1]), pts[n.GetIdx()][0] - c[0])) for n in a.GetNeighbors()]
-        if all(_off(d - dirs[0], 90) < 1.0 for d in dirs):
+        if all(_off(d - dirs[0], _ARM_STEP[a.GetDegree()]) < 1.0 for d in dirs):
             out += dirs
     return out
 
@@ -258,9 +266,10 @@ def _off(angle: float, step: float, phase: float = 0.0) -> float:
 def auto_rotation(mol: Chem.Mol, pts: list[Point], near: float | None = None) -> float:
     """Rotation (deg) in ChemDraw's habit: zigzag bonds at ±30°, rings with vertical sides
     (the most bonds at 30° + n·60°), then the most bonds on the 30° grid, then a layout
-    wider than tall, then the smallest turn. A metal drawn as a cross keeps its arms on the
-    axes (only quarter turns are tried). All-collinear molecules lie horizontal.
-    `near`: only rotations within 30° of it (orient_to's fitted angle), the closest last."""
+    wider than tall, then the smallest turn. A metal drawn as a cross or a line keeps its arms
+    on the axes (only quarter turns are tried). All-collinear molecules lie horizontal.
+    `near`: only rotations within 30° of it (orient_to's fitted angle; 45° for a cross or a
+    line, so a quarter turn is always in reach), the closest last."""
     angles = _bond_angles(mol, pts)
     if not angles:
         return 0.0 if near is None else near
@@ -272,7 +281,7 @@ def auto_rotation(mol: Chem.Mol, pts: list[Point], near: float | None = None) ->
     for a in cross or angles:
         for target in range(-180, 180, 90 if cross else 30):
             r = target - a
-            if near is not None and turn(r) > 30 + 1e-6:
+            if near is not None and turn(r) > (45 if cross else 30) + 1e-6:
                 continue
             zig = sum(1 for b in angles if _off(b + r, 60, 30) < 0.5)
             grid = sum(1 for b in angles if _off(b + r, 30) < 0.5)
@@ -348,20 +357,21 @@ def _square_planar(mol: Chem.Mol, laid: Chem.Mol) -> None:
     direction. Each ligand is then kept as laid out or mirrored about its arm, whichever crowds
     the others least (_cross_crowding; ties keep it). CoordGen draws such a metal unevenly
     (Br–Pd 0.88, Pd–P 1.13 bond lengths) and ignores a coordMap round it. `laid` is mol's layout
-    copy (_dative_as_single), its conformer set."""
+    copy (_dative_as_single), its conformer set. A two-coordinate metal with two separate
+    ligands is laid out the same way on two arms 180° apart: a line (Pd(PMe3)2; CoordGen bends
+    it when the ligands are abbreviations)."""
     conf = laid.GetConformer()
     for a in laid.GetAtoms():
         i = a.GetIdx()
-        if a.GetAtomicNum() not in _D_BLOCK or a.GetDegree() != 4:
+        if not _arm_metal(laid, i):
             continue
         ligands = _cross_ligands(laid, i)
-        if ligands is None:
-            continue
+        step_deg = _ARM_STEP[a.GetDegree()]
         pts = _coords(laid)
         c = pts[i]
         order = _cross_order(mol, i, pts)
         d0 = pts[order[0]]
-        start = round(math.atan2(-(d0[1] - c[1]), d0[0] - c[0]) / (math.pi / 2)) * math.pi / 2
+        start = round(math.atan2(-(d0[1] - c[1]), d0[0] - c[0]) / (math.pi / 2)) * math.pi / 2  # on an axis
         options, step = [], 0.0
         for k, donor in enumerate(order):
             keep = sorted(ligands[donor] | {i})
@@ -372,7 +382,7 @@ def _square_planar(mol: Chem.Mol, laid: Chem.Mol) -> None:
             sp = _coords(sub)
             mi, di = keep.index(i), keep.index(donor)
             step = math.dist(sp[mi], sp[di])
-            arm = math.degrees(start + k * math.pi / 2)
+            arm = math.degrees(start) + k * step_deg
             turn = arm - math.degrees(math.atan2(-(sp[di][1] - sp[mi][1]), sp[di][0] - sp[mi][0]))
             rel = {old: rotate((sp[new][0] - sp[mi][0], sp[new][1] - sp[mi][1]), turn)
                    for new, old in enumerate(keep) if old != i}
@@ -895,6 +905,10 @@ def _max_deviation(mol: Chem.Mol, ref: Chem.Mol, pairs) -> float:
                          (cr.GetAtomPosition(r).x, cr.GetAtomPosition(r).y)) for r, m in pairs)
 
 
+class AlignmentError(RuntimeError):
+    """align_coords could not hold the matched atoms at the reference's coordinates."""
+
+
 def align_coords(mol: Chem.Mol, ref: Chem.Mol, pairs: list[tuple[int, int]]) -> None:
     """Lay out `mol` with the matched atoms fixed at the reference's coordinates. CoordGen
     (coordMap) first; it holds them only to ~0.005 A, so if that misses ALIGN_TOL use RDKit's
@@ -918,7 +932,7 @@ def align_coords(mol: Chem.Mol, ref: Chem.Mol, pairs: list[tuple[int, int]]) -> 
     _scale_conformer(mol, med / STANDARD_BOND)
     dev = _max_deviation(mol, ref, pairs)
     if dev > ALIGN_TOL:
-        raise RuntimeError(f"alignment left matched atoms {dev:.4f} A from their reference positions")
+        raise AlignmentError(f"alignment left matched atoms {dev:.4f} A from their reference positions")
 
 
 def stable_core(ref: Chem.Mol, mol: Chem.Mol, pairs: list[tuple[int, int]]) -> list[tuple[int, int]]:
@@ -971,6 +985,30 @@ def bent_linear_atoms(mol: Chem.Mol) -> list[int]:
         cos = (v[0] * w[0] + v[1] * w[1]) / max(math.hypot(*v) * math.hypot(*w), 1e-12)
         if 180.0 - math.degrees(math.acos(max(-1.0, min(1.0, cos)))) > LINEAR_TOL:
             out.append(a.GetIdx())
+    return out
+
+
+def off_arm_metals(mol: Chem.Mol) -> list[int]:
+    """Metals _square_planar draws on arms (a cross or a line) whose layout puts a bond more
+    than LINEAR_TOL off them (a Pd(II) pinned to Pd(0)'s P-Pd-P, its new ligands placed by
+    CoordGen), or whose order round the cross contradicts the SMILES's @SP (cis for trans)."""
+    pts = _coords(mol)
+    out = []
+    for a in mol.GetAtoms():
+        i = a.GetIdx()
+        if not _arm_metal(mol, i):
+            continue
+        c = pts[i]
+        dirs = [math.degrees(math.atan2(-(pts[n.GetIdx()][1] - c[1]), pts[n.GetIdx()][0] - c[0])) for n in a.GetNeighbors()]
+        if any(_off(d - dirs[0], _ARM_STEP[a.GetDegree()]) > LINEAR_TOL for d in dirs):
+            out.append(i)
+            continue
+        drawn = sorted((n.GetIdx() for n in a.GetNeighbors()),
+                       key=lambda j: math.atan2(-(pts[j][1] - c[1]), pts[j][0] - c[0]))
+        want = _cross_order(mol, i, pts)
+        turns = [want[k:] + want[:k] for k in range(len(want))]
+        if drawn not in turns + [t[::-1] for t in turns]:  # either way round (a mirror image)
+            out.append(i)
     return out
 
 
@@ -1079,8 +1117,9 @@ def prepare(mol: Chem.Mol, name: str, bond_length: float, abbreviate: list[str] 
     matched atoms (≥ 3) do, which suits a trigonal center turning tetrahedral (acetone to the
     cyanohydrin alkoxide). Either is rejected if it bends an sp atom (nitronium on bent HNO3
     atoms), stretches a bond (a ring closed across pinned atoms), crowds an acyclic atom's
-    bonds (a trigonal anion on chloroform's tetrahedron) or lays one group over another
-    (overlaid_atoms: Suzuki's tolyl across a PMe3). Otherwise orient mode (orient_to): the species' own layout, turned the way the
+    bonds (a trigonal anion on chloroform's tetrahedron), lays one group over another
+    (overlaid_atoms: Suzuki's tolyl across a PMe3) or takes a metal off its cross or line
+    (off_arm_metals), or can't be held at all (AlignmentError). Otherwise orient mode (orient_to): the species' own layout, turned the way the
     matched atoms point in the reference; nothing pinned. No reference: its own layout (SMILES:
     CoordGen + orientation, default auto; molfile: its own layout, oriented as asked). A `chair`
     species is laid out by chair.layout and aligns to nothing; nothing aligns to a chair either
@@ -1108,9 +1147,12 @@ def prepare(mol: Chem.Mol, name: str, bond_length: float, abbreviate: list[str] 
             if not pins:
                 continue
             pinned = Chem.Mol(mol)
-            align_coords(pinned, ref.mol, pins)
+            try:
+                align_coords(pinned, ref.mol, pins)
+            except AlignmentError:  # RDKit can't hold them either (a ligand's P pinned as a cross)
+                continue
             if not (bent_linear_atoms(pinned) or uneven_bonds(pinned) or crowded_atoms(pinned)
-                    or overlaid_atoms(pinned)):
+                    or overlaid_atoms(pinned) or off_arm_metals(pinned)):
                 return Prepared(pinned, name, bond_length, ref.scale, ref.name, pins)  # `matched`: the pinned atoms
         orient_to(mol, ref.mol, pairs, relayout=not from_file)
         return Prepared(mol, name, bond_length, layout_scale(mol, bond_length), ref.name)

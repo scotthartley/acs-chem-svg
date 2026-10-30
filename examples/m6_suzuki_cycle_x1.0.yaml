@@ -1,12 +1,13 @@
 # Suzuki coupling as a catalytic cycle (acs-style.md §15): the Pd(0) catalyst at 12 o'clock,
 # clockwise; aryl bromide and boronic acid enter, B(OH)3 / bromide and the biaryl leave.
-# PMe3 ligands in full, bound to Pd by dative bonds (->), drawn as single bonds; each Pd(II) is a
-# cross (chem._square_planar), III laid out as II with the tolyl where Br was.
+# PMe3 ligands as labels (abbreviate; Me3P with the bond to the right), bound to Pd by dative
+# bonds (->), drawn as single bonds; Pd(0) is a line and each Pd(II) a cross
+# (chem._square_planar; @SP2: the PMe3 trans), III laid out as II with the tolyl where Br was.
 preset: acs1996
 species:
-  pd0:    {smiles: "CP(C)(C)->[Pd]<-P(C)(C)C"}
-  oxadd:  {smiles: "Br[Pd](c1ccccc1)(<-P(C)(C)C)<-P(C)(C)C"}
-  trans:  {smiles: "c1ccc(cc1)[Pd](c1ccc(C)cc1)(<-P(C)(C)C)<-P(C)(C)C"}
+  pd0:    {smiles: "CP(C)(C)->[Pd]<-P(C)(C)C", abbreviate: [PMe3]}
+  oxadd:  {smiles: "Br[Pd@SP2](c1ccccc1)(<-P(C)(C)C)<-P(C)(C)C", abbreviate: [PMe3]}
+  trans:  {smiles: "c1ccc(cc1)[Pd@SP2](c1ccc(C)cc1)(<-P(C)(C)C)<-P(C)(C)C", abbreviate: [PMe3]}
   biaryl: {smiles: "Cc1ccc(cc1)-c1ccccc1"}
 numbers: {pd0: I, oxadd: II, trans: III}
 cycle:

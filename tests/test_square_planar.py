@@ -3,6 +3,7 @@ labels (draw_mol.centered_label; metals_x*), and the check for a layout that lay
 another (geometry_checks.check_overlaid). inbox 2026-10-30."""
 
 import math
+from pathlib import Path
 
 import pytest
 
@@ -13,6 +14,7 @@ from acs_chem_svg.draw_mol import Drawer
 from acs_chem_svg.geometry import sub
 from acs_chem_svg.geometry_checks import check_overlaid
 from acs_chem_svg.preset import load_preset
+from acs_chem_svg.spec import Spec, scheme_prepared
 
 P = load_preset("acs1996")
 TOL = 0.1
@@ -28,6 +30,10 @@ def _arms(smiles: str, metal: str) -> list[tuple[str, float, float]]:
     chem.layout_2d leaves it."""
     m = chem.parse_smiles(smiles)
     chem.layout_2d(m)
+    return _arms_of(m, metal)
+
+
+def _arms_of(m, metal: str) -> list[tuple[str, float, float]]:
     pts = chem._coords(m)
     med = sorted(math.dist(pts[b.GetBeginAtomIdx()], pts[b.GetEndAtomIdx()]) for b in m.GetBonds())[m.GetNumBonds() // 2]
     a = next(a for a in m.GetAtoms() if a.GetSymbol() == metal)
@@ -71,6 +77,46 @@ def test_cross_sits_on_the_axes(smiles):
     for j, _ in m.neighbors(metal.idx):
         d = math.degrees(math.atan2(m.atoms[j].y - metal.y, m.atoms[j].x - metal.x))
         assert abs((d + 45) % 90 - 45) < 0.01
+
+
+PD0 = "CP(C)(C)->[Pd]<-P(C)(C)C"
+
+
+@pytest.mark.parametrize("smiles, metal, abbreviate", [(PD0, "Pd", None), (PD0, "Pd", ["PMe3"]),
+                                                       ("C[Au]Cl", "Au", None), ("C[Hg]C", "Hg", None)])
+def test_two_coordinate_metal_is_straight(smiles, metal, abbreviate):
+    """A two-coordinate d-block metal with two separate ligands is drawn straight, on an axis
+    (user decision 2026-10-30): CoordGen bent Pd(PMe3)2 to 120° once PMe3 was abbreviated."""
+    m = chem.from_smiles(smiles, "m", P.lengths.bond_length, abbreviate=abbreviate)
+    c = next(a for a in m.atoms if a.element == metal)
+    dirs = [math.degrees(math.atan2(m.atoms[j].y - c.y, m.atoms[j].x - c.x)) for j, _ in m.neighbors(c.idx)]
+    assert abs((dirs[0] - dirs[1]) % 360 - 180) < 0.01
+    assert abs((dirs[0] + 45) % 90 - 45) < 0.01
+
+
+def test_pin_that_bends_a_cross_is_rejected():
+    """II aligned to Pd(0)'s straight P-Pd-P: pinning it left Br and Ph where CoordGen put them,
+    60° off the cross (chem.off_arm_metals), so II is laid out as a cross and oriented."""
+    spec = Spec.model_validate({"species": {"a": {"smiles": PD0, "abbreviate": ["PMe3"]},
+                                            "b": {"smiles": OXADD, "abbreviate": ["PMe3"]}},
+                                "steps": [{"from": "a", "to": "b"}]})
+    p = scheme_prepared(spec, Path("."))["b"]
+    assert p.aligned_to == "a" and p.matched == []
+    assert chem.off_arm_metals(p.mol) == []
+
+
+@pytest.mark.parametrize("smiles, flagged", [(TRANSPLATIN, False), (CISPLATIN, True)])
+def test_off_arm_metals_reads_square_planar_stereo(smiles, flagged):
+    """A cross drawn trans where the SMILES says cis (a pin can do that: align_coords doesn't
+    read @SP) is flagged; one drawn as the SMILES says is not."""
+    m = chem.parse_smiles(smiles)
+    chem.layout_2d(m)
+    assert chem.off_arm_metals(m) == []
+    trans = chem.parse_smiles(TRANSPLATIN)
+    chem.layout_2d(trans)
+    pt = next(a.GetIdx() for a in m.GetAtoms() if a.GetSymbol() == "Pt")
+    m.GetConformer().SetPositions(trans.GetConformer().GetPositions())  # same atom order, trans drawing
+    assert (chem.off_arm_metals(m) == [pt]) == flagged
 
 
 def _star(element: str, dirs: list[float], length: float = 14.4) -> Molecule:
