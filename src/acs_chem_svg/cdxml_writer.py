@@ -5,6 +5,7 @@ arrows, conditions, plus signs and compound numbers as captions, and <scheme><st
 (acs-style.md §13.3): abbreviations as nickname nodes, resonance ↔ arrows and brackets, and so
 the wrapped and multi-row specs that use them. Phase 4b (acs-style.md §13.4, charges_lewis_x*):
 circled signs, 2+ / 2- and charge_labels texts, two unpaired electrons, Lewis structures.
+Catalytic cycles (acs-style.md §15.3): arc arrows and tails as ChemDraw arc arrows.
 
 The header (root attributes, color and font tables, page) is presets/cdxml/<preset>.xml, and
 each abbreviation's group presets/cdxml/<preset>.nicknames.xml, both copied from the ChemDraw
@@ -25,7 +26,8 @@ references by scripts/cdxml_headers.py; this module types no style numbers. Per 
   the ink top of the label's full-size glyphs (NO2 and TMS: 3.68, for the O and S).
   BoundingBox: the union of the drawn runs' ink boxes, moved by the same stored - drawn offset.
   LabelJustification / LabelAlignment Left or Right from Label.h_side, plus
-  Justification="Right"; a one-character label (-F, -H) is always Left, and only labels of more
+  Justification="Right"; a centered label (draw_mol.centered_label: Pd in a cross, SiMe4)
+  Center for all three, p at its advance center, on the atom (metals_x*); a one-character label (-F, -H) is always Left, and only labels of more
   than one character get LabelAlignment, as in the references.
 - An abbreviation (phase 4a, abbrev_x*): <n NodeType="Fragment"> (OMe, CO2Me, NO2, ...) or
   "Nickname" (Ph, Bn, Et, Ac, silyl groups; IsNickname="yes" on the <t>), no Element,
@@ -33,7 +35,8 @@ references by scripts/cdxml_headers.py; this module types no style numbers. Per 
   attachment atom is on the atom and its ExternalConnectionPoint points at the one neighbor. The
   <t> is the key text (OMe) in both forms, placed as a label: a right-justified one (drawn MeO)
   has p.x at the end of the drawn text's advance.
-- <b>: Order 2 / 3; wedges Display WedgeBegin / WedgedHashBegin with B at the narrow end
+- <b>: Order 2 / 3 (a dative bond is single: Order="dative" draws ChemDraw's arrow, gate
+  2026-10-30); wedges Display WedgeBegin / WedgedHashBegin with B at the narrow end
   (Bond.a). No DoublePosition: ChemDraw places double bonds itself. A Lewis structure drawn with
   dots for bonds: Visible="no" (ChemDraw hides it; the chemistry stays).
 - A charge (_Writer.charge): <graphic GraphicType="Symbol" SymbolType="Plus|Minus"> with
@@ -104,8 +107,20 @@ Scheme objects (phase 2), from the neutral records CdxScheme / CdxArrow / CdxTex
   (the references repeat the last anchor: not written, see _Writer.curve), ArrowheadHead HalfRight when mechanism.fishhook_side is +1 (the
   references' fishhooks), HalfLeft otherwise. p3 is the stroke end, not the head tip: every
   reference curve's last anchor is its stroke end.
-Page order as in the references: fragments, captions, graphics (arrows, then brackets), curves,
-schemes, arrows.
+- An arc arrow (CdxArc, acs-style.md §15.1, arcs_x*, arcs_eq_x*): <graphic GraphicType="Arc"
+  SupersededBy> (BoundingBox Head3D then the center; ArrowType FullHead, HalfHead for an
+  equilibrium, none for a headless arc; AngularSize the arc tool ChemDraw would start from, the
+  smallest of 90 / 120 / 180 / 270 that holds the sweep, with the sweep's sign, the other sign
+  for a headless arc) plus its <arrow>: head attributes
+  as above (an equilibrium's HalfLeft at both ends, ArrowShaftSpacing, ArrowEquilibriumRatio when
+  unbalanced; a headless arc's without ArrowheadHead), AngularSize the sweep (+ counterclockwise
+  on the page, one decimal), Head3D and Tail3D on the center circle (an equilibrium favoring
+  reactants reversed, Head3D at its start, as straight ones), Center3D its center, MajorAxisEnd3D
+  / MinorAxisEnd3D center + (r, 0) / (0, r), and BoundingBox the drawn ink. A cycle
+  (cycle_records, §15.3): each arrow one arc, a leaving tail a forward arc and an entering one a
+  headless arc; one <scheme> with a <step> per arrow citing its arc.
+Page order as in the references: fragments, captions, graphics (arrows, arcs, then brackets),
+curves, schemes, arrows.
 
 Not written: atom maps. They warn, except in a mechanism (CdxScheme.warn_maps): its arrows
 need them, and the figure never shows them.
@@ -134,18 +149,21 @@ from lxml import etree
 from rdkit import Chem
 
 from . import richtext
+from .arrows import ARROW_TYPES, arc_step_arrow
 from .brackets import square_bracket
 from .chem import Molecule
+from .cycle import CycleLayout, build_cycle
 from .draw_mol import Drawer
-from .geometry import Point, add, mul, sub, union_box, unit
+from .geometry import Point, add, arc_point, arc_segments, mul, sub, union_box, unit
 from .layout import Placed, SchemeLayout, build_scheme, m1_placed
 from .mechanism import curved_arrow, fishhook_side
 from .preset import PRESET_DIR, load_preset
-from .scene import Group, TextRun
+from .scene import Group, Path, TextRun
 from .spec import ResonanceStep, Spec, load_spec
 from .svg_writer import to_svg
 
 HEADER_DIR = PRESET_DIR / "cdxml"
+ARC_TOOLS = (90, 120, 180, 270)  # ChemDraw's arc tools: the legacy <graphic>'s AngularSize (arcs_x*, arcs_eq_x*)
 _PT = Chem.GetPeriodicTable()
 
 
@@ -191,16 +209,31 @@ class CdxCurve:
 
 
 @dataclass
+class CdxArc:
+    """An arc arrow as drawn (arrows.arc_step_arrow): its circle and the tail and tip angles
+    (radians, counterclockwise on screen from +x). kind: an arrow_type (forward, equilibrium,
+    equilibrium_products, equilibrium_reactants) or "none" (a headless arc: an entering tail)."""
+    center: Point
+    r: float
+    a0: float
+    a1: float
+    kind: str = "forward"
+    variant: str | None = None
+
+
+@dataclass
 class CdxStep:
-    """Indices into CdxScheme.species, .arrows and .texts; above_species / below_species index
-    CdxScheme.species drawn above / below the arrow (a reactant a mechanism step adds)."""
+    """Indices into CdxScheme.species, .arrows (None: none), .arcs and .texts; above_species /
+    below_species index CdxScheme.species drawn above / below the arrow (a reactant a mechanism
+    step adds)."""
     reactants: list[int]
     products: list[int]
-    arrow: int
+    arrow: int | None
     above: list[int] = field(default_factory=list)
     below: list[int] = field(default_factory=list)
     above_species: list[int] = field(default_factory=list)
     below_species: list[int] = field(default_factory=list)
+    arcs: list[int] = field(default_factory=list)
 
 
 @dataclass
@@ -211,7 +244,8 @@ class CdxScheme:
     schemes: list[list[CdxStep]] = field(default_factory=list)  # one <scheme> per drawn sequence
     curves: list[CdxCurve] = field(default_factory=list)
     brackets: list[CdxBracket] = field(default_factory=list)
-    offset: Point = (0.0, 0.0)  # added to the arrows, captions, curves and brackets
+    arcs: list[CdxArc] = field(default_factory=list)
+    offset: Point = (0.0, 0.0)  # added to the arrows, arcs, captions, curves and brackets
     warn_maps: bool = True  # False for a mechanism: every species is mapped (user decision 2026-10-28)
 
 
@@ -471,20 +505,23 @@ class _Writer:
         forms)."""
         # bonds to the right: right-justified (H2N, HO, -Cl, MeO); one glyph (-F, -H) stays Left
         right = lab.h_side == "left" and len(text) > 1
+        center = lab.h_side == "center"  # draw_mol.centered_label (metals_x*: Center x3, p.x on the atom)
         x, base = lab.elem_origin  # the element's (an abbreviation's anchor glyph's) origin
         if right:  # the drawn text ends with the element or anchor glyph
             x += lab.face.advance(lab.element, lab.size)
+        elif center:  # p at the advance center, as a centered caption's
+            x += lab.face.advance(lab.element, lab.size) / 2
         # ChemDraw stores y half the ink top of the label's full-size glyphs below the label's
         # center line (atom y, or where center_terminal_labels moved it), not the drawn baseline:
         # 3.68 for O, C, S (OH, Cl, NO2, TMS), 3.59 for N, H, F, T (NH2, NHAc), 3.60 for Ph
-        center = base - self.preset.ratios.label_baseline_per_size * lab.size
-        y = center + max(r.face.text_ink_bounds(r.text, r.size)[3] for r in lab.runs if r.size == lab.size) / 2
+        mid = base - self.preset.ratios.label_baseline_per_size * lab.size
+        y = mid + max(r.face.text_ink_bounds(r.text, r.size)[3] for r in lab.runs if r.size == lab.size) / 2
         box = union_box(r.bbox() for r in lab.runs)  # in the stored frame too: moved by y - base
         box = (box[0] + off[0], box[1] + y - base + off[1], box[2] + off[0], box[3] + y - base + off[1])
-        just = "Right" if right else "Left"
+        just = "Right" if right else "Center" if center else "Left"
         attrs = {"p": pts(x + off[0], y + off[1]), "BoundingBox": pts(*box), "LabelJustification": just}
-        if right:
-            attrs["Justification"] = "Right"
+        if right or center:
+            attrs["Justification"] = just
         if len(text) > 1:
             attrs["LabelAlignment"] = just
         if is_nickname:
@@ -621,6 +658,39 @@ class _Writer:
         return gid, aid, box, el
 
 
+    def arc(self, page, a: CdxArc, off: Point) -> tuple[str, tuple, etree._Element]:
+        """An arc arrow (acs-style.md §15.1): the legacy <graphic GraphicType="Arc"> on the page and
+        its <arrow> (returned, appended later); (graphic id, box, arrow element)."""
+        c = add(a.center, off)
+        a0, a1 = (a.a1, a.a0) if a.kind == "equilibrium_reactants" else (a.a0, a.a1)  # Head3D at the start
+        tail, head = arc_point(c, a.r, a0), arc_point(c, a.r, a1)
+        sweep = math.degrees(a1 - a0)
+        if a.kind == "none":
+            attrs = self.arrow_attrs(CdxArrow(tail, head, "forward", a.variant))
+            del attrs["ArrowheadHead"]
+            arrow_type = None
+            ink = Path(arc_segments(c, a.r, a.a0, a.a1), fill=False, stroke=self.preset.arrow.shaft_width,
+                       closed=False).ink_bbox()
+        elif a.kind in ARROW_TYPES:
+            attrs = self.arrow_attrs(CdxArrow(tail, head, a.kind, a.variant))
+            arrow_type = "FullHead" if a.kind == "forward" else "HalfHead"
+            ink = arc_step_arrow(a.kind, c, a.r, a.a0, a.a1, self.preset, "arc", a.variant).ink_bbox()
+        else:
+            raise ValueError(f"unknown arc kind {a.kind!r}")
+        spacing = {k: attrs.pop(k) for k in ("ArrowShaftSpacing", "ArrowEquilibriumRatio") if k in attrs}
+        gid, aid, z = self.ids.new(), self.ids.new(), self.ids.next_z()
+        tool = next((t for t in ARC_TOOLS if abs(round(sweep, 1)) <= t), 360)
+        etree.SubElement(page, "graphic", {
+            "id": gid, "SupersededBy": aid, "BoundingBox": pts(*head, *c), "Z": z, "GraphicType": "Arc",
+            **({"ArrowType": arrow_type} if arrow_type else {}), "HeadSize": attrs["HeadSize"],
+            # a headless arc's graphic has the other sign (arcs_eq_x*: all six)
+            "AngularSize": _angle(math.copysign(tool, -sweep if arrow_type is None else sweep))})
+        el = etree.Element("arrow", {"id": aid, "BoundingBox": pts(*ink), "Z": z, **attrs,
+                                     "AngularSize": _angle(sweep), **spacing, "Head3D": _p3(head), "Tail3D": _p3(tail),
+                                     "Center3D": _p3(c), "MajorAxisEnd3D": _p3(add(c, (a.r, 0.0))),
+                                     "MinorAxisEnd3D": _p3(add(c, (0.0, a.r)))})
+        return gid, ink, el
+
     # ------------------------------------------------------------------ brackets
 
     def bracket(self, page, br: CdxBracket, off: Point) -> tuple:
@@ -659,6 +729,12 @@ class _Writer:
 
 def _p3(p: Point) -> str:
     return f"{pts(*p)} 0"
+
+
+def _angle(deg: float) -> str:
+    """An AngularSize as ChemDraw writes it: one decimal, none when whole (59.9, -60, 120)."""
+    s = f"{deg:.1f}".removesuffix(".0")
+    return "0" if s == "-0" else s
 
 
 def _origin(ln: richtext.Line, preset) -> Point:
@@ -701,6 +777,12 @@ def to_cdxml(scheme: CdxScheme | list[tuple[Molecule, Drawer, Point]], preset_na
         graphic_ids.append(gid)
         arrows.append(el)
         boxes.append(b)
+    arc_ids = []
+    for a in scheme.arcs:
+        gid, b, el = w.arc(page, a, scheme.offset)
+        arc_ids.append(gid)
+        arrows.append(el)
+        boxes.append(b)
     for br in scheme.brackets:
         boxes.append(w.bracket(page, br, scheme.offset))
     for c in scheme.curves:
@@ -711,7 +793,8 @@ def to_cdxml(scheme: CdxScheme | list[tuple[Molecule, Drawer, Point]], preset_na
             attrs = {"id": w.ids.new()}
             for key, ids in (("ReactionStepReactants", [frag_ids[i] for i in st.reactants]),
                              ("ReactionStepProducts", [frag_ids[i] for i in st.products]),
-                             ("ReactionStepArrows", [graphic_ids[st.arrow]]),
+                             ("ReactionStepArrows", ([] if st.arrow is None else [graphic_ids[st.arrow]])
+                              + [arc_ids[i] for i in st.arcs]),
                              ("ReactionStepObjectsAboveArrow", [frag_ids[i] for i in st.above_species]
                               + [j for i in st.above for j in text_ids[i]]),
                              ("ReactionStepObjectsBelowArrow", [frag_ids[i] for i in st.below_species]
@@ -805,9 +888,52 @@ def scheme_records(lay: SchemeLayout, spec: Spec, svg_offset: Point = (0.0, 0.0)
     return out
 
 
+def cycle_records(cyc: CycleLayout, spec: Spec, svg_offset: Point = (0.0, 0.0)) -> CdxScheme:
+    """The CdxScheme of a laid-out catalytic cycle (cycle.build_cycle), in the frame of the SVG
+    that to_svg wrote with `svg_offset`: arcs for its arrows (equilibrium ones too: ChemDraw's arc
+    equilibrium arrow, arcs_eq_x*) and tails, captions for its labels, center text, tail texts and
+    numbers, and one <scheme> with a <step> per arrow."""
+    names = list(cyc.species)
+    out = CdxScheme([(p.mol, p.drawer, add(p.offset, svg_offset)) for p in cyc.species.values()], offset=svg_offset)
+    steps = spec.cycle.ordered_steps()
+    out.schemes.append([])
+    for st, arc in zip(steps, cyc.arcs):
+        k0 = len(out.arcs)
+        out.arcs.append(CdxArc(cyc.center, cyc.radius, arc.a0, arc.a1, arc.kind, spec.arrow_head))
+        main = list(range(k0, len(out.arcs)))
+        above = []
+        if arc.n in cyc.labels:
+            out.texts.append(CdxText([_line(cyc.labels[arc.n], richtext.parse(st.label))]))
+            above.append(len(out.texts) - 1)
+        ins, outs = [], []
+        for t in (t for t in cyc.tails if t.n == arc.n):
+            o, b0, b1 = t.arc
+            out.arcs.append(CdxArc(o, t.radius, b0, b1, "none" if t.side == "in" else "forward", spec.arrow_head))
+            if t.species:
+                (ins if t.side == "in" else outs).append(names.index(t.species))
+            else:
+                runs = [r for r in t.group.children[1:] if isinstance(r, TextRun)]
+                out.texts.append(CdxText([_line(runs, richtext.parse(t.text))]))
+                above.append(len(out.texts) - 1)
+        src, dst = [names.index(st.from_)] + ins, [names.index(st.to)] + outs
+        if arc.kind == "equilibrium_reactants":  # Head3D at the start: ChemDraw reads the step backwards
+            src, dst = dst, src
+        out.schemes[-1].append(CdxStep(src, dst, None, above, arcs=main))
+    if cyc.center_text:
+        out.texts.append(CdxText([_line(cyc.center_text, richtext.parse(spec.cycle.center))]))
+    for n, runs in cyc.numbers.items():
+        out.texts.append(CdxText([_line(runs, richtext.parse(str(spec.numbers[n]), "bold"))]))
+    return out
+
+
 def spec_cdxml(spec_path, warn: Callable[[str], None] = _stderr) -> str:
-    """What render.py --cdxml writes for a spec: M1 species, or an M2 scheme or M3 mechanism."""
+    """What render.py --cdxml writes for a spec: M1 species, an M2 scheme or M3 mechanism, or a
+    catalytic cycle."""
     spec = load_spec(spec_path)
+    if spec.cycle is not None:
+        cyc = build_cycle(spec, spec_path.parent, spec_path.stem)
+        _, offset = to_svg(cyc.root)
+        return to_cdxml(cycle_records(cyc, spec, offset), spec.preset, f"{spec_path.stem}.cdxml", warn)
     if spec.steps:
         lay = build_scheme(spec, spec_path.parent, spec_path.stem)
         _, offset = to_svg(lay.root)

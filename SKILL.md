@@ -24,7 +24,7 @@ Run every command as `uv run --project <repo> python <repo>/scripts/<script> ...
    numbers: {ester: 1, bnbr: 2, ether: 3, alcohol: 4}
    ```
    - Conditions text: digits after a letter or `)` become subscripts (K2CO3, Pd(PPh3)4);
-     a trailing `+`/`−` is a superscript (H3O+); `*n*-BuLi` is italic; `\` escapes.
+     a trailing `+`/`−` is a superscript (H3O+; `−` is U+2212, `Br-` is an error); `*n*-BuLi` is italic; `\` escapes.
    - Use only the conditions the user gave. A reagent named in the request (BnBr) goes over
      the arrow unless the user wants it drawn and numbered.
    - Several lines: `above: [line1, line2]`. Multistep arrows: `stages: ["*n*-BuLi, THF, −78 °C", "H3O+"]`.
@@ -128,7 +128,7 @@ steps:
 `cycle:` in place of `steps:`: `steps` of `{from, to, label, in, out, arrow_type}` round the
 circle (the last back to the first), `start` at 12 o'clock, `direction`, `center` text; `in` /
 `out` take text or `{species: name}`. Schema, example and limits (metal–ligand bonds):
-`references/scheme-schema.md` (Catalytic cycles). No CDXML for cycles yet.
+`references/scheme-schema.md` (Catalytic cycles). `--cdxml` writes ChemDraw arc arrows.
 
 ## Known limits (raise errors rather than guess)
 

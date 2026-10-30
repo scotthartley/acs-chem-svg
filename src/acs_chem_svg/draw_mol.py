@@ -27,6 +27,9 @@ COLLINEAR_DEG = 175.0  # a substituent this close to straight-through counts as 
 # §2.1: a bond this close to horizontal clips against the whole glyph outline, not the band.
 # Unmeasured threshold: the references have 0° (whole outline) and 30° (band) only.
 HORIZONTAL_CLIP_DEG = 15.0
+# centered_label (metals_x*; the user, 2026-10-30): a vertical or horizontal bond and one opposite it, 165-195° apart
+CENTER_PAIR_DEG = 165.0
+CENTER_AXIS_DEG = 15.0  # how far from vertical / horizontal the first bond may be (unmeasured: metals_x* has exact axes)
 H_SIDE_TIE = 1e-3  # sum of bond unit-vector x below which h_side calls a tie (numerical, not a style value)
 # A lone atom with H drawn H-first: ChemDraw 26 re-justified our bondless OH2 to H2O (CDXML gate,
 # m2_equilibrium_x1.0 re-save, 2026-10-28). Measured for O only; other elements keep the tie rule.
@@ -43,7 +46,7 @@ class Label:
     atom: int
     element: str
     num_h: int
-    h_side: str  # "right" | "left"; also the justification (left = bonds point right)
+    h_side: str  # "right" | "left"; also the justification (left = bonds point right); "center": centered_label
     runs: list[TextRun]
     elem_origin: Point  # glyph origin of the element symbol (x, baseline)
     size: float
@@ -88,7 +91,11 @@ def h_side(mol: Molecule, i: int) -> str:
 def element_x(face: FontFace, element: str, size: float, side: str) -> float:
     """Glyph origin of the element symbol relative to the atom x (§2): the first letter is
     centered on the atom, or the last letter when the label is right-justified (bonds point
-    right, H on the left): Cl -> C centered, but -Cl -> l centered (clearance_x*)."""
+    right, H on the left): Cl -> C centered, but -Cl -> l centered (clearance_x*). "center"
+    (centered_label: a vertical or horizontal bond with one opposite it, metals_x*): the whole
+    symbol centered."""
+    if side == "center":
+        return -face.advance(element, size) / 2
     if side == "left":
         return -face.advance(element[:-1], size) - face.advance(element[-1], size) / 2
     return -face.advance(element[0], size) / 2
@@ -103,6 +110,21 @@ def element_outline(face: FontFace, element: str, size: float, x0: float, baseli
     return out
 
 
+def centered_label(mol: Molecule, i: int) -> bool:
+    """ChemDraw centers a symbol of two or more letters (no H, not an abbreviation) on its atom
+    when a vertical or horizontal bond has another bond opposite it, the two 165-195° apart
+    (CENTER_PAIR_DEG): Pd in a cross, Si in SiMe4 (metals_x*: advance center on the atom within
+    0.004 pt), a horizontal P–Pd–P (the user, 2026-10-30; unmeasured). Otherwise the first letter
+    is centered (§2): a terminal Cl below its bond, Pd with bonds at 90° and 210°."""
+    a = mol.atoms[i]
+    if len(a.element) < 2 or a.abbrev is not None or a.num_h:
+        return False
+    dirs = [unit(sub(mol.atoms[j].p, a.p)) for j, _ in mol.neighbors(i)]
+    on_axis = math.cos(math.radians(CENTER_AXIS_DEG))
+    opposite = math.cos(math.radians(CENTER_PAIR_DEG))
+    return any(max(abs(u[0]), abs(u[1])) >= on_axis and dot(u, v) <= opposite for u in dirs for v in dirs)
+
+
 def layout_label(mol: Molecule, i: int, preset: Preset, face: FontFace, side: str | None = None) -> Label:
     """Text runs for one atom label (§2). The anchor letter of the element (element_x) is
     centered on the atom; baseline = atom y + 0.3585 x size; H count as a subscript (0.75 x
@@ -113,7 +135,7 @@ def layout_label(mol: Molecule, i: int, preset: Preset, face: FontFace, side: st
     sub_size = r.subscript_scale * size
     base = atom.y + r.label_baseline_per_size * size
     sub_base = base + r.subscript_drop_per_size * size
-    side = side or h_side(mol, i)
+    side = side or ("center" if centered_label(mol, i) else h_side(mol, i))
     src = f"atom:{atom.id}"
     if atom.abbrev is not None:
         return layout_abbreviation(mol, i, preset, face, side, base)

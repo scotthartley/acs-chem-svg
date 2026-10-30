@@ -75,6 +75,15 @@ same bond as our SVG, and does moving an atom keep it? --diff reports, besides p
 11. every crossing ChemDraw records (CrossingBonds) with the bond it draws in front (higher Z),
    against ours, by node positions.
 
+Phase 6 (--phase 6, acs-style.md §15.1; files in build/cdxml_spike/phase6/): render.py --cdxml's
+output for the catalytic cycles (m6_suzuki_cycle_x1.0, m6_enamine_cycle_x1.0). Every arrow and
+tail is a ChemDraw arc arrow (<arrow> with AngularSize, as arcs_x*); an equilibrium arrow is two
+half-headed arcs, an entering tail a headless one (neither is in arcs_x*). By hand in ChemDraw,
+besides the re-saves (CDXML and SVG): does each arc draw on our SVG's circle with the same head,
+do the equilibrium halves point their barbs outward, are the entering tails plain arcs, and does
+dragging an arc's end keep it an arc? --diff reports phase 2's items: the <step>s, and each
+<arrow> and <graphic> (paired by Head3D / BoundingBox) with what ChemDraw rewrote.
+
 Usage: uv run python scripts/cdxml_spike.py [--phase N]          # write the gate files
        uv run python scripts/cdxml_spike.py --lewis-draft        # the Lewis reference draft
        uv run python scripts/cdxml_spike.py [--phase N] --diff   # after the ChemDraw re-saves
@@ -117,8 +126,9 @@ PHASE4B_SPECS = ["examples/m1_charges_x1.0.yaml", "examples/m1_lewis_x1.0.yaml",
                  "examples/m1_lewis_assigned_x1.0.yaml"]
 PHASE5_REFS = ["chair_x1.0"]
 PHASE5_SPECS = ["examples/m1_chair_x1.0.yaml"]
+PHASE6_SPECS = ["examples/m6_suzuki_cycle_x1.0.yaml", "examples/m6_enamine_cycle_x1.0.yaml"]
 PHASES = {"2": (PHASE2_REFS, PHASE2_SPECS), "3": (PHASE3_REFS, PHASE3_SPECS), "4a": (PHASE4A_REFS, PHASE4A_SPECS),
-          "4b": ([], PHASE4B_SPECS), "5": (PHASE5_REFS, PHASE5_SPECS)}
+          "4b": ([], PHASE4B_SPECS), "5": (PHASE5_REFS, PHASE5_SPECS), "6": ([], PHASE6_SPECS)}
 PAIR_TOL = 0.05  # pt: node positions should survive a re-save unchanged
 NUM_TOL = 0.005
 PARSER = etree.XMLParser(load_dtd=False, no_network=True, remove_blank_text=True)
@@ -803,8 +813,9 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--diff", action="store_true", help="compare ChemDraw's re-saves with our exports")
     ap.add_argument("--lewis-draft", action="store_true", help="write the Lewis reference draft (phase 4b)")
-    ap.add_argument("--phase", choices=("1", "2", "3", "4a", "4b", "5"), default="1",
-                    help="1: M1 species; 2: M2 schemes; 3: M3 mechanisms; 4a: abbreviations, resonance, wrap")
+    ap.add_argument("--phase", choices=("1", "2", "3", "4a", "4b", "5", "6"), default="1",
+                    help="1: M1 species; 2: M2 schemes; 3: M3 mechanisms; 4a: abbreviations, resonance, wrap; "
+                         "4b: charges, Lewis; 5: chairs; 6: catalytic cycles")
     args = ap.parse_args(argv)
     if args.lewis_draft:
         for p in lewis_draft():

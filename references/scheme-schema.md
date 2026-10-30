@@ -47,7 +47,7 @@ species named again is drawn again as a copy (see "repeated names" under Resonan
 | Input | Drawn |
 |---|---|
 | `K2CO3`, `Pd(PPh3)4`, `CH2Cl2`, `C12H25` | digits after a letter or `)` are subscripts |
-| `H3O+`, `Cl−` (U+2212) | a trailing `+` / `−` after a formula is a superscript |
+| `H3O+`, `Cl−` (U+2212) | a trailing `+` / `−` after a formula is a superscript; a `-` or `–` there (`Br-`, `Br–`) is an error: type `−` (or `'Br\-'` for a dash) |
 | `*n*-BuLi` | `*…*` is italic |
 | `'SN\2'`, `'\*'` (YAML single quotes) | `\` escapes the next character (set plain) |
 | `0 °C`, `−78 °C`, `(4:1)`, `1,4-dioxane`, `12 h`, `n-BuLi` | unchanged (ASCII `-` is a hyphen) |
@@ -218,7 +218,7 @@ cycle:
   center: "Pd(0)"                  # optional text in the middle
   steps:                           # in order round the circle; the last returns to the first
     - {from: pd0, to: oxadd, label: oxidative addition, in: PhBr}
-    - {from: oxadd, to: trans, label: transmetalation, in: "ArB(OH)2, base", out: "B(OH)3, Br–"}
+    - {from: oxadd, to: trans, label: transmetalation, in: "ArB(OH)2, base", out: "B(OH)3, Br−"}
     - {from: trans, to: pd0, label: reductive elimination, out: {species: biaryl}}
 ```
 
@@ -228,7 +228,7 @@ cycle:
 | `cycle.steps` | list of ≥ 3 | Each `to` is the next step's `from`, and the last `to` is the first `from`. Each species appears once round the circle (a second copy needs its own name). |
 | `cycle.steps[].label` | text | Drawn inside the circle by the step's arrow (richtext). The radius grows until every label clears the species, the other labels and the center text. |
 | `cycle.steps[].in` / `out` | text, `{text: ...}`, `{species: name}`, or a list of them | Entering tails join the arc in its first half; leaving tails branch off in its second half and end in a head. Consecutive texts on one side share one tail ("PhCHO, H+"); each species gets its own tail and is drawn as a structure. A tail species must not be one of the cycle's species. |
-| `cycle.steps[].arrow_type` | as `steps[].arrow_type` | `equilibrium` and the unbalanced forms draw two concentric arcs (unmeasured, acs-style.md §15.1); tails join the outer one. |
+| `cycle.steps[].arrow_type` | as `steps[].arrow_type` | `equilibrium` and the unbalanced forms draw ChemDraw's arc equilibrium arrow (acs-style.md §15.1); tails join the outer shaft. |
 | `cycle.start` / `direction` / `center` | name / `clockwise` \| `counterclockwise` / text | See the example. Steps are numbered from `start` round (groups `cycle-arc-<n>`). |
 | `numbers` | as for schemes | Bold, under each cycle species; counted in its box on the circle. |
 
@@ -236,14 +236,21 @@ Every species is aligned to the one before it round the circle (`align: false` o
 to change that). Metal complexes: bind a neutral ligand by a dative bond (`P(C)(C)C->[Pd]`,
 or `[Pd]<-P(C)(C)C`), drawn as a single bond with the donor's pair counted as the bond's (a
 bracketed `[P](C)(C)C` would draw a radical dot on P). The electron check compares a dative
-bond as the P⁺–Pd⁻ single bond that `lp(P)` → `between(P, Pd)` makes. Set `align: false` when an aligned
-complex crowds a ligand (`validate.py` doesn't catch that overlap).
+bond as the P⁺–Pd⁻ single bond that `lp(P)` → `between(P, Pd)` makes. A four-coordinate
+d-block metal with four separate ligands is drawn as a cross on the axes, each ligand laid out
+on its own; `@SP1` / `@SP3` (cis) and `@SP2` (trans) in the SMILES choose which ligands are trans
+(`[NH3]->[Pt@SP2](<-[NH3])(Cl)Cl` is transplatin); without them the order is CoordGen's.
+Chelates (two donors on one ligand) keep CoordGen's layout. As in ChemDraw, a two-letter symbol
+(Pd, Si) is centered on its atom when it has a vertical or horizontal bond with another
+opposite it (a cross, a linear P–Pd–P); otherwise its first letter is. `validate.py` reports a layout that lays one group over another (atoms on one spot,
+bonds crossing in a flat species): try `orientation`, `align: false` or a molfile.
 
 Drawing (acs-style.md §15): species centered on a circle, the first at 12 o'clock, spaced so
 every arrow between neighbours is the same length; arc arrows with the measured head on the
 chord; tails as small arcs tangent to the circle from outside. A tail that would touch
 something tries other shapes, never moving the species; one still crowded is a `validate.py`
-problem. CDXML export of cycles is not written yet (`--cdxml` refuses them).
+problem. `--cdxml` writes every arrow and tail as a ChemDraw arc arrow and one `<scheme>` with a
+`<step>` per arrow (acs-style.md §15.3).
 Groups: `species-<name>`, `numbers`, `cycle-arc-<n>`, `cycle-in-<n>-<i>`, `cycle-out-<n>-<i>`,
 `cycle-label-<n>`, `cycle-center`.
 

@@ -8,7 +8,9 @@ M2:
 - Inside each species (M1 rows too: check_labels), an atom label must not overlap another
   atom's label or a bond that isn't on that atom (draw_mol flips a crowded CH₃ to H₃C first),
   and drawn bond lines of bonds that share no atom must not touch: a crossing ChemDraw-style,
-  with the rear bond cut (draw_mol, acs-style.md §14.2), leaves a gap and passes.
+  with the rear bond cut (draw_mol, acs-style.md §14.2), leaves a gap and passes. But a flat
+  species (no depth, no `front`) must not cross at all, and no two atoms may sit on top of each
+  other (check_overlaid: the layout laid one group over another).
 
 M3 (check_mechanism). Each curved arrow is sampled into a polyline (mechanism.SAMPLES
 segments), and these must hold:
@@ -31,15 +33,17 @@ Lewis structures (check_lewis, M1):
 
 from __future__ import annotations
 
+import itertools
 import math
 
 from .chem import Molecule
 from .draw_mol import Drawer
-from .geometry import point_box_dist, seg_point_dist, segment_box_dist, segment_distance, union_box
+from .geometry import point_box_dist, seg_point_dist, segment_box_dist, segment_distance, segments_cross, union_box
 from .layout import SchemeLayout
 from .mechanism import clashes, species_parts
 from .scene import Group, Polyline
 
+OVERLAID_PER_BOND = 0.25  # check_overlaid: non-bonded atoms nearer than this x the median bond overlap (a choice)
 LABEL_TOL = 0.05  # pt; boxes that only touch, or a bond end grazing a label, don't count
 
 
@@ -109,7 +113,30 @@ def check_labels(name: str, group: Group, mol: Molecule) -> list[str]:
         for c, d, hw2, src2, at2 in segs[k + 1:]:
             if src2 != src and at.isdisjoint(at2) and segment_distance(a, b, c, d) < hw + hw2 - LABEL_TOL:
                 problems.append(f"species-{name}: {src} crosses {src2} without a gap")
-    return list(dict.fromkeys(problems))
+    return list(dict.fromkeys(problems + check_overlaid(name, mol)))
+
+
+def check_overlaid(name: str, mol: Molecule) -> list[str]:
+    """A layout that lays one group over another: two atoms nearer than OVERLAID_PER_BOND x the
+    median bond, or, in a flat species (no depth, no `front` bonds: a chair's crossings are
+    drawn on purpose), two bonds that cross. draw_mol cuts the rear bond of a crossing, so
+    check_labels passes it."""
+    if not mol.bonds:
+        return []
+    lengths = sorted(math.dist(mol.atoms[b.a].p, mol.atoms[b.b].p) for b in mol.bonds)
+    lim = OVERLAID_PER_BOND * lengths[len(lengths) // 2]
+    bonded = {frozenset((b.a, b.b)) for b in mol.bonds}
+    out = [f"species-{name}: atoms {a.id} and {c.id} are drawn on top of each other (the layout overlays two "
+           "groups; try orientation, align: false, or a molfile)"
+           for a, c in itertools.combinations(mol.atoms, 2)
+           if frozenset((a.idx, c.idx)) not in bonded and math.dist(a.p, c.p) < lim]
+    if mol.front or any(a.z for a in mol.atoms):
+        return out
+    for b1, b2 in itertools.combinations(mol.bonds, 2):
+        if not {b1.a, b1.b} & {b2.a, b2.b} and segments_cross(*(mol.atoms[i].p for i in (b1.a, b1.b, b2.a, b2.b))):
+            out.append(f"species-{name}: bonds {b1.id} and {b2.id} cross (the layout lays one group over another; "
+                       "try orientation, align: false, or a molfile)")
+    return out
 
 
 def check_lewis(name: str, d: Drawer) -> list[str]:

@@ -81,6 +81,7 @@ class TailLayout:
     text: str | None = None
     species: str | None = None
     clash: str | None = None  # what it still touches (None: clear)
+    arc: tuple[Point, float, float] | None = None  # its own circle's center and angles, as drawn (from, to)
 
 
 @dataclass
@@ -251,9 +252,10 @@ def solve(halves: list[Point], need: float, preset: Preset, sign: float, labels:
 
 
 def tail_path(R: float, join: float, radius: float, turn_deg: float, sign: float, incoming: bool,
-              preset: Preset, name: str, variant: str | None = None) -> tuple[Path, Point, Point]:
+              preset: Preset, name: str, variant: str | None = None) -> tuple[Path, Point, Point, tuple]:
     """A tail on the circle of radius R at angle `join` (module docstring): its Path, its free
-    end, and the unit direction leaving the tail there (away from the join)."""
+    end, the unit direction leaving the tail there (away from the join), and its arc as drawn
+    (center, from angle, to angle: free end -> join entering, join -> free end leaving)."""
     J = arc_point(CENTER, R, join)
     o = add(J, mul((math.cos(join), -math.sin(join)), radius))  # the tail circle's center, outside
     beta = join + math.pi  # J seen from o
@@ -265,8 +267,10 @@ def tail_path(R: float, join: float, radius: float, turn_deg: float, sign: float
     away = (-math.sin(end) * d, -math.cos(end) * d)
     w = preset.arrow.shaft_width
     if incoming:
-        return Path(arc_segments(o, radius, end, beta), fill=False, stroke=w, closed=False, source=name), F, away
-    return arc_arrow(o, radius, beta, end, preset, name, variant).children[0], F, away  # the head on its chord (§15.1)
+        return (Path(arc_segments(o, radius, end, beta), fill=False, stroke=w, closed=False, source=name), F, away,
+                (o, end, beta))
+    # the head on its chord (§15.1)
+    return arc_arrow(o, radius, beta, end, preset, name, variant).children[0], F, away, (o, beta, end)
 
 
 def _samples(path: Path, n: int = 8) -> list[Point]:
@@ -415,7 +419,7 @@ def _place_tail(spec: Spec, out: CycleLayout, placed: dict[str, Placed], k: int,
         radius, turn = c.tail_radius * f, turn if turn is not None else c.tail_turn
         fr = min(max(frac + away_mid * dj, 0.05), 0.95)
         join = a0 + fr * (a1 - a0)
-        path, F, away = tail_path(r_join, join, radius, turn, sign, incoming, preset, name, spec.arrow_head)
+        path, F, away, arc = tail_path(r_join, join, radius, turn, sign, incoming, preset, name, spec.arrow_head)
         if p is not None:
             b = p.group.ink_bbox()
             _move_box_beyond(p.translate, b, F, away, c.tail_text_gap)
@@ -426,7 +430,7 @@ def _place_tail(spec: Spec, out: CycleLayout, placed: dict[str, Placed], k: int,
             item, item_box = ln.runs, ln.ink()
         clash = _tail_clash(path, item_box, obstacles, out, c.label_clear)
         lay = TailLayout(k, side, i, join, r_join, radius, turn, F,
-                         Group(name, [path] + ([item] if p is not None else item)), text, species, clash)
+                         Group(name, [path] + ([item] if p is not None else item)), text, species, clash, arc)
         if first is None:
             first = lay
         if clash is None:
@@ -435,7 +439,7 @@ def _place_tail(spec: Spec, out: CycleLayout, placed: dict[str, Placed], k: int,
         lay = first
         if p is not None:  # the species was moved by the later tries: put it back at the default
             path0 = lay.group.children[0]
-            _, F, away = tail_path(r_join, lay.join, lay.radius, lay.turn, sign, incoming, preset, name, spec.arrow_head)
+            _, F, away, _ = tail_path(r_join, lay.join, lay.radius, lay.turn, sign, incoming, preset, name, spec.arrow_head)
             _move_box_beyond(p.translate, p.group.ink_bbox(), F, away, c.tail_text_gap)
             lay.group.children = [path0, p.group]
     if p is not None:

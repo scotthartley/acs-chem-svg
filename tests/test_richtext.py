@@ -20,10 +20,19 @@ def runs(s):
     ("C12H25", [("C", "regular", "base"), ("12", "regular", "sub"), ("H", "regular", "base"), ("25", "regular", "sub")]),
     ("H3O+", [("H", "regular", "base"), ("3", "regular", "sub"), ("O", "regular", "base"), ("+", "regular", "sup")]),
     ("Cl−", [("Cl", "regular", "base"), ("−", "regular", "sup")]),
+    ("2–4 h", [("2–4 h", "regular", "base")]),
+    ("Br\\–", [("Br–", "regular", "base")]),  # escaped: a dash on purpose
     ("*n*-BuLi", [("n", "italic", "base"), ("-BuLi", "regular", "base")]),
 ])
 def test_auto_sub_sup_italic(text, expected):
     assert runs(text) == expected
+
+
+@pytest.mark.parametrize("text", ["B(OH)3, Br–", "Br-", "Cl- ion", "(Ph3P)2Pd–"])
+def test_charge_needs_a_true_minus(text):
+    """A hyphen or en dash where a charge sign goes is a typo for − (U+2212): an error."""
+    with pytest.raises(ValueError, match="true minus"):
+        richtext.parse(text)
 
 
 @pytest.mark.parametrize("text", ["0 °C", "−78 °C", "(4:1)", "1,4-dioxane", "12 h", "90 °C, 12 h", "acetone, reflux",

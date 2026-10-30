@@ -20,7 +20,8 @@ output is for Inkscape and browsers; its markers follow edits.
 --cdxml also writes <stem>.cdxml for ChemDraw (acs_chem_svg.cdxml_writer, acs-style.md §13), in the
 SVG's coordinates, from the same layout as the SVG: M1 species, or an M2-M4 scheme (arrows,
 conditions, plus signs, numbers and <scheme><step>, §13.1; curved arrows and dots, §13.2;
-abbreviations, resonance arrows and brackets, §13.3). Lewis structures are refused; what it
+abbreviations, resonance arrows and brackets, §13.3), or a catalytic cycle (arc arrows and tails
+as ChemDraw arc arrows, §15.1). Lewis structures are refused; what it
 writes as plain chemistry (circled signs, 2+ / 2-, charge_labels, atom maps) is listed on stderr.
 
 Usage: uv run python scripts/render.py spec.yaml [--out DIR] [--px-per-pt 4] [--crops] [--maps] [--affinity] [--cdxml]
@@ -33,7 +34,7 @@ import math
 import sys
 from pathlib import Path
 
-from acs_chem_svg.cdxml_writer import CdxmlUnsupported, placed_cdxml, scheme_records, to_cdxml
+from acs_chem_svg.cdxml_writer import CdxmlUnsupported, cycle_records, placed_cdxml, scheme_records, to_cdxml
 from acs_chem_svg.cycle import CycleLayout, build_cycle
 from acs_chem_svg.geometry import arc_point, union_box
 from acs_chem_svg.layout import SchemeLayout, build_scheme, m1_placed, render_spec
@@ -138,18 +139,17 @@ def render(spec_path: Path, out_dir: Path | None = None, px_per_pt: float = 4.0,
            with_crops: bool = False, with_maps: bool = False, affinity: bool = False,
            with_cdxml: bool = False) -> list[Path]:
     spec = load_spec(spec_path)
-    if spec.cycle is not None and with_cdxml:
-        raise CdxmlUnsupported("catalytic cycles are not written to CDXML yet (acs-style.md §15, phase 5)")
     cyc = build_cycle(spec, spec_path.parent, spec_path.stem) if spec.cycle is not None else None
     lay = build_scheme(spec, spec_path.parent, spec_path.stem) if spec.steps else None
-    placed = m1_placed(spec, spec_path.parent) if with_cdxml and not lay else None
+    placed = m1_placed(spec, spec_path.parent) if with_cdxml and not lay and not cyc else None
     root = (cyc.root if cyc else lay.root if lay else Group(spec_path.stem, [p.group for p in placed]) if placed
             else render_spec(spec_path))
     svg, offset = to_svg(root, affinity=affinity)
     cdxml = None
     if with_cdxml:
         name = f"{spec_path.stem}.cdxml"
-        cdxml = (to_cdxml(scheme_records(lay, spec, offset), spec.preset, name) if lay
+        cdxml = (to_cdxml(cycle_records(cyc, spec, offset), spec.preset, name) if cyc
+                 else to_cdxml(scheme_records(lay, spec, offset), spec.preset, name) if lay
                  else placed_cdxml(placed, offset, spec.preset, name))
     out_dir = out_dir or spec_path.parent
     out_dir.mkdir(parents=True, exist_ok=True)

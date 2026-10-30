@@ -4,7 +4,9 @@
 - digits right after a letter, `)` or a subscripted digit are subscripts (K2CO3, Pd(PPh3)4,
   CH2Cl2, C12H25);
 - a `+` or `−` (U+2212) right after a formula token, and before a space, punctuation or the
-  end, is a superscript (H3O+, Cl−). ASCII `-` is always a hyphen (n-BuLi, 1,4-dioxane);
+  end, is a superscript (H3O+, Cl−). An ASCII `-` or en dash `–` there is an error (Br-, Br–: a
+  charge typed with the wrong character; `\\-` keeps it); elsewhere `-` is a hyphen (n-BuLi,
+  1,4-dioxane) and `–` a dash (2–4 h);
 - `*…*` is italic (*n*-BuLi);
 - `\\` escapes the next character, which is then set plain (SN\\2, a literal \\*).
 Everything else is untouched: °C, −78, (4:1), 1,4-, 12 h.
@@ -29,6 +31,7 @@ STYLES = ("regular", "italic", "bold")
 SCRIPTS = ("base", "sub", "sup")
 _SUP_SIGNS = "+−"
 _SUP_FOLLOW = " ,;:)]/"
+_NOT_MINUS = "-–"  # where a charge sign goes, these are typos for − (parse raises)
 
 
 @dataclass(frozen=True)
@@ -61,7 +64,10 @@ def parse(s: str, style: str = "regular") -> list[Run]:
         if ch.isdigit() and prev_kind in ("letter", "paren", "sub"):
             chars.append((ch, st, "sub"))
             prev_kind = "sub"
-        elif ch in _SUP_SIGNS and prev_kind in ("letter", "paren", "sub") and (nxt == "" or nxt in _SUP_FOLLOW):
+        elif ch in _SUP_SIGNS + _NOT_MINUS and prev_kind in ("letter", "paren", "sub") and (nxt == "" or nxt in _SUP_FOLLOW):
+            if ch in _NOT_MINUS:
+                raise ValueError(f"{s!r}: {ch!r} after a formula reads as a charge; write a true minus "
+                                 f"'−' (U+2212), or escape it ('\\{ch}') to keep it as a dash")
             chars.append((ch, st, "sup"))
             prev_kind = ""
         else:

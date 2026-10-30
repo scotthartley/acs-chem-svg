@@ -30,9 +30,12 @@ The notch is on the circle too, head_inset (the chord) back from the tip, and th
 straight head on that chord, so it does not follow the circle. The shaft is the arc from the tail
 to the notch. Its <marker> is turned in its frame by the angle between the arc's end tangent and
 the chord (SVG orients a marker by the tangent), one marker id per turn.
-Arc equilibrium arrows (unmeasured: ChemDraw has none) apply the straight rules along the arc:
-two concentric shafts equilibrium.shaft_spacing apart, lengths and staggers measured along the
-center circle, each half head on its own shaft's chord.
+Arc equilibrium arrows (acs-style.md §15.1; arcs_eq_x*): two concentric shafts
+equilibrium.shaft_spacing apart, the forward one on the left of travel. Unlike a straight one,
+no stagger: each shaft runs from end to end of the arc (its butt on one end, its tip on the
+other). Unbalanced: the long shaft end to end, the short one centered, L / ratio long (butt to
+tip), lengths along the center circle. Each half head is on its own shaft's chord, its tip and
+notch on the shaft's center line (not its inner edge, as straight ones).
 
 Heads are scene.Markers on the shaft (written as SVG <marker>s, or as separate shapes with
 svg_writer.to_svg(affinity=True)); Polyline.head_leaves() gives them in scheme coordinates.
@@ -47,6 +50,7 @@ from .preset import Preset
 from .scene import Group, Marker, Path, Polyline
 
 ARROW_TYPES = ("forward", "equilibrium", "equilibrium_products", "equilibrium_reactants")
+FAVORS = {"equilibrium": None, "equilibrium_products": "products", "equilibrium_reactants": "reactants"}
 
 
 def head_marker(preset: Preset, start: bool = False, variant: str | None = None, half: str | None = None,
@@ -74,7 +78,9 @@ def head_marker(preset: Preset, start: bool = False, variant: str | None = None,
     if half:
         if half == "back":
             ctl -= preset.equilibrium.back_control_shift
-        edge = a.shaft_width / 2  # +y: the right of travel, toward the other shaft
+        # +y: the right of travel, toward the other shaft; an arc's tip and notch are on the shaft's
+        # center line (arcs_eq_x*: tip offset = shaft offset, ±0.90)
+        edge = a.shaft_width / 2 if arc_turn is None else 0.0
         tip, notch, corner = at(0.0, edge), at(h.head_inset, edge), at(h.head_length, -hw)
         return Marker(f"{mid}-half-{half}", (("M", tip), ("L", notch), ("C", at(h.head_inset, -ctl), corner, corner)),
                       kind="path", stroke=a.head_outline)
@@ -150,7 +156,7 @@ def _arc_head(center: Point, r: float, tip_angle: float, direction: float, prese
     return notch, head_marker(preset, variant=variant, half=half, arc_turn=turn)
 
 
-def _arc_shaft(center: Point, r: float, a0: float, a1: float, preset: Preset, name: str, variant: str | None,
+def arc_shaft(center: Point, r: float, a0: float, a1: float, preset: Preset, name: str, variant: str | None,
                half: str | None = None) -> Path:
     direction = 1.0 if a1 > a0 else -1.0
     notch, marker = _arc_head(center, r, a1, direction, preset, variant, half)
@@ -166,7 +172,35 @@ def arc_arrow(center: Point, r: float, a0: float, a1: float, preset: Preset, nam
     counter-clockwise on screen from +x; a1 < a0 runs clockwise (module docstring)."""
     if preset.head(variant).head_length >= r * abs(a1 - a0):
         raise ValueError(f"arrow {name} is shorter than its head ({r * abs(a1 - a0):.2f} pt along the arc)")
-    return Group(name, [_arc_shaft(center, r, a0, a1, preset, name, variant)])
+    return Group(name, [arc_shaft(center, r, a0, a1, preset, name, variant)])
+
+
+def arc_equilibrium_shafts(r: float, a0: float, a1: float, preset: Preset, name: str = "arc-equilibrium-arrow",
+                           favors: str | None = None, variant: str | None = None) -> list[tuple[float, float, float]]:
+    """The two shafts of arc_equilibrium_arrow as (radius, tail angle, tip angle), the forward
+    one first (module docstring; arcs_eq_x*)."""
+    h, e = preset.head(variant), preset.equilibrium
+    direction = 1.0 if a1 > a0 else -1.0
+    L = r * abs(a1 - a0)
+    if favors not in (None, "products", "reactants"):
+        raise ValueError(f"arrow {name}: favors must be 'products' or 'reactants', not {favors!r}")
+    if L <= h.head_length:
+        raise ValueError(f"arrow {name} is shorter than its heads ({L:.2f} pt)")
+    if favors:
+        short = L / preset.ratios.equilibrium_long_per_short  # butt to tip (arcs_eq_x*: L / 3)
+        if short <= h.head_length:
+            raise ValueError(f"arrow {name}: its short shaft is shorter than its head ({short:.2f} pt)")
+        lo, hi = (L - short) / 2, (L + short) / 2
+        fwd, back = ((0.0, L), (hi, lo)) if favors == "products" else ((lo, hi), (L, 0.0))
+    else:  # no stagger on an arc: each shaft runs end to end
+        fwd, back = (0.0, L), (L, 0.0)
+    left = -direction  # left of travel: inward (-1) for counter-clockwise travel on screen
+    r_fwd, r_back = r + left * e.shaft_spacing / 2, r - left * e.shaft_spacing / 2
+
+    def angle(u: float) -> float:
+        return a0 + direction * u / r
+
+    return [(r_fwd, angle(fwd[0]), angle(fwd[1])), (r_back, angle(back[0]), angle(back[1]))]
 
 
 def arc_equilibrium_arrow(center: Point, r: float, a0: float, a1: float, preset: Preset,
@@ -175,29 +209,9 @@ def arc_equilibrium_arrow(center: Point, r: float, a0: float, a1: float, preset:
     """equilibrium_arrow along the circle from a0 to a1 (module docstring; unmeasured): the
     forward shaft on the left of travel (outside for a clockwise arrow), lengths along the
     circle of radius r. One group, the forward shaft first."""
-    h, e = preset.head(variant), preset.equilibrium
-    direction = 1.0 if a1 > a0 else -1.0
-    L = r * abs(a1 - a0)
-    if favors not in (None, "products", "reactants"):
-        raise ValueError(f"arrow {name}: favors must be 'products' or 'reactants', not {favors!r}")
-    if favors:
-        short = h.head_inset + (L - h.head_inset) / preset.ratios.equilibrium_long_per_short
-        if short <= h.head_length:
-            raise ValueError(f"arrow {name}: its short shaft is shorter than its head ({short:.2f} pt)")
-        lo, hi = (L - short) / 2, (L + short) / 2
-        fwd, back = ((0.0, L), (hi, lo)) if favors == "products" else ((lo, hi), (L, 0.0))
-    else:
-        if L <= e.stagger + h.head_length:
-            raise ValueError(f"arrow {name} is shorter than its heads ({L:.2f} pt)")
-        fwd, back = (e.stagger, L), (L - e.stagger, 0.0)
-    left = -direction  # left of travel: inward (-1) for counter-clockwise travel on screen
-    r_fwd, r_back = r + left * e.shaft_spacing / 2, r - left * e.shaft_spacing / 2
-
-    def angle(u: float) -> float:
-        return a0 + direction * u / r
-
-    return Group(name, [_arc_shaft(center, r_fwd, angle(fwd[0]), angle(fwd[1]), preset, name, variant, "forward"),
-                        _arc_shaft(center, r_back, angle(back[0]), angle(back[1]), preset, name, variant, "back")])
+    shafts = arc_equilibrium_shafts(r, a0, a1, preset, name, favors, variant)
+    return Group(name, [arc_shaft(center, rr, b0, b1, preset, name, variant, half)
+                        for (rr, b0, b1), half in zip(shafts, ("forward", "back"))])
 
 
 def arc_step_arrow(kind: str, center: Point, r: float, a0: float, a1: float, preset: Preset, name: str,
@@ -205,8 +219,7 @@ def arc_step_arrow(kind: str, center: Point, r: float, a0: float, a1: float, pre
     """A cycle step's arc arrow by its spec arrow_type (ARROW_TYPES)."""
     if kind == "forward":
         return arc_arrow(center, r, a0, a1, preset, name, variant)
-    favors = {"equilibrium": None, "equilibrium_products": "products", "equilibrium_reactants": "reactants"}[kind]
-    return arc_equilibrium_arrow(center, r, a0, a1, preset, name, favors, variant)
+    return arc_equilibrium_arrow(center, r, a0, a1, preset, name, FAVORS[kind], variant)
 
 
 def step_arrow(kind: str, tail: Point, head: Point, preset: Preset, name: str, variant: str | None = None) -> Group:

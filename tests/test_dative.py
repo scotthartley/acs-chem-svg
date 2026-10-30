@@ -49,13 +49,13 @@ def _xy(mol: Chem.Mol) -> list[tuple[float, float]]:
 
 @pytest.mark.parametrize("smiles", [PD0, OXADD])
 def test_dative_bonds_drawn_single_and_laid_out_as_single(smiles):
-    """The single-bond layout, which layout_2d lays out to keep CoordGen quiet (CoordGen's
-    square-planar Pd is uneven either way: Br–Pd 0.88 bond lengths)."""
+    """The single-bond layout, which layout_2d lays out to keep CoordGen quiet (to 1e-4 pt:
+    each Pd(II) ligand is laid out on its own, chem._square_planar)."""
     m, ref = (chem.from_smiles(s, "m", P.lengths.bond_length) for s in (smiles, _single(smiles)))
     pd = next(a.idx for a in m.atoms if a.element == "Pd")
     assert {b.order for b in m.bonds if pd in (b.a, b.b)} == {1}
     assert [(a.element, a.radicals, a.lone_pairs) for a in m.atoms if a.element == "P"] == [("P", 0, 0)] * 2
-    assert [(round(a.x, 6), round(a.y, 6)) for a in m.atoms] == [(round(a.x, 6), round(a.y, 6)) for a in ref.atoms]
+    assert [a.p for a in m.atoms] == [pytest.approx(a.p, abs=1e-4) for a in ref.atoms]
 
 
 def test_aligned_dative_species_laid_out_as_single():
@@ -65,7 +65,8 @@ def test_aligned_dative_species_laid_out_as_single():
         out = chem.prepare(chem.parse_smiles(oxadd), "oxadd", P.lengths.bond_length, refs=[ref])
         assert out.aligned_to == "pd0"
         return _xy(out.mol)
-    assert aligned(PD0, OXADD) == pytest.approx(aligned(_single(PD0), _single(OXADD)), abs=1e-6)
+    flat = [v for p in aligned(PD0, OXADD) for v in p]
+    assert flat == pytest.approx([v for p in aligned(_single(PD0), _single(OXADD)) for v in p], abs=1e-6)
 
 
 def test_cdxml_writes_a_dative_bond_as_single(tmp_path):

@@ -82,3 +82,49 @@ def test_arc_head_on_the_chord(ref):
         assert m["head"]["length"] / own.head_length == pytest.approx(1.0, abs=CW_HEAD_SCALE)
         assert m["head"]["inset (chord notch -> tip)"] / m["head"]["length"] == pytest.approx(
             own.head_inset / own.head_length, abs=0.005)  # the measured shape, scaled
+
+
+# --------------------------------------------------------------------------- equilibrium arcs (arcs_eq_x*)
+
+EQ_REFS = {"arcs_eq_x1.0": "acs1996", "arcs_eq_x0.8": "acs1996_x0.8", "arcs_eq_x0.6": "acs1996_x0.6"}
+# approximate (measure_refs --arc-eq): ChemDraw's arc equilibria differ between clockwise and
+# counterclockwise by up to 0.3 pt, and its short shaft sits 0.1-0.4 pt off ±spacing / 2 and
+# along the arc; heads within 0.65 of ChemDraw's ink. x0.6's 60.6° unbalanced short shafts end
+# 1.1 pt off (a ChemDraw outlier).
+EQ_POS_TOL, EQ_HEAD_TOL = 0.45, 0.65
+EQ_KNOWN = {("arcs_eq_x0.6", -60.6, False): 1.45, ("arcs_eq_x0.6", 60.6, False): 1.45}
+
+
+@pytest.mark.parametrize("ref", EQ_REFS)
+def test_arc_equilibrium_vs_chemdraw(ref):
+    """Each arcs_eq_x* equilibrium arrow (not ChemDraw's elliptical glitches) redrawn on its
+    circle (arrows.arc_step_arrow): per shaft, its offset from the circle, butt and notch along
+    it, and every head point's distance to ChemDraw's head."""
+    from acs_chem_svg.arrows import arc_step_arrow
+    preset = load_preset(EQ_REFS[ref])
+    bad, n = [], 0
+    for x in mr.arc_eq_arrows(ref):
+        if x["kind"] == "none" or x["glitch"]:
+            continue
+        c, R, a0, s = x["center"], x["R"], x["a0"], math.copysign(1.0, x["sweep"])
+        g = arc_step_arrow(x["kind"], c, R, a0, a0 + math.radians(x["sweep"]), preset, "eq", x["variant"])
+
+        def pos(q):
+            d = ((math.atan2(-(q[1] - c[1]), q[0] - c[0]) - a0) * s + math.pi) % (2 * math.pi) - math.pi
+            return (d + 2 * math.pi if d < -1.0 else d) * R
+        for ours, forward in zip(g.children, (True, False)):
+            theirs = next(sh for sh in x["shafts"] if sh["forward"] == forward)
+            tol = EQ_KNOWN.get((ref, x["sweep"], forward), EQ_POS_TOL)
+            start, end = ours.segments[0][1], ours.segments[-1][-1]
+            got = {"offset": math.dist(start, c) - R, "butt": pos(start), "notch": pos(end)}
+            for k, v in got.items():
+                if abs(v - theirs[k]) > tol:
+                    bad.append(f"{x['kind']} {x['sweep']} {'forward' if forward else 'back'} {k}: "
+                               f"ours {v:.3f} ChemDraw {theirs[k]:.3f}")
+            head = mr.path_samples(theirs["head"])
+            worst = max(min(length(sub(q, p)) for p in head) for leaf in ours.head_leaves() for q in leaf.points)
+            if worst > max(tol, EQ_HEAD_TOL):
+                bad.append(f"{x['kind']} {x['sweep']} {'forward' if forward else 'back'} head: {worst:.3f} off")
+            n += 1
+    assert n == (36 if ref == "arcs_eq_x1.0" else 24)
+    assert not bad, "\n".join(bad)

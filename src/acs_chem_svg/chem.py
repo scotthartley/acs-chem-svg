@@ -6,7 +6,9 @@ The output is a plain `Molecule` in pt, y down, so drawing never touches RDKit.
   (unmapped), so a drawn C–H never hides the others. Molfiles keep their own H atoms.
 - Kekulé bonds are kept as written. Aromatic SMILES are kekulized by RDKit, or
   per `kekule` (pairs of atom-map numbers that are double bonds).
-- SMILES get CoordGen 2D coordinates. A molfile keeps its layout. Either way the median
+- SMILES get CoordGen 2D coordinates. A molfile keeps its layout. A four-coordinate d-block
+  metal with four separate ligands (Br[Pd](Ph)(PMe3)PMe3, cisplatin) is drawn as a cross, its
+  ligands laid out one by one; @SP1-3 in the SMILES choose cis or trans (_square_planar). Either way the median
   bond is scaled to the preset bond length and y is flipped to the SVG frame.
 - Wedges come from the molfile when present, otherwise from RDKit's WedgeMolBonds.
 - Carbons are unlabeled unless asked for (ChemDraw's ShowTerminalCarbonLabels is off): a
@@ -73,6 +75,9 @@ ELECTRONEGATIVITY = {
 }
 LEWIS_MODES = ("shared", "formal_charge", "oxidation_state")
 LEWIS_SEARCH_LIMIT = 20000  # lewis_layout: placements tried before settling for the best found
+_D_BLOCK = set(range(21, 31)) | set(range(39, 49)) | {57} | set(range(72, 81))  # Sc-Zn, Y-Cd, La, Hf-Hg
+_SP_ORDER = {1: (0, 1, 2, 3), 2: (0, 2, 1, 3), 3: (0, 1, 3, 2)}  # @SP1-3: bond order round the square
+CROSS_CROWDED_PER_BOND = 0.6  # _square_planar: atoms of two ligands nearer than this x bond length crowd (a choice, as chair.CROWDED_PER_BOND)
 ALIGN_TOL = 1e-4  # A; matched atoms must hold their reference position this closely
 
 
@@ -228,6 +233,20 @@ def _bond_angles(mol, pts):
             for b in mol.GetBonds()]
 
 
+def _cross_angles(mol: Chem.Mol, pts: list[Point]) -> list[float]:
+    """Directions (deg) of the bonds of metals drawn as a cross (_square_planar): four-coordinate
+    d-block atoms with four separate ligands and their bonds 90° apart."""
+    out = []
+    for a in mol.GetAtoms():
+        if a.GetAtomicNum() not in _D_BLOCK or a.GetDegree() != 4 or _cross_ligands(mol, a.GetIdx()) is None:
+            continue
+        c = pts[a.GetIdx()]
+        dirs = [math.degrees(math.atan2(-(pts[n.GetIdx()][1] - c[1]), pts[n.GetIdx()][0] - c[0])) for n in a.GetNeighbors()]
+        if all(_off(d - dirs[0], 90) < 1.0 for d in dirs):
+            out += dirs
+    return out
+
+
 def _off(angle: float, step: float, phase: float = 0.0) -> float:
     """Distance (deg) from `angle` to the nearest phase + n*step."""
     return abs(((angle - phase + step / 2) % step) - step / 2)
@@ -236,17 +255,19 @@ def _off(angle: float, step: float, phase: float = 0.0) -> float:
 def auto_rotation(mol: Chem.Mol, pts: list[Point], near: float | None = None) -> float:
     """Rotation (deg) in ChemDraw's habit: zigzag bonds at ±30°, rings with vertical sides
     (the most bonds at 30° + n·60°), then the most bonds on the 30° grid, then a layout
-    wider than tall, then the smallest turn. All-collinear molecules lie horizontal.
+    wider than tall, then the smallest turn. A metal drawn as a cross keeps its arms on the
+    axes (only quarter turns are tried). All-collinear molecules lie horizontal.
     `near`: only rotations within 30° of it (orient_to's fitted angle), the closest last."""
     angles = _bond_angles(mol, pts)
     if not angles:
         return 0.0 if near is None else near
+    cross = _cross_angles(mol, pts)  # a metal cross sits on the axes: only turns that keep it there
     turn = (lambda r: _off(r, 360)) if near is None else (lambda r: _off(r - near, 360))
     if all(_off(a - angles[0], 180) < 0.5 for a in angles):
         return min((-angles[0], 180 - angles[0]), key=turn)
     best = None
-    for a in angles:
-        for target in range(-180, 180, 30):
+    for a in cross or angles:
+        for target in range(-180, 180, 90 if cross else 30):
             r = target - a
             if near is not None and turn(r) > 30 + 1e-6:
                 continue
@@ -279,10 +300,96 @@ def _take_conformer(mol: Chem.Mol, laid: Chem.Mol) -> None:
         mol.AddConformer(Chem.Conformer(laid.GetConformer()), assignId=True)
 
 
+def _cross_ligands(mol: Chem.Mol, i: int) -> dict[int, set[int]] | None:
+    """Donor atom -> the atoms of its ligand, for a metal atom i whose four neighbors are on four
+    separate ligands; None for a chelate (two donors on one ligand) or a ring through i."""
+    out: dict[int, set[int]] = {}
+    for nb in mol.GetAtomWithIdx(i).GetNeighbors():
+        if any(nb.GetIdx() in comp for comp in out.values()):
+            return None
+        comp, todo = set(), [nb.GetIdx()]
+        while todo:
+            a = todo.pop()
+            if a not in comp:
+                comp.add(a)
+                todo += [n.GetIdx() for n in mol.GetAtomWithIdx(a).GetNeighbors() if n.GetIdx() != i]
+        out[nb.GetIdx()] = comp
+    return out
+
+
+def _cross_order(mol: Chem.Mol, i: int, pts: list[Point]) -> list[int]:
+    """The metal's four neighbors in order round the cross: the SMILES's square-planar stereo
+    (@SP1 U, @SP2 4, @SP3 Z shapes, OpenSMILES), else counter-clockwise as CoordGen laid them."""
+    a = mol.GetAtomWithIdx(i)
+    bonded = [b.GetOtherAtomIdx(i) for b in a.GetBonds()]
+    if a.GetChiralTag() == Chem.ChiralType.CHI_SQUAREPLANAR and a.HasProp("_chiralPermutation"):
+        perm = _SP_ORDER.get(a.GetUnsignedProp("_chiralPermutation"))
+        if perm:
+            return [bonded[k] for k in perm]
+    c = pts[i]
+    return sorted(bonded, key=lambda j: math.atan2(-(pts[j][1] - c[1]), pts[j][0] - c[0]))
+
+
+def _cross_crowding(placed: list[dict[int, Point]], step: float) -> float:
+    """How far atoms of different ligands come inside CROSS_CROWDED_PER_BOND x `step` of each
+    other, summed (screen coordinates, the layout's own units)."""
+    lim = CROSS_CROWDED_PER_BOND * step
+    return sum(max(0.0, lim - math.dist(p, q))
+               for a, b in itertools.combinations(placed, 2) for p in a.values() for q in b.values())
+
+
+def _square_planar(mol: Chem.Mol, laid: Chem.Mol) -> None:
+    """Redraw each four-coordinate d-block metal with four separate ligands as a cross: each
+    ligand laid out alone with CoordGen (as a substituent on the lone metal atom) and turned so
+    its bond to the metal lies on its arm, the arms 90° apart, the first nearest CoordGen's own
+    direction. Each ligand is then kept as laid out or mirrored about its arm, whichever crowds
+    the others least (_cross_crowding; ties keep it). CoordGen draws such a metal unevenly
+    (Br–Pd 0.88, Pd–P 1.13 bond lengths) and ignores a coordMap round it. `laid` is mol's layout
+    copy (_dative_as_single), its conformer set."""
+    conf = laid.GetConformer()
+    for a in laid.GetAtoms():
+        i = a.GetIdx()
+        if a.GetAtomicNum() not in _D_BLOCK or a.GetDegree() != 4:
+            continue
+        ligands = _cross_ligands(laid, i)
+        if ligands is None:
+            continue
+        pts = _coords(laid)
+        c = pts[i]
+        order = _cross_order(mol, i, pts)
+        d0 = pts[order[0]]
+        start = round(math.atan2(-(d0[1] - c[1]), d0[0] - c[0]) / (math.pi / 2)) * math.pi / 2
+        options, step = [], 0.0
+        for k, donor in enumerate(order):
+            keep = sorted(ligands[donor] | {i})
+            sub = Chem.RWMol(laid)
+            for j in sorted(set(range(laid.GetNumAtoms())) - set(keep), reverse=True):
+                sub.RemoveAtom(j)
+            rdDepictor.Compute2DCoords(sub)
+            sp = _coords(sub)
+            mi, di = keep.index(i), keep.index(donor)
+            step = math.dist(sp[mi], sp[di])
+            arm = math.degrees(start + k * math.pi / 2)
+            turn = arm - math.degrees(math.atan2(-(sp[di][1] - sp[mi][1]), sp[di][0] - sp[mi][0]))
+            rel = {old: rotate((sp[new][0] - sp[mi][0], sp[new][1] - sp[mi][1]), turn)
+                   for new, old in enumerate(keep) if old != i}
+            # mirrored about the arm: rotate onto +x, flip y, rotate back
+            flip = {j: rotate((lambda q: (q[0], -q[1]))(rotate(v, -arm)), arm) for j, v in rel.items()}
+            options.append([{j: add(c, v) for j, v in o.items()} for o in (rel, flip)])
+        best = min(itertools.product((0, 1), repeat=len(options)),
+                   key=lambda pick: (round(_cross_crowding([o[f] for o, f in zip(options, pick)], step), 6), sum(pick)))
+        for o, f in zip(options, best):
+            for j, (x, y) in o[f].items():
+                conf.SetAtomPosition(j, (x, -y, 0.0))
+
+
 def layout_2d(mol: Chem.Mol) -> None:
     rdDepictor.SetPreferCoordGen(True)
     m = _dative_as_single(mol)
+    if m is mol and any(a.GetAtomicNum() in _D_BLOCK for a in mol.GetAtoms()):
+        m = Chem.Mol(mol)  # _square_planar reads mol's stereo after laying out its copy
     rdDepictor.Compute2DCoords(m)
+    _square_planar(mol, m)
     _take_conformer(mol, m)
 
 

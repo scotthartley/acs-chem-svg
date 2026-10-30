@@ -50,7 +50,7 @@ from acs_chem_svg.geometry import (  # shared with the renderer
 
 REPO = Path(__file__).resolve().parents[1]
 REF_DIR = REPO / "reference_renders" / "chemdraw"
-ELEMENTS = {1: "H", 6: "C", 7: "N", 8: "O", 9: "F", 14: "Si", 15: "P", 16: "S", 17: "Cl", 35: "Br", 53: "I"}
+ELEMENTS = {1: "H", 6: "C", 7: "N", 8: "O", 9: "F", 14: "Si", 15: "P", 16: "S", 17: "Cl", 35: "Br", 46: "Pd", 53: "I"}
 
 
 def stats(values):
@@ -2538,6 +2538,91 @@ def arc_summary(name: str) -> dict:
     return _r({"line_width": lw, "arcs": recs})
 
 
+ARC_EQ_REFS = {"1.0": "arcs_eq_x1.0", "0.8": "arcs_eq_x0.8", "0.6": "arcs_eq_x0.6"}
+
+
+def path_anchors(s: Shape) -> list:
+    """The on-curve points of a parsed path: its pts are p0, (c1, c2, p3)* when curved."""
+    return [q for k, q in enumerate(s.pts) if k % 3 == 0] if s.curved else list(s.pts)
+
+
+def path_samples(s: Shape, n: int = 8) -> list:
+    """Points along a parsed path, its cubics sampled n times each."""
+    if not s.curved:
+        return list(s.pts)
+    out, pts = [s.pts[0]], s.pts
+    for k in range(1, len(pts) - 2, 3):
+        p0, c1, c2, p3 = pts[k - 1], pts[k], pts[k + 1], pts[k + 2]
+        for j in range(1, n + 1):
+            t = j / n
+            u = 1 - t
+            out.append(tuple(u ** 3 * p0[i] + 3 * u * u * t * c1[i] + 3 * u * t * t * c2[i] + t ** 3 * p3[i]
+                             for i in range(2)))
+    return out
+
+
+def arc_eq_arrows(name: str) -> list[dict]:
+    """The arc arrows of an arcs_eq_x* reference (acs-style.md §15.1): per CDXML <arrow>, its
+    circle (Center3D and the major axis end), kind (equilibrium, equilibrium_products, none),
+    Tail3D angle a0 and sweep, glitch (minor and major axis radii more than 1 pt apart: an
+    ellipse, which ChemDraw draws short), and per drawn shaft (the strokes and half heads whose
+    every point is within 4.5 of the circle and the sweep): its offset from the circle, butt and
+    notch (its stroke's ends, the notch the one nearer a head), the head's tip (its sampled point
+    farthest along the shaft's travel) and the head polygon. Positions are arc lengths along the
+    circle from Tail3D, in the direction of travel."""
+    doc = load(name)
+    root = etree.parse(str(REF_DIR / f"{name}.cdxml")).getroot()
+    out = []
+    for a in root.iter("arrow"):
+        if not a.get("AngularSize"):
+            continue
+
+        def p(k, a=a):
+            v = [float(x) for x in a.get(k).split()[:2]]
+            return (v[0] + doc.offset[0], v[1] + doc.offset[1])
+        c = p("Center3D")
+        R = p("MajorAxisEnd3D")[0] - c[0]
+        sweep = float(a.get("AngularSize"))
+        s = 1.0 if sweep > 0 else -1.0
+        a0 = math.atan2(-(p("Tail3D")[1] - c[1]), p("Tail3D")[0] - c[0])
+        L = math.radians(abs(sweep)) * R
+
+        def pos(q, c=c, a0=a0, s=s, R=R):
+            d = ((math.atan2(-(q[1] - c[1]), q[0] - c[0]) - a0) * s + math.pi) % (2 * math.pi) - math.pi
+            return (d + 2 * math.pi if d < -1.0 else d) * R
+        mine = [sh for sh in doc.shapes if sh.kind in ("stroke", "poly")
+                and all(abs(math.dist(q, c) - R) < 4.5 and -12 < pos(q) < L + 12 for q in path_samples(sh))]
+        heads = [sh for sh in mine if sh.kind == "poly"]
+        shafts = []
+        for sh in (sh for sh in mine if sh.kind == "stroke"):
+            an = path_anchors(sh)
+            ends = [an[0], an[-1]]
+            k = min((0, 1), key=lambda k: min((min(math.dist(ends[k], q) for q in path_samples(h)) for h in heads),
+                                               default=0.0)) if heads else 1
+            notch, butt = ends[k], ends[1 - k]
+            sgn = 1.0 if pos(notch) > pos(butt) else -1.0
+            head = min(heads, key=lambda h: min(math.dist(notch, q) for q in path_samples(h))) if heads else None
+            tip = max(path_samples(head), key=lambda q: sgn * pos(q)) if head else None
+            shafts.append({"offset": statistics.fmean(math.dist(q, c) for q in an) - R, "butt": pos(butt),
+                           "notch": pos(notch), "forward": sgn > 0, "tip": pos(tip) if tip else None,
+                           "tip_offset": math.dist(tip, c) - R if tip else None, "head": head})
+        kind = ("none" if not a.get("ArrowheadHead") else
+                "equilibrium_products" if a.get("ArrowEquilibriumRatio") else "equilibrium")
+        minor = p("MinorAxisEnd3D")[1] - c[1]
+        out.append({"center": c, "R": R, "a0": a0, "sweep": sweep, "L": L, "kind": kind,
+                    "variant": {"1000": "standard", "1500": "large"}[a.get("HeadSize")],
+                    "glitch": abs(minor - R) > 1.0, "shafts": shafts})
+    return out
+
+
+def arc_eq_summary(name: str) -> list[dict]:
+    """arc_eq_arrows without the shapes, rounded: --arc-eq."""
+    return [{"kind": x["kind"], "variant": x["variant"], "sweep": x["sweep"], "R": round(x["R"], 3),
+             "L": round(x["L"], 3), "glitch": x["glitch"],
+             "shafts": [{k: (round(v, 3) if isinstance(v, float) else v) for k, v in sh.items() if k != "head"}
+                        for sh in x["shafts"]]} for x in arc_eq_arrows(name)]
+
+
 def angle_between(a, b) -> float:
     """Angle (deg, 0-90) between the lines along a and b."""
     c = abs(dot(unit(a), unit(b)))
@@ -2568,7 +2653,12 @@ def main(argv=None) -> int:
     ap.add_argument("--chair", action="store_true", help="chair templates, axial and equatorial bonds (§14.1)")
     ap.add_argument("--crossing", action="store_true", help="bond crossings: front by Z, rear-bond cuts (§14.2)")
     ap.add_argument("--arc", action="store_true", help="arc arrows: circle, sweep, head on the chord (§15.1)")
+    ap.add_argument("--arc-eq", action="store_true", help="arc equilibrium arrows: shafts, butts, notches, tips (§15.1)")
     args = ap.parse_args(argv)
+    if args.arc_eq:
+        refs = {k: n for k, n in ARC_EQ_REFS.items() if not args.names or n in args.names}
+        print(json.dumps({k: arc_eq_summary(n) for k, n in refs.items()}, indent=1, ensure_ascii=False))
+        return 0
     if args.arc:
         refs = {k: n for k, n in ARC_REFS.items() if not args.names or n in args.names}
         print(json.dumps({k: arc_summary(n) for k, n in refs.items()}, indent=1, ensure_ascii=False))

@@ -1170,9 +1170,7 @@ RESONANCE_KNOWN = {
     # ChemDraw writes one of resonance_x1.0's three sign boxes mirrored (dx -7.5; preset comment)
     ("resonance_x1.0", "charge box dx", "node 31"): 15.01,
 }
-# catalytic cycles (m6_*_cycle_*) are not exported yet (acs-style.md §15, phase 5)
-ALL_SPECS = sorted(str(p.relative_to(mr.REPO)) for p in (mr.REPO / "examples").glob("*.yaml")
-                   if "_cycle_" not in p.name)
+ALL_SPECS = sorted(str(p.relative_to(mr.REPO)) for p in (mr.REPO / "examples").glob("*.yaml"))
 
 
 @needs_refs
@@ -1259,6 +1257,8 @@ def test_all_spec_exports_validate(spec):
 def test_all_spec_round_trips(spec):
     """Every example spec reads back with RDKit as its species (and steps) and raises no
     CdxmlUnsupported."""
+    if "_cycle_" in spec:
+        pytest.skip("catalytic cycles: test_cdxml_cycle.py::test_cycle_round_trip")
     if load_spec(mr.REPO / spec).steps:
         test_scheme_rdkit_round_trip(spec)
     else:

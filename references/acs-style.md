@@ -118,13 +118,14 @@ neighboring bond on each side.
 Hashes to unlabeled atoms with other bonds are not in the references (unmeasured): the last
 hash ends at the atom.
 
-## 2. Atom labels (source: labels_x1.0, m1_set_x*, mech_basic_x1.0, double_bonds_x1.0, clearance_x*)
+## 2. Atom labels (source: labels_x1.0, m1_set_x*, mech_basic_x1.0, double_bonds_x1.0, clearance_x*, metals_x*)
 
 | Parameter | ×1.0 | ×0.8 | ×0.6 | Method | Class |
 |---|---|---|---|---|---|
 | Label font / size | Helvetica 10 | 8 | 6 | SVG `<text>` font-size × matrix | exact |
 | Explicit carbon labels (CH₃) | laid out and clipped like any label: C centered, H₃ after it; wedge and hash end flat at the label | | | stereo_x1.0 (wedge and hash into CH₃), within 0.03 pt | exact (terminal CH₃ only; CH₂/CH in chains unmeasured) |
 | Horizontal anchor | first letter of the element symbol centered on the atom (advance center = ink center within 0.005) | | | glyph origin from SVG + fontTools advance | exact |
+| Centered two-letter symbols | a symbol of two or more letters with no H (Pd, Si) is centered whole on the atom (advance center within 0.004) when a vertical or horizontal bond has another bond 165–195° from it (the horizontal case: the user, 2026-10-30, unmeasured); otherwise the first letter is (terminal Cl / Br, -Cl right-justified). Bond lengths unchanged (14.4 / 11.56 / 8.67). Bond ends at a centered Pd: 6.91 / 7.09 left / right, 5.25 / 5.35 up / down (x1.0); Si 5.29–5.58 | 5.54 / 5.62, 4.21 / 4.25 | 4.16 / 4.26, 3.12 / 3.25 | metals_x\* (Pd crosses, SiMe₄, a terminal Cl); the 165–195° window is the user's (2026-10-30), the references have exact verticals; `draw_mol.centered_label` | exact (our clip model: within 0.1 except straight down from Pd, Open 25) |
 | Right-justified labels | when the bonds point right (the same test that puts H on the left), the **last** letter of the element is centered instead: –Cl has C on the atom, Cl– has l on the atom (Br likewise) | | | clearance_x*: Cl/Br at 12 directions | exact |
 | Baseline below atom center | 3.586 (3.582–3.591) | 2.869 | 2.156 | glyph baseline − atom y; = 0.3585 × size = cap height / 2 (Helvetica capHeight 1469/2048 = 0.7173 em) | exact |
 | H after element (NH₂, OH, NH₃, CH₃) | origin + advance(element) | | | dx of the H origin | exact |
@@ -624,8 +625,14 @@ Rules (M4; unmeasured, user decisions 2026-10-25, flagged at review):
     (`LonePair` + `Radical="Singlet"`) are unmeasured; no reference (user decision 2026-10-29).
 
 24. **Arc arrows** (§15.1): clockwise heads in arcs_x\* are the measured shape rescaled by
-    −2.8 to +3.1 % with no pattern found; ours keeps the measured head both ways. ChemDraw has no
-    arc equilibrium arrow, so ours (§15.1) applies the straight rules along the arc.
+    −2.8 to +3.1 % with no pattern found; ours keeps the measured head both ways. Arc equilibria
+    (arcs_eq_x\*) are approximate: ChemDraw's clockwise and counterclockwise ones differ by up to
+    0.3 pt, its short shaft sits off ±spacing / 2, and x1.0's large balanced ones are glitched
+    ellipses (§15.1). CDXML (§15.3): gate passed 2026-10-30.
+25. **Bond straight down from a centered Pd** (§2, metals_x\*): our clip model (§2.1) stops it
+    0.24 / 0.16 / 0.17 pt nearer the atom than ChemDraw (5.11 vs 5.35 at x1.0); the other
+    directions at Pd and Si are within 0.1. A refit (`measure_refs.py --fit-clip`) with
+    metals_x\* might close it.
 
 ## 7. Design-brief (docs/design.md) discrepancies (references win)
 
@@ -1073,7 +1080,7 @@ ChemDraw reads its ring stereocenters as undefined.
 | M1 items on the chair templates (bond lengths, line widths and offsets, labels, ends at labels, wedge) | 0.076 / 0.069 / 0.075 pt | `tests/test_chair_vs_chemdraw.py::test_exact_geometry_within_tolerance` |
 | Cut ends, distance from the front axis, both corners | 0.014 / 0.006 / 0.010 pt | `tests/test_chair_vs_chemdraw.py::test_crossing_cuts_within_tolerance` |
 
-## 15. Catalytic cycles (source: arcs_x1.0 / x0.8 / x0.6, ChemDraw 26.1.0.6801)
+## 15. Catalytic cycles (source: arcs_x1.0 / x0.8 / x0.6, arcs_eq_x1.0 / x0.8 / x0.6, ChemDraw 26.1.0.6801)
 
 arcs_x\* (the user, redrawn 2026-10-30): ChemDraw arc arrows (the arc tool) at 60°, 120° and
 180° (59.6–60.1° as drawn), each tail and tip level, drawn counterclockwise and clockwise (not
@@ -1093,17 +1100,35 @@ a cycle is our placement (§15.2). Method: `measure_refs.py --arc` (`arc_summary
 | Shaft | width 0.60, a stroked path between Tail3D (within 0.007) and the notch, always stroked counterclockwise: from the tail on a counterclockwise arc, from the notch on a clockwise one | same | same | `measure_refs.arc_shaft` |
 | Clockwise heads | the same shape (inset / length 0.875) on the chord (within 0.01°), the tip on Head3D, but scaled: length / measured 0.980, 0.983, 0.972 (standard) and 1.031, 0.991, 1.028 (large) at 60°, 120°, 180° | 0.979, 1.011, 0.973 | 1.028, 1.010, 1.021 | no pattern found (not radius, sweep or chord; x0.6's counterclockwise heads also moved from 1.000 to 0.996 between two saves of the same arcs): ours is the measured head both ways |
 | Shaft cubics | ≤ 90° pieces from the tail; the 90° ones with handle 0.551915 r, the last (to the notch) 1–3.5 % shorter than an exact arc's, no closed form found. Up to **0.33 pt off the circle** (180°; 0.15 at 60°, 0.015 at 120°) | 0.24 | 0.15 | ChemDraw's approximation of its own circle: ours is the circle (`geometry.arc_segments`, equal pieces ≤ 90°, error < 0.03 % of r) |
-| CDXML `<arrow>` | `AngularSize` (− clockwise), `Center3D` = the center, `MajorAxisEnd3D` = center + (r, 0), `MinorAxisEnd3D` = center + (0, r) (y down) in both directions, Head3D, Tail3D; head attributes as §13.1 | same | same | phase 5 |
-| CDXML `<graphic>` | `GraphicType="Arc"`, `SupersededBy` the arrow, `BoundingBox` = Head3D then the true center, `AngularSize` 90 for the 59.6–60.1° arcs (120 and 180 for the others; −90, −120, −180 clockwise) | same | same | the 60° value is unexplained (a default kept from the tool?) |
+| CDXML `<arrow>` | `AngularSize` (− clockwise; one decimal, none when whole), `Center3D` = the center, `MajorAxisEnd3D` = center + (r, 0), `MinorAxisEnd3D` = center + (0, r) (y down) in both directions, Head3D, Tail3D; head attributes as §13.1 | same | same | `cdxml_writer._Writer.arc` (§15.3) |
+| CDXML `<graphic>` | `GraphicType="Arc"`, `SupersededBy` the arrow, `BoundingBox` = Head3D then the true center, `AngularSize` 90 for the 59.6–60.1° arcs (120 and 180 for the others; −90, −120, −180 clockwise) | same | same | the 60° value is unexplained; ours writes the whole-degree sweep, at least 90 (fits all three; Open 24) |
 | `<arrow>` BoundingBox | 0.46–0.47 out from the ink on the tail side and top; the bottom 1.3–5.9 **inside** the ink for 60° and 120° arcs | | | not modelled (ChemDraw recomputes boxes, §13.1 gate) |
 
 Implemented as `arrows.arc_arrow`: the shaft is the arc from the tail to the notch, and the head
 is the straight `head_marker` with its origin at the notch, turned in the marker frame by the
 angle from the arc's end tangent to the chord (`arc_turn`, one `<marker>` id per turn, so SVG's
-`orient="auto"` puts it on the chord). `arrows.arc_equilibrium_arrow` (unmeasured, Open 24)
-draws two concentric shafts `equilibrium.shaft_spacing` apart, the forward one on the left of travel
-(outside for a clockwise arrow). The stagger and the unbalanced ratio are measured along the center
-circle, and each half head sits on its own shaft's chord.
+`orient="auto"` puts it on the chord).
+
+Arc equilibrium arrows (arcs_eq_x\*, the user, 2026-10-30: balanced and favoring products at
+60°, 120° and 180° both ways, standard heads at every scale and large at x1.0; and headless
+arcs). `measure_refs.py --arc-eq` (`arc_eq_arrows`); `arrows.arc_equilibrium_arrow`:
+
+| Item | Measured | Ours |
+|---|---|---|
+| Shafts | two concentric arcs at R ± 0.900 (`ArrowShaftSpacing` 300), the one pointing at Head3D on the left of travel (outside for a clockwise arrow) | the same |
+| Balanced | **no stagger**: each shaft's butt on its end of the arc (Tail3D / Head3D, within 0.01), its notch a head inset from the other end, its tip at that end ± 0.3 (+ clockwise, − counterclockwise) | each shaft end to end, tip at the end |
+| Favoring products | the long shaft as a balanced one; the short one centered, L / 3 butt to tip (`ArrowEquilibriumRatio` 300), at 1.13–1.31 inside the circle (clockwise) or 0.61–0.83 outside (counterclockwise), not ±0.90 | short shaft L / ratio, centered, at ±spacing / 2 |
+| Half heads | the straight half head on its own shaft's chord, its tip and notch on the shaft's **center line** (tip offset = the shaft's, ±0.90) | the same (straight half heads have them on the inner edge, §3.6) |
+| CDXML | one `<arrow>`: `ArrowheadHead` and `ArrowheadTail` `HalfLeft`, `ArrowShaftSpacing` 300, `ArrowEquilibriumRatio` 300 when unbalanced, after `AngularSize`; Head3D / Tail3D the ends on the center circle; `<graphic ArrowType="HalfHead">` | the same; favoring reactants written reversed (Head3D at its start), as straight ones |
+| Headless arc | `<arrow>` without `ArrowheadHead` (keeps the size attributes), `<graphic>` without `ArrowType` and its AngularSize the **other sign** from the arrow's; stored slightly elliptical (axes 0.10–0.23 apart) | a circle; the same attributes |
+| `<graphic>` AngularSize | the arc tool's: the smallest of 90 / 120 / 180 / 270 that holds the sweep (113.7° → 120, 74.3° → 90) | the same |
+| Glitches (left out) | x1.0's large balanced arrows are stored as ellipses (minor axis 60.16 vs major 80.84 at 60°) and drawn short or off the circle (the user: a ChemDraw bug) | — |
+
+| Check | Worst | Test |
+|---|---|---|
+| Shaft offset, butt and notch along the arc | 0.45 pt (x0.6's 60.6° short shafts: 1.16) | `tests/test_arc_vs_chemdraw.py::test_arc_equilibrium_vs_chemdraw` |
+| Head points to ChemDraw's head ink | 0.65 pt | the same |
+| CDXML attributes, rewritten on ChemDraw's circles | 0.1 pt (headless: 0.25) | `tests/test_cdxml_cycle.py::test_reference_arcs_rewritten` |
 
 | Check | Worst | Test |
 |---|---|---|
@@ -1127,6 +1152,35 @@ free arcs, labels inside the circle, tails as tangent arcs). Values at x1.0; x0.
 | Tails: an arc of `tail_radius` tangent to the circle from outside, turning `tail_turn`; entering ones join at `tail_join_in` of the arc (earlier ones `tail_room` further back), leaving ones at `tail_join_out` (later ones further on); a leaving tail is an arc arrow (§15.1). Tails don't change the radius | `cycle.tail_radius` 20.0, `cycle.tail_turn` 80°, `cycle.tail_join_in` / `_out` 0.4 / 0.6 |
 | Tail text or structure `tail_text_gap` beyond the free end, along the tail; consecutive texts share a tail (", ") | `cycle.tail_text_gap` 2.5 |
 | A crowded tail (path or item within `label_clear` of a species, label, earlier tail or the arrows) tries radius ×1.3 / ×1.6, turns 65° / 100° / 50° / 120° and joins ±0.06 / −0.12; still crowded: a `validate.py` problem | — |
+
+### 15.3 CDXML export (`render.py --cdxml`, `cdxml_writer.cycle_records`)
+
+Every arrow and tail is a ChemDraw arc arrow as §15.1: an `<arrow>` with its legacy
+`<graphic GraphicType="Arc">`, on the drawn circle. Rewritten on ChemDraw's own circles, the
+arcs_x\* and arcs_eq_x\* arrows and graphics come back within 0.1 pt (headless 0.25),
+AngularSize within 0.1° (`tests/test_cdxml_cycle.py`):
+
+| Item | Written as |
+|---|---|
+| Forward arrow, leaving tail | an arc with `ArrowheadHead="Full"`; a tail on its own circle (§15.2) |
+| Equilibrium arrow | ChemDraw's arc equilibrium arrow (§15.1), one `<arrow>` on the center circle |
+| Entering tail | a headless arc (§15.1), drawn from the free end to the join |
+| `<arrow>` BoundingBox | the drawn ink (ChemDraw's is not modelled, §15.1) |
+| Captions | step labels, tail texts, the center text and compound numbers, as §13.1 (Left) |
+| `<scheme>` | one, with a `<step>` per arrow: reactants the step's species and its entering species, products the next and its leaving species, `ReactionStepArrows` the arc graphic, the label and tail texts above the arrow; an equilibrium favoring reactants with reactants and products swapped (Head3D at its start) |
+
+A dative bond is a plain single bond (§13), so RDKit reads the four-bonded P back as PH and
+ChemDraw notes "An atom in this label has an invalid valence" on the P. `Order="dative"` clears
+the note but ChemDraw draws a small arrow on the bond (gate 2026-10-30, `dative_test.cdxml`):
+not used (user decision 2026-10-30).
+
+Gate (2026-10-30, `cdxml_spike.py --phase 6`, both cycle examples): ChemDraw keeps every arc
+(Head3D / Tail3D within 0.04, its recomputed boxes within 0.26), the arc equilibria, the headless
+tails and the centered Pd labels, and draws them as ours (the user, by eye). It discards our
+`<scheme>` and builds its own from the drawing: a step per arrow, leaving tails included,
+entering (headless) tails ignored, labels above or below by position; PhBr, H2O and H+ captions
+become formula fragments (as K2CO3, §13.1). It re-justifies proline's NH with H above (both
+ring bonds leave N downward; our labels put H left or right only, §2).
 
 Held by `tests/test_cycle.py` (equal arcs within 0.05 pt, θ0 = 90°, no species within `clear` of
 an arrow, the radius growing with count, size and labels, tail text not moving the radius).
