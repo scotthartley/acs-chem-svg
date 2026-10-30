@@ -43,6 +43,8 @@ nonlinear:
   - cdxml.electron_box_dx            # 7.5 / 4.8 / 4.8 (mech_basic_x*): CDXML data, not drawn; not charge_box_dx at x0.6
   - cdxml.lone_pair_box_reach        # 0.97 / 0.67 / 0.67 (mech_basic_x*): CDXML data, not drawn
   - cdxml.electron_box_reach         # 0.90 / 0.60 / 0.60 (mech_basic_x*): CDXML data, not drawn
+  - lengths.label_h_line_pitch      # 8.342 / 6.650 / 5.017 (nh_x*): copied exactly
+  - cdxml.h_above_rise              # 8.37 / 6.74 / 5.30 (nh_x*): CDXML data, not drawn
   - charge.unlabeled_distance       # placement default, each preset from its own 3.84 / 3.24 / 2.87 (resonance_x*)
 # Fitted or chosen, not measured per preset: kept at the x1.0 value.
 assumed_exempt:
@@ -114,6 +116,7 @@ lengths:
   margin_width: 1.28                # m1_set_x0.8.cdxml MarginWidth; clip rule in acs-style.md §2.1
   label_outline_offset_x: -0.01      # measure_refs.py --fit-clip: glyph outline shift for clipping, all references (n=669, refit 2026-10-27)
   label_outline_offset_y: 0.03       # measure_refs.py --fit-clip
+  label_h_line_pitch: 6.650         # nh_x0.8: H above / below N, baseline to baseline (measure_refs.py --nh, n=11, spread 0.001)
 
 ratios:                             # dimensionless; identical in every preset
   bond_spacing_fraction: 0.18       # all files: CDXML BondSpacing=18; measured 2.592/14.40
@@ -254,3 +257,4 @@ cdxml:                              # CDXML export only (acs-style.md §13); not
   arrow_box_pad: 0.5                # <arrow> BoundingBox beyond the head's half width: a forward arrow's top, both sides of a left-to-right equilibrium arrow, none when Head3D is left of Tail3D (all scheme_* and equilibrium_* but scheme_basic_x0.6 / scheme_wrap_x0.6: 0.18) (measure_refs.py --cdxml-scheme)
   resonance_box_pad: 0.67             # ↔ <arrow> BoundingBox beyond the head's half width (ArrowheadWidth x LineWidth / 100), both sides; resonance_x0.8: 0.67 / 0.67 (measure_refs.py --cdxml-scheme)
   bracket_lip_size: 60              # bracket <graphic> LipSize; 60 in resonance_x1.0/x0.8/x0.6, whose drawn lips are 4.01 / 3.21 / 2.42 (not lip_length / LineWidth x 100) (measure_refs.py --cdxml-scheme)
+  h_above_rise: 6.74               # nh_x0.8: an H-above NH's <t> p.y (-3.87) is this above the usual first-line y (2.87) (measure_refs.py --nh)

@@ -25,7 +25,8 @@ references by scripts/cdxml_headers.py; this module types no style numbers. Per 
   0.3586 for N, H, F, I, Br), though it draws every label's baseline at 0.3585 x size: half
   the ink top of the label's full-size glyphs (NO2 and TMS: 3.68, for the O and S).
   BoundingBox: the union of the drawn runs' ink boxes, moved by the same stored - drawn offset.
-  LabelJustification / LabelAlignment Left or Right from Label.h_side, plus
+  LabelJustification / LabelAlignment Left or Right from Label.h_side (an NH with its H above or
+  below: Left, LabelAlignment Above / Below and ChemDraw's LineStarts, nh_x*), plus
   Justification="Right"; a centered label (draw_mol.centered_label: Pd in a cross, SiMe4)
   Center for all three, p at its advance center, on the atom (metals_x*); a one-character label (-F, -H) is always Left, and only labels of more
   than one character get LabelAlignment, as in the references.
@@ -519,10 +520,15 @@ class _Writer:
         box = union_box(r.bbox() for r in lab.runs)  # in the stored frame too: moved by y - base
         box = (box[0] + off[0], box[1] + y - base + off[1], box[2] + off[0], box[3] + y - base + off[1])
         just = "Right" if right else "Center" if center else "Left"
+        vertical = {"top": ("Above", "2 4"), "bottom": ("Below", "2 3")}.get(lab.h_side)  # nh_x*: NH, H above / below
+        if lab.h_side == "top":  # p is on the first line, the H's
+            y -= self.preset.cdxml.h_above_rise
         attrs = {"p": pts(x + off[0], y + off[1]), "BoundingBox": pts(*box), "LabelJustification": just}
         if right or center:
             attrs["Justification"] = just
-        if len(text) > 1:
+        if vertical:
+            attrs["LabelAlignment"], attrs["LineStarts"] = vertical
+        elif len(text) > 1:
             attrs["LabelAlignment"] = just
         if is_nickname:
             attrs["IsNickname"] = is_nickname

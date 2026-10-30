@@ -84,6 +84,7 @@ they disagree, `acs-style.md` (the ChemDraw references) wins.
 - `uv run python scripts/cycle_spike.py` re-renders the catalytic-cycle geometry spike (`spike/cycle/`); the module is `cycle.py` (acs-style.md §15.2).
 - `uv run python scripts/measure_refs.py --chair` prints chair_x*'s templates, axial and equatorial bonds per vertex, and the chairs' crossings (acs-style.md §14.1).
 - `uv run python scripts/measure_refs.py --crossing` prints every crossing's front bond (by Z) and the rear bond's cut ends (acs-style.md §14.2).
+- `uv run python scripts/measure_refs.py --nh` prints nh_x*'s NH labels: open direction, H beside / above / below, line pitch, CDXML `<t>` (acs-style.md §2).
 - `uv run python scripts/measure_refs.py --charges-lewis` prints charges_lewis_x*'s circled signs, symbol sizes per box,
   two-electron radicals and label texts (acs-style.md §2.2, §13.4).
 - `uv run python scripts/validate.py [--suggest] spec.yaml` checks schema, chemistry, electron bookkeeping, scheme

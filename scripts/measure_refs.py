@@ -25,6 +25,7 @@ Usage:
     uv run python scripts/measure_refs.py --chair         # chair templates, axial / equatorial bonds (§14.1)
     uv run python scripts/measure_refs.py --crossing      # bond crossings: front by Z, rear cuts (§14.2)
     uv run python scripts/measure_refs.py --arc           # arc arrows: circle, sweep, head on the chord (§15.1)
+    uv run python scripts/measure_refs.py --nh            # where an NH's H goes: beside, above, below (§2)
 """
 
 from __future__ import annotations
@@ -1981,6 +1982,53 @@ def abbrev_summary(name: str) -> dict:
             "bond_ends_over_0.1": sum(abs(x) > 0.1 for x in residuals)}
 
 
+NH_REFS = ["nh_x1.0", "nh_x0.8", "nh_x0.6"]
+
+
+def nh_summary(name: str) -> dict:
+    """§2: every NH of nh_x* (pyrrolidine turned in 15° steps, an acyclic R-NH-R at a peak, a
+    valley and turned 15° / 30°, aziridine up and down). Per atom: the open direction (opposite
+    the sum of its bond unit vectors; deg, counterclockwise from +x, y up) and its angle from
+    vertical, the bond angle, ChemDraw's LabelAlignment (Left / Right: H beside; Above / Below),
+    the H glyph origin and baseline relative to N's, and the CDXML <t> p (y relative to the
+    usual first-line y, 3.59 at 10 pt) and LineStarts. Summary: the largest off-vertical angle
+    with H above / below, the smallest with H beside, and the line pitch."""
+    doc = load(name)
+    root = etree.parse(str(REF_DIR / f"{name}.cdxml")).getroot()
+    nodes = {n.get("id"): n for n in root.iter("n")}
+    atoms, pitch, stored = [], [], {}
+    for a in doc.atoms.values():
+        if a.element != "N" or a.label != "NH":
+            continue
+        nbs = [doc.atoms[b.b if b.a == a.id else b.a] for b in doc.bonds if a.id in (b.a, b.b)]
+        us = [unit((o.p[0] - a.p[0], -(o.p[1] - a.p[1]))) for o in nbs]
+        open_deg = math.degrees(math.atan2(-sum(u[1] for u in us), -sum(u[0] for u in us))) % 360
+        off_vertical = min(abs((open_deg - 90 + 180) % 360 - 180), abs((open_deg - 270 + 180) % 360 - 180))
+        bond_angle = math.degrees(math.acos(max(-1.0, min(1.0, us[0][0] * us[1][0] + us[0][1] * us[1][1]))))
+
+        def nearest(ch):
+            return min((g for g in doc.glyphs if g.ch == ch and g.box),
+                       key=lambda g: math.dist((g.x + g.adv / 2, (g.box[1] + g.box[3]) / 2), a.p))
+        n_g, h_g = nearest("N"), nearest("H")
+        t = nodes[a.id].find("t")
+        align = t.get("LabelAlignment")
+        ty = float(t.get("p").split()[1]) - float(nodes[a.id].get("p").split()[1])
+        if align in ("Above", "Below"):
+            pitch.append(abs(h_g.base - n_g.base))
+            stored.setdefault(align, []).append(ty)
+        atoms.append({"atom": a.id, "open_deg": round(open_deg, 1), "off_vertical": round(off_vertical, 1),
+                      "bond_angle": round(bond_angle, 1), "alignment": align, "line_starts": t.get("LineStarts"),
+                      "h_dx": _r(h_g.x - n_g.x), "h_dbase": _r(h_g.base - n_g.base), "t_dy": _r(ty)})
+    vertical = [r["off_vertical"] for r in atoms if r["alignment"] in ("Above", "Below")]
+    beside = [r["off_vertical"] for r in atoms if r["alignment"] in ("Left", "Right")]
+    ok = all((r["alignment"] == "Above") == (r["off_vertical"] <= max(vertical) and 0 < r["open_deg"] < 180)
+             for r in atoms if r["alignment"] != "Below")
+    return {"atoms": sorted(atoms, key=lambda r: (r["bond_angle"], r["open_deg"])),
+            "vertical_max_off_vertical": max(vertical), "beside_min_off_vertical": min(beside),
+            "above_iff_open_upward": ok,
+            "line_pitch": stats(pitch), "t_dy": {k: stats(v) for k, v in stored.items()}}
+
+
 # --------------------------------------------------------------------------- main
 
 
@@ -2657,7 +2705,11 @@ def main(argv=None) -> int:
     ap.add_argument("--crossing", action="store_true", help="bond crossings: front by Z, rear-bond cuts (§14.2)")
     ap.add_argument("--arc", action="store_true", help="arc arrows: circle, sweep, head on the chord (§15.1)")
     ap.add_argument("--arc-eq", action="store_true", help="arc equilibrium arrows: shafts, butts, notches, tips (§15.1)")
+    ap.add_argument("--nh", action="store_true", help="where an NH's H goes: beside, above, below (§2)")
     args = ap.parse_args(argv)
+    if args.nh:
+        print(json.dumps({n: nh_summary(n) for n in args.names or NH_REFS}, indent=1, ensure_ascii=False))
+        return 0
     if args.arc_eq:
         refs = {k: n for k, n in ARC_EQ_REFS.items() if not args.names or n in args.names}
         print(json.dumps({k: arc_eq_summary(n) for k, n in refs.items()}, indent=1, ensure_ascii=False))

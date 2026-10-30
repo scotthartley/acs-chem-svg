@@ -681,3 +681,16 @@ removed renders pixel-identical to the approved `m4_nitration_x1.0`. Inbox triag
 - **RDKit reads a CDXML `Unspecified` nickname node as a bare C**, ChemDraw's own (metals_x\*
   PPh₃) included; it expands Fragment and Nickname nodes. The cycle round-trip test compares
   PMe₃ that way.
+
+## 2026-10-30 (NH with H above or below, nh_x*)
+
+- **ChemDraw's H-above rule is about the open direction, not the room beside N.** At 60°, 108°
+  and 120° bond angles the switch is at the same place: H above / below within 15° of vertical,
+  beside from 30°. A room-beside rule (the largest gap) fails on aziridine. `draw_mol.vertical_h`.
+- **One sweep reference measured a second thing.** nh_x*'s 24 pyrrolidine turns put bonds 6°
+  and 9° off the axes, which no earlier reference had: ChemDraw's bond ends there are up to 0.6 pt
+  shorter than our clip. The user judged that a ChemDraw error, not to be copied (Open 28):
+  a reference can be wrong where it misbehaves under rotation.
+- **A CDXML H-above label keeps the text `NH`** with `LabelAlignment="Above"` and
+  `LineStarts="2 4"` (Below: `"2 3"`), p on the first (H) line; copy these, don't derive them.
+

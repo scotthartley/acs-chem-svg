@@ -118,7 +118,7 @@ neighboring bond on each side.
 Hashes to unlabeled atoms with other bonds are not in the references (unmeasured): the last
 hash ends at the atom.
 
-## 2. Atom labels (source: labels_x1.0, m1_set_x*, mech_basic_x1.0, double_bonds_x1.0, clearance_x*, metals_x*)
+## 2. Atom labels (source: labels_x1.0, m1_set_x*, mech_basic_x1.0, double_bonds_x1.0, clearance_x*, metals_x*, nh_x*)
 
 | Parameter | ×1.0 | ×0.8 | ×0.6 | Method | Class |
 |---|---|---|---|---|---|
@@ -130,6 +130,7 @@ hash ends at the atom.
 | Baseline below atom center | 3.586 (3.582–3.591) | 2.869 | 2.156 | glyph baseline − atom y; = 0.3585 × size = cap height / 2 (Helvetica capHeight 1469/2048 = 0.7173 em) | exact |
 | H after element (NH₂, OH, NH₃, CH₃) | origin + advance(element) | | | dx of the H origin | exact |
 | Left-side labels (H₂N, HO, H₃C) | set right-to-left, contiguous: H₂N gives H at −11.393, 2 at −4.171 from the N origin | | | labels_x1.0, mech_basic_x1.0 | exact |
+| NH with H above or below | an NH with two bonds whose open side (opposite the sum of the bond directions) is within 15° of straight up has its H **above** N, within 15° of straight down **below**; from 30° off vertical the H is beside N by the rule above. The same at bond angles 60°, 108°, 120° (aziridine, pyrrolidine at 24 turns, R–NH–R). N stays where it is (first letter centered, usual baseline); the H has N's glyph origin x (±0.003), full size, one line pitch away: **8.342** (8.341–8.342) | **6.650** | **5.017** | nh_x\* (`measure_refs.py --nh`, n=11 above or below and 19 beside per preset); the cut between 15° and 30° is unmeasured, `draw_mol.H_VERTICAL_DEG` = 22.5 | exact (neutral NH only; charged N, NH₂, OH, PH unmeasured) |
 | Lone atom with H (no bonds) | water is H₂O, right-justified (ChemDraw 26 re-justified our OH₂ on re-save, CDXML gate 2026-10-28); other elements unmeasured (they keep H on the right) | | | m2_equilibrium_x1.0 re-save | exact (O only) |
 | Subscript size | 0.75 × label size (7.5 / 6 / 4.5) | | | SVG font-size | exact |
 | Subscript baseline drop | 2.30 | 1.84 | 1.38 | = 0.23 × size | exact |
@@ -642,10 +643,16 @@ Rules (M4; unmeasured, user decisions 2026-10-25, flagged at review):
     (unmeasured; its CDXML nickname fragment is PPh₃'s cut to the ipso carbons). PCy₃, P(t-Bu)₃,
     a generic L and LₙPd have no reference: a metals-style file with them on Pd in both
     justifications, at x0.6 / 0.8 / 1.0, would settle them.
-27. **H above or below an NH / OH** (§2): our labels put the H left or right only. ChemDraw
-    re-justifies proline's NH (both ring bonds leaving N downward) with the H above when it
-    re-saves our CDXML (§15.3 gate). Wanted: a reference with an NH and an OH whose bonds both
-    leave downward, and both upward (H below), at x0.6 / 0.8 / 1.0.
+27. ~~**H above or below an NH / OH** (§2).~~ **Resolved (nh_x\*, 2026-10-30):** an NH's H goes
+    above / below N when its open side is within 15° of vertical, beside from 30° (§2). Still
+    open: where between 15° and 30° it switches (22.5° assumed), and charged N (iminium NH⁺,
+    NH₂⁺), PH and other elements, which keep the H beside.
+28. **Bonds just off an axis** (§2.1, nh_x\*): ChemDraw's bonds 6° and 9° off horizontal or
+    vertical stop 0.17–0.61 pt nearer N than our model (exactly horizontal matches), and x0.6 has
+    three more ends 0.10–0.46 off. **Not emulated (user decision, 2026-10-30):** a ChemDraw
+    error; our rings are regular and their bond ends should follow rotation smoothly.
+    `tests/test_nh_vs_chemdraw.py` allows these at their measured size (`NEAR_AXIS_KNOWN`,
+    `KNOWN`); the other nh_x\* ends stay within 0.1 pt.
 
 ## 7. Design-brief (docs/design.md) discrepancies (references win)
 
@@ -776,6 +783,7 @@ files with `measure_refs.py --cdxml-symbols` and `tests/test_cdxml.py` (referenc
 | Page | 540 × 720 per page; a drawing wider than that makes ChemDraw offer to expand, and the re-save has `BoundingBox="0 0 1080 720" WidthPages="2"` | whole pages, enough for the drawing |
 | Labeled atom | `Element` (none for C), `NumHydrogens` (also 0), `NeedsClean="yes"`; one `<s face="96">` with the text in CDXML order (NH2 even when drawn H₂N) | the same |
 | Label justification | `LabelJustification="Right"` + `Justification="Right"` when the bonds leave to the right and the text has two or more characters (H₂N, HO, –Cl, –Br); a one-character label (–F, –H, –I) stays Left | from `Label.h_side` and the text length |
+| NH with H above / below (nh_x\*) | `LabelJustification="Left"`, no `Justification`, `LabelAlignment="Above"` / `"Below"`, `LineStarts="2 4"` / `"2 3"`; text `NH`; p.x at N's glyph origin; p.y the usual for Below, 8.37 / 6.74 / 5.30 higher for Above (−4.78 / −3.87 / −3.15 from the atom; `cdxml.h_above_rise`) | the same (`measure_refs.py --nh`, `tests/test_nh_vs_chemdraw.py`) |
 | `LabelAlignment` | on 140 of 144 labels of two or more characters, never on one character (the other 4: a charged O, in mech_basic and labels_x1.0) | on labels of two or more characters |
 | Label `<t p>` x | the element's glyph origin; right-justified, the end of the element's advance (–Cl: +1.11 at ×1.0 = half the l; H₂N: +3.61 = half the N) | the same, within 0.010 pt |
 | Label `<t p>` y | atom y + half the ink top of the label's full-size glyphs: 0.3684 × size for O, C, S, Cl (an overshooting glyph anywhere: NO2, TMS, OMe, as §13.3); 0.3586 for N, H, F, I, Br, B, T; 0.3599 for Ph (the h). The drawn baseline is 0.3585 × size for all, so for O the stored p sits 0.095 pt below the drawn text | the same, from the font's glyph boxes, within 0.010 pt |
@@ -1192,8 +1200,8 @@ Gate (2026-10-30, `cdxml_spike.py --phase 6`, both cycle examples): ChemDraw kee
 tails and the centered Pd labels, and draws them as ours (the user, by eye). It discards our
 `<scheme>` and builds its own from the drawing: a step per arrow, leaving tails included,
 entering (headless) tails ignored, labels above or below by position; PhBr, H2O and H+ captions
-become formula fragments (as K2CO3, §13.1). It re-justifies proline's NH with H above (both
-ring bonds leave N downward; our labels put H left or right only, §2).
+become formula fragments (as K2CO3, §13.1). It re-justified proline's NH with H above (both
+ring bonds leave N downward); we now draw it so (nh_x\*, §2).
 
 Held by `tests/test_cycle.py` (equal arcs within 0.05 pt, θ0 = 90°, no species within `clear` of
 an arrow, the radius growing with count, size and labels, tail text not moving the radius).

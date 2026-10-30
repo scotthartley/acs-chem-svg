@@ -34,6 +34,7 @@ class Lengths(_Section):
     margin_width: float
     label_outline_offset_x: float
     label_outline_offset_y: float
+    label_h_line_pitch: float  # an NH's H above or below N: baseline to baseline (nh_x*, §2)
 
 
 class Ratios(_Section):
@@ -191,6 +192,7 @@ class Cdxml(_Section):
     arrow_box_pad: float  # <arrow> BoundingBox: extra on the sides ChemDraw pads (acs-style.md §13.1)
     resonance_box_pad: float  # ↔ <arrow> BoundingBox: extra on both sides (§13.3)
     bracket_lip_size: int  # bracket <graphic> LipSize (§13.3)
+    h_above_rise: float  # how far an H-above label's <t> p.y is above the usual first-line y (nh_x*, §2)
 
 
 class Preset(_Section):

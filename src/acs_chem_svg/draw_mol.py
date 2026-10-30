@@ -34,6 +34,12 @@ H_SIDE_TIE = 1e-3  # sum of bond unit-vector x below which h_side calls a tie (n
 # A lone atom with H drawn H-first: ChemDraw 26 re-justified our bondless OH2 to H2O (CDXML gate,
 # m2_equilibrium_x1.0 re-save, 2026-10-28). Measured for O only; other elements keep the tie rule.
 LONE_H_LEFT = {"O"}
+# An NH with two bonds whose open side (opposite the bonds' sum) points within this of straight
+# up or down takes its H above or below N (nh_x*: H above / below up to 15° off vertical, beside
+# from 30°, all three presets; the cut between is unmeasured, halfway). Measured for neutral N
+# with one H only; other atoms keep the left / right rule (acs-style.md §2).
+H_VERTICAL_DEG = 22.5
+H_VERTICAL = {"N"}
 # hash count step: 2 hashes at D/hash_spacing = 1.997 (m1_set_x0.8), 3 at 2.05 (m1_set_x1.0)
 HASH_COUNT_SHIFT = 0.025
 
@@ -46,7 +52,7 @@ class Label:
     atom: int
     element: str
     num_h: int
-    h_side: str  # "right" | "left"; also the justification (left = bonds point right); "center": centered_label
+    h_side: str  # "right" | "left"; also the justification (left = bonds point right); "center": centered_label; "top" | "bottom": vertical_h
     runs: list[TextRun]
     elem_origin: Point  # glyph origin of the element symbol (x, baseline)
     size: float
@@ -76,7 +82,8 @@ def is_labeled(mol: Molecule, i: int) -> bool:
 
 def h_side(mol: Molecule, i: int) -> str:
     """H goes opposite the mean bond direction in x; right on a tie (§2, H₂N vs NH₂), but left on
-    a lone O (H₂O, LONE_H_LEFT). A tie is
+    a lone O (H₂O, LONE_H_LEFT); "top" or "bottom" for an NH whose two bonds leave it open
+    upward or downward (vertical_h, nh_x*). A tie is
     within H_SIDE_TIE: RDKit layouts leave ~1e-4 on vertical bonds (alanine's OH), which ChemDraw,
     holding coordinates to 0.01 pt, reads as vertical and draws OH (CDXML re-save, 2026-10-28).
     Drawer.flip_crowded_labels then swaps a shown CH₃ to the other side when this side runs into
@@ -84,8 +91,29 @@ def h_side(mol: Molecule, i: int) -> str:
     a = mol.atoms[i]
     if not mol.neighbors(i) and a.element in LONE_H_LEFT:
         return "left"  # H2O
+    vertical = vertical_h(mol, i)
+    if vertical:
+        return vertical
     sx = sum(unit(sub(mol.atoms[j].p, a.p))[0] for j, _ in mol.neighbors(i))
     return "left" if sx > H_SIDE_TIE else "right"
+
+
+def vertical_h(mol: Molecule, i: int) -> str | None:
+    """"top" / "bottom" when atom i is a neutral NH (H_VERTICAL, one H) with two bonds and its open
+    side, opposite the sum of the bond directions, within H_VERTICAL_DEG of straight up / down
+    (pyrrolidine with N at the top: H above, nh_x*); else None."""
+    a = mol.atoms[i]
+    nbs = mol.neighbors(i)
+    if a.element not in H_VERTICAL or a.num_h != 1 or a.charge or a.abbrev is not None or len(nbs) != 2:
+        return None
+    us = [unit(sub(mol.atoms[j].p, a.p)) for j, _ in nbs]
+    ox, oy = -(us[0][0] + us[1][0]), -(us[0][1] + us[1][1])  # screen frame: y down
+    if math.hypot(ox, oy) < 0.1:  # bonds (nearly) opposite: no open side
+        return None
+    off = math.degrees(math.atan2(abs(ox), abs(oy)))  # from vertical
+    if off >= H_VERTICAL_DEG:
+        return None
+    return "top" if oy < 0 else "bottom"
 
 
 def element_x(face: FontFace, element: str, size: float, side: str) -> float:
@@ -141,6 +169,12 @@ def layout_label(mol: Molecule, i: int, preset: Preset, face: FontFace, side: st
         return layout_abbreviation(mol, i, preset, face, side, base)
     ex = atom.x + element_x(face, atom.element, size, side)
     pieces = [(atom.element, size, base)]  # (text, size, baseline), in reading order
+    if side in ("top", "bottom"):  # vertical_h: N, then H on the line above / below, same origin x (nh_x*)
+        pitch = preset.lengths.label_h_line_pitch
+        hb = base - pitch if side == "top" else base + pitch
+        runs = [TextRun(ex, base, size, atom.element, face, source=src), TextRun(ex, hb, size, "H", face, source=src)]
+        outline = element_outline(face, atom.element, size, ex - atom.x, base - atom.y)
+        return Label(i, atom.element, atom.num_h, side, runs, (ex, base), size, face, outline)
     if atom.num_h:
         hs = [("H", size, base)] + ([(str(atom.num_h), sub_size, sub_base)] if atom.num_h > 1 else [])
         pieces = pieces + hs if side == "right" else hs + pieces
