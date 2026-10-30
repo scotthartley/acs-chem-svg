@@ -637,3 +637,16 @@ removed renders pixel-identical to the approved `m4_nitration_x1.0`. Inbox triag
 - **A faithful orientation can still look lopsided.** The row-1 dichlorocarbene, oriented to
   the anion it came from, keeps one C–Cl vertical (the leaving Cl was the third arm); the snap
   only looks within 30° of the fitted angle, so it doesn't swing to the symmetric V.
+
+## 2026-10-30 (catalytic cycles, Pd complexes)
+
+- **CoordGen ignores a coordMap around metals.** Square-planar Pd came out with bonds 0.88 to
+  1.13 × the median and 47–107° apart, and pinning didn't help. `chem._square_planar` lays out
+  each ligand alone and puts it on a 90° arm (`@SP1`–`@SP3` choose cis / trans; chelates are
+  left to CoordGen); `auto_rotation` turns a cross by quarter turns only. Inbox 2026-10-30.
+- **ChemDraw centers a two-letter symbol between opposite bonds.** A Pd–P bond clipped by the
+  "d" read as a dot. ChemDraw centers the whole symbol (Pd, Si) when a vertical or horizontal
+  bond has another 165–195° from it (metals_x\*; the horizontal case from the user), and keeps
+  the bonds 14.4 pt: lengthening them was wrong. `draw_mol.centered_label`. Inbox 2026-10-30.
+- **Step labels need more room from each other than from structures.** At 4 pt two cycle labels
+  side by side read as one line; `cycle.label_pair_clear` is one caption em.
