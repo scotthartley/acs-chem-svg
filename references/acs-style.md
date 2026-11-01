@@ -1206,5 +1206,12 @@ entering (headless) tails ignored, labels above or below by position; PhBr, H2O 
 become formula fragments (as K2CO3, §13.1). It re-justified proline's NH with H above (both
 ring bonds leave N downward); we now draw it so (nh_x\*, §2).
 
+Re-save (2026-11-01, the gallery's Suzuki and enamine cycles): the PMe3 nicknames keep their
+inner atoms and bonds, with the same invalid-valence note as PPh3 (dative as single, above). The NH
+keeps H above (`LabelAlignment="Above"`, `LineStarts`, `<t p>` within 0.01). Arcs again within
+0.05, the `<scheme>` rebuilt as before. New: ChemDraw also turns the bold Roman-numeral compound
+numbers (I, II, III) into formula fragments, reading "I" as iodine with an invalid-valence note.
+They are still drawn as before, so this is accepted, as with the other captions.
+
 Held by `tests/test_cycle.py` (equal arcs within 0.05 pt, θ0 = 90°, no species within `clear` of
 an arrow, the radius growing with count, size and labels, tail text not moving the radius).
