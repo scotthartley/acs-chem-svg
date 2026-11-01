@@ -147,9 +147,13 @@ single C–O end 5.519 from the O center at ×1.0).
 drawn, shifted by (−0.01, +0.03) pt. Keep only the parts within ±0.195 × label size of the bond
 axis (edges clipped to that band); a **horizontal** bond keeps the whole outline. The bond stops
 1.0075 × MarginWidth beyond the furthest point of those parts along the bond.
-- **Fit:** all 669 bond ends are within 0.1 pt (worst 0.094, rms 0.045). These are all
-  lines, wedges and hashes into labels in every reference, at every direction and preset.
-  Horizontal: 220 ends, worst 0.072 with the whole outline; angled: 449, worst 0.098 with the band.
+- **Fit:** all 783 bond ends are within 0.1 pt (worst 0.094, rms 0.044; 669 ends, rms 0.045
+  when fitted on 2026-10-27; the re-run of 2026-11-01 gives the same parameters). These are all
+  lines, wedges and hashes into labels in every reference, at every direction and preset, except
+  the references `measure_refs.CLIP_FIT_EXCLUDE` leaves out: nh_x\* (ends 6–9° off the axes,
+  Open 28), metals_x\* (straight down from Pd, Open 25) and chair_x\* (a rear bond cut at a
+  crossing, §14.2). With all of them the fit drifts (n=1051, 56 over 0.1).
+  In the 2026-10-27 set: horizontal, 220 ends, worst 0.072 with the whole outline; angled, 449, worst 0.098 with the band.
 - **Why horizontal bonds differ (abbrev_x*, 2026-10-27):** a horizontal bond into T (TMS) or
   A (Ac) stops beyond T's bar and A's foot, both outside the band: 2.44 / 0.65 pt further out
   than the band model at ×1.0, −0.02 with the whole outline. The same rule fits –F (bond
@@ -640,8 +644,9 @@ Rules (M4; unmeasured, user decisions 2026-10-25, flagged at review):
     ellipses (§15.1). CDXML (§15.3): gate passed 2026-10-30.
 25. **Bond straight down from a centered Pd** (§2, metals_x\*): our clip model (§2.1) stops it
     0.24 / 0.16 / 0.17 pt nearer the atom than ChemDraw (5.11 vs 5.35 at x1.0); the other
-    directions at Pd and Si are within 0.1. A refit (`measure_refs.py --fit-clip`) with
-    metals_x\* might close it.
+    directions at Pd and Si are within 0.1. A refit with metals_x\* (2026-11-01) does not close it:
+    the Pd ends stay 0.16–0.25 off and the other parameters move (offset −0.03, 1.015 × margin,
+    band 0.19), so metals_x\* is left out of the fit (`CLIP_FIT_EXCLUDE`).
 26. **Ligand abbreviations other than PPh₃** (§3.5): PMe₃ is drawn by analogy with PPh₃
     (unmeasured; its CDXML nickname fragment is PPh₃'s cut to the ipso carbons). PCy₃, P(t-Bu)₃,
     a generic L and LₙPd have no reference: a metals-style file with them on Pd in both
@@ -656,6 +661,13 @@ Rules (M4; unmeasured, user decisions 2026-10-25, flagged at review):
     error; our rings are regular and their bond ends should follow rotation smoothly.
     `tests/test_nh_vs_chemdraw.py` allows these at their measured size (`NEAR_AXIS_KNOWN`,
     `KNOWN`); the other nh_x\* ends stay within 0.1 pt.
+29. **Further group abbreviations** (§3.5; inbox 2026-10-30): OTf / TfO (aryl triflates are
+    drawn in full now) and other common groups (OTs, OMs, Boc, …). Needs an abbrev-style
+    reference (abbrev2_x0.6 / 0.8 / 1.0) with each in both justifications, so the label and its
+    CDXML nickname fragment come from ChemDraw.
+30. **Repeat-unit brackets** ([ ]ₙ for an oligomer or polymer; inbox 2026-10-30): not drawn. Needs
+    a reference (polymer_x0.6 / 0.8 / 1.0): brackets across the two bonds at several angles, the
+    subscript n's size and place, and the CDXML objects ChemDraw writes for them.
 
 ## 7. Design-brief (docs/design.md) discrepancies (references win)
 

@@ -694,3 +694,23 @@ removed renders pixel-identical to the approved `m4_nitration_x1.0`. Inbox triag
 - **A CDXML H-above label keeps the text `NH`** with `LabelAlignment="Above"` and
   `LineStarts="2 4"` (Below: `"2 3"`), p on the first (H) line; copy these, don't derive them.
 
+## 2026-11-01 (inbox: crowded ligand labels, clip-fit drift, triflate scheme)
+
+- **The inbox's "reject a pin whose labels overlap" was the wrong fix.** Its case (oxadd pinned to
+  a Pd(0) turned 90°) overlaps the same way in orient mode: a PMe₃ on a vertical bond is
+  left-justified, so its text runs right into a phenyl beside Pd. `Drawer.flip_crowded_labels`
+  now sets a terminal abbreviation on a bond within `ABBREV_FLIP_DEG` (15°) of vertical the other
+  way (Me₃P) when that side is clear, as it already did for CH₃ (unmeasured).
+  `tests/test_rules.py::test_crowded_abbreviation_flips_on_a_vertical_bond`.
+- **`--fit-clip` drifted because newer references joined its default set**, not because the model
+  changed: nh_x\* (Open 28), metals_x\* (Open 25) and one chair_x1.0 end cut at a crossing. Without
+  them (`measure_refs.CLIP_FIT_EXCLUDE`) the 2026-10-27 parameters come back exactly (n=783). A
+  refit with metals_x\* does not close Open 25.
+- **A rejected pin reorients the whole product** (oop triflate scheme): the quaterphenyl triflate
+  pinned to 5 would lay its new rings over 5's CF₃, so `overlaid_atoms` rejected it, rightly, and
+  orient mode drew its triflate another way. Kept as is (user decision); an OTf label (Open 29)
+  removes the collision there.
+- **Consecutive arrows need drawn intermediates.** A repeated three-step sequence goes on one
+  arrow with numbered `stages` (the ACS convention); not a missing feature (user decision).
+- **The Read tool can refuse `<repo>` files** under `permissions.blockReadsOutsideWorkingDirectories`,
+  through the project's symlink too. SKILL.md says to read them with `cat` / `sed`.

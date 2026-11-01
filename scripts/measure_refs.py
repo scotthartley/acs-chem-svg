@@ -2684,12 +2684,19 @@ def all_names():
     return sorted(p.stem for p in REF_DIR.glob("*.cdxml") if (REF_DIR / f"{p.stem}.svg").exists())
 
 
+# References --fit-clip leaves out unless named (acs-style.md §2.1): bond ends the model is not
+# fitted to. nh_x*: bonds 6-9° off the axes end up to 0.6 pt short, a ChemDraw error (Open 28);
+# metals_x*: the bond straight down from a centered Pd (Open 25; a refit with them still leaves it
+# 0.16-0.25 off and moves the other parameters); chair_x*: a rear bond cut at a crossing (§14.2).
+CLIP_FIT_EXCLUDE = ("nh_x", "metals_x", "chair_x")
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("names", nargs="*")
     ap.add_argument("--json", type=Path)
     ap.add_argument("--summary", action="store_true", help="print the key-parameter table only")
-    ap.add_argument("--fit-clip", action="store_true", help="fit the bond-to-label clip model (§2.1)")
+    ap.add_argument("--fit-clip", action="store_true", help="fit the bond-to-label clip model (§2.1; CLIP_FIT_EXCLUDE unless named)")
     ap.add_argument("--scheme", action="store_true", help="scheme parameters per preset (§3)")
     ap.add_argument("--mech", action="store_true", help="mechanism parameters per preset (§4)")
     ap.add_argument("--wrap", action="store_true", help="multi-row scheme parameters per preset (§3.4)")
@@ -2761,7 +2768,7 @@ def main(argv=None) -> int:
         print(json.dumps(scheme_summary({n: measure(load(n)) for n in names}), indent=1, ensure_ascii=False))
         return 0
     if args.fit_clip:
-        fit = fit_label_clip(clip_rows(args.names or None))
+        fit = fit_label_clip(clip_rows(args.names or [n for n in all_names() if not n.startswith(CLIP_FIT_EXCLUDE)]))
         for r in fit.pop("rows"):
             print(f"{r['file']:19} {r['kind']:5} {r['element']:3} dir {r['dir_deg']:7} end {r['end']:6.3f} "
                   f"residual {r['residual']:+.3f}{'  !' if abs(r['residual']) > 0.1 else ''}")

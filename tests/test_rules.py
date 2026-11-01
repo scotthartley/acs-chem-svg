@@ -1,6 +1,7 @@
 """Unit tests of the pure drawing rules in draw_mol (references/acs-style.md §1, §2)."""
 
 import math
+from pathlib import Path
 
 import pytest
 from cdxml_to_molfile import template_path
@@ -9,6 +10,7 @@ from acs_chem_svg import chem
 from acs_chem_svg.draw_mol import Drawer, element_x, h_side
 from acs_chem_svg.preset import load_preset
 from acs_chem_svg.scene import Polyline
+from acs_chem_svg.spec import Spec, scheme_prepared
 
 P = load_preset("acs1996")
 TOL = 0.01
@@ -253,6 +255,21 @@ def test_crowded_ch3_flips_to_h3c():
                           "terminal")
     d = Drawer(m, P)
     assert "".join(r.text for r in d.labels[m.by_id("12").idx].runs) == "CH3"
+
+
+def test_crowded_abbreviation_flips_on_a_vertical_bond():
+    """Inbox 2026-11-01: trans-PdBr(Ph)(PMe3)2 pinned to a vertical Pd(PMe3)2 puts a PMe₃ above Pd,
+    whose left-justified text ran over the phenyl. It is set the other way (Me₃P); the PMe₃
+    below keeps its form."""
+    spec = Spec.model_validate({"species": {
+        "pd0": {"smiles": "CP(C)(C)->[Pd]<-P(C)(C)C", "abbreviate": ["PMe3"], "orientation": {"rotate": 90}},
+        "oxadd": {"smiles": "Br[Pd@SP2](c1ccccc1)(<-P(C)(C)C)<-P(C)(C)C", "abbreviate": ["PMe3"]}},
+        "steps": [{"from": "pd0", "to": "oxadd"}]})
+    m = scheme_prepared(spec, Path("."))["oxadd"].molecule()
+    d = Drawer(m, P)
+    texts = {"".join(r.text for r in lab.runs) for i, lab in d.labels.items() if m.atoms[i].abbrev}
+    assert texts == {"Me3P", "PMe3"}
+    assert not any(d.label_hits(j, lab) for j, lab in d.labels.items())
 
 
 def test_show_carbons_rejects_unknown_ids():

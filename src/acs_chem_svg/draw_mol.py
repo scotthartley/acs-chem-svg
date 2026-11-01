@@ -40,6 +40,9 @@ LONE_H_LEFT = {"O"}
 # with one H only; other atoms keep the left / right rule (acs-style.md §2).
 H_VERTICAL_DEG = 22.5
 H_VERTICAL = {"N"}
+# flip_crowded_labels sets a terminal abbreviation the other way only on a bond this near vertical,
+# where neither form runs along its own bond (a choice, unmeasured; inbox 2026-11-01)
+ABBREV_FLIP_DEG = 15.0
 # hash count step: 2 hashes at D/hash_spacing = 1.997 (m1_set_x0.8), 3 at 2.05 (m1_set_x1.0)
 HASH_COUNT_SHIFT = 0.025
 
@@ -457,12 +460,21 @@ class Drawer:
                    for b in self.mol.bonds if i not in (b.a, b.b) for box in boxes)
 
     def flip_crowded_labels(self) -> None:
-        """A shown terminal carbon label (CH₃) whose h_side form runs into another label or a
-        bond is set the other way (H₃C) when that side is clear; otherwise it stays, and
-        geometry_checks reports the overlap. Unmeasured: ChemDraw keeps h_side's rule."""
+        """A shown terminal carbon label (CH₃), or a terminal abbreviation on a bond within
+        ABBREV_FLIP_DEG of vertical (PMe₃ above a Pd beside a phenyl), whose h_side form runs into
+        another label or a bond is set the other way (H₃C, Me₃P) when that side is clear;
+        otherwise it stays, and geometry_checks reports the overlap. Unmeasured: ChemDraw keeps
+        h_side's rule."""
         for i, lab in list(self.labels.items()):
             a = self.mol.atoms[i]
-            if a.element != "C" or not a.show_label or a.abbrev is not None or not a.num_h or self.mol.degree(i) != 1:
+            if self.mol.degree(i) != 1 or lab.h_side not in ("left", "right"):
+                continue
+            if a.abbrev is not None:
+                (j, _), = self.mol.neighbors(i)
+                d = unit(sub(self.mol.atoms[j].p, a.p))
+                if abs(d[0]) > math.sin(math.radians(ABBREV_FLIP_DEG)):
+                    continue
+            elif a.element != "C" or not a.show_label or not a.num_h:
                 continue
             if self.label_hits(i, lab):
                 alt = layout_label(self.mol, i, self.preset, self.face, "left" if lab.h_side == "right" else "right")

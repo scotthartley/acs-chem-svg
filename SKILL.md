@@ -7,6 +7,7 @@ description: Draw chemical structures, Lewis structures, reaction schemes, and a
 
 `<repo>` is this skill's directory: the target of the project's `.claude/skills/acs-chem-svg` symlink.
 Run every command as `uv run --project <repo> python <repo>/scripts/<script> ...`.
+If the Read tool refuses `<repo>` files (outside the working directory, symlink or not), read them with `cat` / `sed`.
 
 ## Workflow
 
