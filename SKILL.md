@@ -42,6 +42,9 @@ If the Read tool refuses `<repo>` files (outside the working directory, symlink 
      stereo (`chair: {flip: true}`, `{axial: [maps]}`, `{start: map}`); see `references/scheme-schema.md`.
    - Charges: `charges: {circled: true}` (spec) or `circled_charges` (species) circles ±1 signs;
      `charge_labels: {1: "+3"}` (species, by atom map) draws a text, display only.
+   - Abbreviations: `abbreviate: [OTf, Boc, t-Bu, TBS, …]` (registry `src/acs_chem_svg/data/abbreviations.yaml`);
+     a group on a heteroatom merges (TBS on O → OTBS, Ts on ring N → NTs). Define others under `abbreviations:`;
+     ligand text (L, Lₙ, dppf, XPhos) goes on a `[*:n]` atom via `labels:`. See `references/scheme-schema.md`.
 2. **Validate:** `scripts/validate.py spec.yaml`. Fix the spec until it prints OK (schema,
    RDKit chemistry, abbreviations, electron bookkeeping, overlaps, curved arrows crossing
    bonds or labels, dots on bonds, conditions wider than their arrow).
@@ -136,7 +139,7 @@ circle (the last back to the first), `start` at 12 o'clock, `direction`, `center
 - Explicit CH₂/CH labels on internal carbons.
 - Lewis structures: rings, more than 4 neighbors (PCl₅), Lewis species in schemes.
 - Chairs: fused or spiro rings (decalins, steroids), sp² ring atoms, boats.
-- Condensed labels other than the listed abbreviations (CH₃Cl as text), aromatic circles.
+- Condensed labels that aren't abbreviations (CH₃Cl as text), aromatic circles.
 
 ## Rules
 

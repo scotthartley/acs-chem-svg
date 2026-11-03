@@ -49,6 +49,20 @@ Expand Label), drag a contributor (do the brackets and ↔ steps hold?), and mov
 9. the brackets: BoundingBox and LipSize (phase 2's <graphic> diff), and any <bracketedgroup>
    or objecttag ChemDraw adds (new elements in the re-save).
 
+Phase 4c (--phase 4c, acs-style.md §13.3; files in build/cdxml_spike/phase4c/): general
+abbreviations. abbrev_2_x1.0 and ligands_x1.0 round trips (templates, as phase 1) and render.py
+--cdxml's output for m1_abbrev2_x1.0: one of each kind (a reference template, a generated
+fragment for a registry group without a reference and for the spec's own group, OTBS composed,
+ring NTs with two ExternalConnectionPoints, text labels Ln and dppf with no fragment, italic t-Bu,
+N3). By hand in ChemDraw, besides the re-saves (CDXML and SVG): expand and contract each
+generated label (Edit > Expand Label: is it the structure?), and note any warning. --diff
+reports phase 4a's items, and:
+12. the two-bond labels: ExternalConnectionPoints, ConnectionOrder and BondOrdering kept; the
+   text labels: NodeType, no inner fragment, <s> faces kept.
+Also label_variants_x1.0 (VARIANT_ROWS): Bpin, IPr and P(o-tol)3 with their bonds to the right in
+four candidate CDXML forms, one per row (user 2026-11-03: row B keeps IPr, row C pinB; cdxml_writer
+now writes those).
+
 Phase 4b (--phase 4b, acs-style.md §13.4; files in build/cdxml_spike/phase4b/): render.py
 --cdxml's output for m1_charges (circled signs, 2+ / 2-, +3, triplet CH2), m1_lewis,
 m1_lewis_lines and m1_lewis_assigned (oxidation states). By hand in ChemDraw, besides the
@@ -122,13 +136,15 @@ PHASE3_SPECS = ["examples/m3_sn2_x1.0.yaml", "examples/m3_radical_initiation_x1.
 PHASE4A_REFS = ["abbrev_x1.0", "resonance_x1.0", "scheme_wrap_x1.0"]
 PHASE4A_SPECS = ["examples/m1_abbrev_x1.0.yaml", "examples/m4_resonance_x1.0.yaml", "examples/m4_wrap_x1.0.yaml",
                  "examples/m4_nitration_x1.0.yaml", "examples/m2_sequence_x1.0.yaml"]
+PHASE4C_REFS = ["abbrev_2_x1.0", "ligands_x1.0"]
+PHASE4C_SPECS = ["examples/m1_abbrev2_x1.0.yaml"]
 PHASE4B_SPECS = ["examples/m1_charges_x1.0.yaml", "examples/m1_lewis_x1.0.yaml", "examples/m1_lewis_lines_x1.0.yaml",
                  "examples/m1_lewis_assigned_x1.0.yaml"]
 PHASE5_REFS = ["chair_x1.0"]
 PHASE5_SPECS = ["examples/m1_chair_x1.0.yaml"]
 PHASE6_SPECS = ["examples/m6_suzuki_cycle_x1.0.yaml", "examples/m6_enamine_cycle_x1.0.yaml"]
 PHASES = {"2": (PHASE2_REFS, PHASE2_SPECS), "3": (PHASE3_REFS, PHASE3_SPECS), "4a": (PHASE4A_REFS, PHASE4A_SPECS),
-          "4b": ([], PHASE4B_SPECS), "5": (PHASE5_REFS, PHASE5_SPECS), "6": ([], PHASE6_SPECS)}
+          "4c": (PHASE4C_REFS, PHASE4C_SPECS), "4b": ([], PHASE4B_SPECS), "5": (PHASE5_REFS, PHASE5_SPECS), "6": ([], PHASE6_SPECS)}
 PAIR_TOL = 0.05  # pt: node positions should survive a re-save unchanged
 NUM_TOL = 0.005
 PARSER = etree.XMLParser(load_dtd=False, no_network=True, remove_blank_text=True)
@@ -146,6 +162,113 @@ def species_reference(ref: str) -> str:
                     warn=lambda m: None)
 
 
+# Phase 4c label variants (user review 2026-11-03: ChemDraw showed our right-justified pinB as
+# Bnip and our left-justified IPr as PrI). One drawing (Bpin, IPr on Pd, P(o-tol)3 on Pd, each
+# with its bond to the right) per row, each row one candidate CDXML form of the three labels:
+#   A  ours now: Bpin / P(o-tol)3 a Fragment with its inner fragment, Right, the displayed text
+#      (pinB, (o-tol)3P); IPr Unspecified, Left, p at the drawn start
+#   B  A plus ChemDraw's Warning="ChemDraw can't interpret this label." on each node; IPr Right,
+#      stored PrI (ChemDraw reverses I + Pr back to IPr?)
+#   C  ChemDraw's own form of a label it can't read: Unspecified + Warning, no inner fragment
+#      (no chemistry), Right, the displayed text; IPr the same with IPr
+#   D  Fragment with its inner fragment, Right, the key (Bpin, P(o-tol)3); IPr Left without NeedsClean
+VARIANT_SPEC = {"preset": "acs1996", "labels": {1: "IPr"}, "species": {
+    "bpin": {"smiles": "CC1(C)OB(OC1(C)C)c1ccccc1", "abbreviate": ["Bpin"]},
+    "ipr": {"smiles": "[*:1][Pd](Cl)(Cl)Cl"},
+    "tol": {"smiles": "Cc1ccccc1P(c1ccccc1C)(c1ccccc1C)[Pd](Cl)(Cl)Cl", "abbreviate": ["P(o-tol)3"]}}}
+VARIANT_ROWS = ["A: ours now", "B: + Warning; IPr stored PrI", "C: Unspecified, no fragment",
+                "D: key text; IPr no NeedsClean"]
+VARIANT_PITCH = 70.0
+WARNING = "ChemDraw can't interpret this label."
+_ID_ATTRS = ("id", "B", "E", "Z", "BondOrdering", "ConnectionOrder", "BondCircularOrdering", "object")
+
+
+def _set_text(t, markup: str) -> None:
+    from acs_chem_svg.cdxml_writer import label_runs
+    s0 = t.find("s")
+    attrs = dict(s0.attrib)
+    for s in list(t):
+        t.remove(s)
+    for face, run in label_runs(markup, "96"):
+        etree.SubElement(t, "s", {**attrs, "face": face}).text = run
+
+
+def _right(t) -> None:
+    """Right-justified with p just right of the text box (ChemDraw's dppf: p.x = box right + 0.17)."""
+    box = [float(v) for v in t.get("BoundingBox").split()]
+    y = t.get("p").split()[1]
+    t.set("p", f"{box[2] + 0.17:.2f} {y}")
+    for k in ("LabelJustification", "Justification", "LabelAlignment"):
+        t.set(k, "Right")
+
+
+def _variant(row: int, n, t, key: str) -> None:
+    if key == "IPr":
+        if row == 1:
+            _right(t)
+            _set_text(t, "PrI")
+        elif row == 2:
+            _right(t)
+            n.set("Warning", WARNING)
+        elif row == 3:
+            n.attrib.pop("NeedsClean", None)
+        return
+    if row in (1, 2):
+        n.set("Warning", WARNING)
+    if row == 2:
+        n.set("NodeType", "Unspecified")
+        for f in n.findall("fragment"):
+            n.remove(f)
+    if row == 3:
+        _set_text(t, {"Bpin": "Bpin", "P(o-tol)3": "P(*o*-tol)3"}[key])
+
+
+def label_variants(out: Path) -> Path:
+    import os
+    import tempfile
+
+    import yaml
+    with tempfile.TemporaryDirectory(dir=os.environ.get("TMPDIR")) as d:
+        p = Path(d) / "label_variants_x1.0.yaml"
+        p.write_text(yaml.safe_dump(VARIANT_SPEC))
+        root = etree.fromstring(spec_cdxml(p, warn=lambda m: None).encode(), PARSER)
+    page = root.find("page")
+    base = [c for c in page if c.tag == "fragment"]
+    font = next(s.get("font") for s in root.iter("s"))
+    for c in base:
+        page.remove(c)
+    keys = {"pinB": "Bpin", "(o-tol)3P": "P(o-tol)3", "IPr": "IPr"}
+    for row, caption in enumerate(VARIANT_ROWS):
+        dy = 14.0 + row * VARIANT_PITCH
+        off = 100000 * (row + 1)
+        cap = etree.SubElement(page, "t", {"id": str(off - 1), "p": f"2.00 {dy - 4:.2f}"})
+        etree.SubElement(cap, "s", {"font": font, "size": "10", "color": "0", "face": "0"}).text = caption
+        for frag in base:
+            c = etree.fromstring(etree.tostring(frag), PARSER)
+            for e in c.iter():
+                for a in _ID_ATTRS:
+                    if e.get(a):
+                        e.set(a, " ".join(str(int(v) + off) for v in e.get(a).split()))
+                if e.get("p"):
+                    x, y = (float(v) for v in e.get("p").split())
+                    e.set("p", f"{x:.2f} {y + dy:.2f}")
+                if e.get("BoundingBox"):
+                    b = [float(v) for v in e.get("BoundingBox").split()]
+                    e.set("BoundingBox", f"{b[0]:.2f} {b[1] + dy:.2f} {b[2]:.2f} {b[3] + dy:.2f}")
+            for n in c.findall("n"):
+                t = n.find("t")
+                text = "".join(t.itertext()).strip() if t is not None else ""
+                if text in keys:
+                    _variant(row, n, t, keys[text])
+            page.append(c)
+    root.attrib.pop("BoundingBox", None)
+    path = out / "label_variants_x1.0.cdxml"
+    path.write_text('<?xml version="1.0" encoding="UTF-8"?>\n'
+                    '<!DOCTYPE CDXML SYSTEM "https://static.chemistry.revvitycloud.com/cdxml/CDXML.dtd">\n'
+                    + etree.tostring(root, encoding="unicode", pretty_print=True))
+    return path
+
+
 def write(phase: str = "1") -> list[Path]:
     out = out_dir(phase)
     (out / "resaved").mkdir(parents=True, exist_ok=True)
@@ -154,11 +277,13 @@ def write(phase: str = "1") -> list[Path]:
         paths = []
         for ref in refs:
             paths.append(out / f"{ref}.cdxml")
-            paths[-1].write_text(species_reference(ref) if ref.startswith(("abbrev_", "chair_")) else
+            paths[-1].write_text(species_reference(ref) if ref.startswith(("abbrev_", "ligands_", "chair_")) else
                                  to_cdxml(reference_cdx_scheme(ref), preset_for(ref), f"{ref}.cdxml", warn=lambda m: None))
         for s in specs:
             paths.append(out / f"{Path(s).stem}.cdxml")
             paths[-1].write_text(spec_cdxml(mr.REPO / s, warn=lambda m: None))
+        if phase == "4c":
+            paths.append(label_variants(out))
         return paths
     paths = []
     for ref in REFS:
@@ -390,6 +515,35 @@ def nickname_diff(ours_root, theirs_root) -> list[str]:
     lines.append(f"  nicknames: {len(ours)} ours, {kept} with the same inner atoms and bonds; "
                  f"largest inner atom move {worst:.3f}")
     return lines + ch.report()
+
+
+def label_kind_diff(ours_root, theirs_root) -> list[str]:
+    """Item 12: each of our nodes with two or more ExternalConnectionPoints (ring NTs) or none and
+    NodeType Unspecified (text labels), paired by p: what the re-save kept."""
+    lines = []
+    theirs = list(_top_nodes(theirs_root))
+    for o in _top_nodes(ours_root):
+        t_el = o.find("t")
+        if t_el is None or o.get("NodeType") is None:
+            continue
+        frag = o.find("fragment")
+        ecps = [] if frag is None else [m for m in frag.findall("n") if m.get("NodeType") == "ExternalConnectionPoint"]
+        if not (len(ecps) > 1 or (frag is None and o.get("NodeType") == "Unspecified")):
+            continue
+        m = [t for t in theirs if length(sub(_p(t), _p(o))) < PAIR_TOL]
+        name = _text(t_el)
+        if len(m) != 1:
+            lines.append(f"  {name} at {_p(o)}: {len(m)} nodes in the re-save")
+            continue
+        t = m[0]
+        tf = t.find("fragment")
+        t_ecps = [] if tf is None else [x for x in tf.findall("n") if x.get("NodeType") == "ExternalConnectionPoint"]
+        faces = lambda n: [(x.text, x.get("face")) for x in n.find("t").iter("s")]  # noqa: E731
+        lines.append(f"  {name}: NodeType {o.get('NodeType')} -> {t.get('NodeType')}; inner fragment "
+                     f"{'none' if frag is None else len(frag.findall('n'))} -> {'none' if tf is None else len(tf.findall('n'))}; "
+                     f"ECPs {len(ecps)} -> {len(t_ecps)}; BondOrdering {'kept' if bool(t.get('BondOrdering')) == bool(o.get('BondOrdering')) else 'changed'}; "
+                     f"runs {faces(o)} -> {faces(t)}")
+    return lines
 
 
 # --------------------------------------------------------------------------- phase 2: schemes
@@ -778,9 +932,13 @@ def diff(phase: str = "1") -> int:
                 print(f"{path.stem}: symbols and charge digits")
                 for line in symbol_diff(ours, theirs):
                     print(line)
-            if phase == "4a":
+            if phase in ("4a", "4c"):
                 print(f"{path.stem}: nicknames")
                 for line in nickname_diff(ours, theirs):
+                    print(line)
+            if phase == "4c":
+                print(f"{path.stem}: two-bond and text labels")
+                for line in label_kind_diff(ours, theirs):
                     print(line)
             if phase == "5":
                 print(f"{path.stem}: crossings (front bond by Z; ours -> ChemDraw's re-save)")
@@ -813,8 +971,9 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--diff", action="store_true", help="compare ChemDraw's re-saves with our exports")
     ap.add_argument("--lewis-draft", action="store_true", help="write the Lewis reference draft (phase 4b)")
-    ap.add_argument("--phase", choices=("1", "2", "3", "4a", "4b", "5", "6"), default="1",
+    ap.add_argument("--phase", choices=("1", "2", "3", "4a", "4b", "4c", "5", "6"), default="1",
                     help="1: M1 species; 2: M2 schemes; 3: M3 mechanisms; 4a: abbreviations, resonance, wrap; "
+                         "4c: general abbreviations; "
                          "4b: charges, Lewis; 5: chairs; 6: catalytic cycles")
     args = ap.parse_args(argv)
     if args.lewis_draft:

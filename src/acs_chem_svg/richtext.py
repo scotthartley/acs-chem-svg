@@ -8,6 +8,7 @@
   charge typed with the wrong character; `\\-` keeps it); elsewhere `-` is a hyphen (n-BuLi,
   1,4-dioxane) and `–` a dash (2–4 h);
 - `*…*` is italic (*n*-BuLi);
+- `_` makes the next character a subscript (L_*n*: Lₙ with an italic n);
 - `\\` escapes the next character, which is then set plain (SN\\2, a literal \\*).
 Everything else is untouched: °C, −78, (4:1), 1,4-, 12 h.
 
@@ -47,6 +48,7 @@ def parse(s: str, style: str = "regular") -> list[Run]:
     chars: list[tuple[str, str, str]] = []  # (char, style, script)
     italic = False
     prev_kind = ""  # "letter", "paren", "sub", "" (anything else) for the previous character
+    sub_next = False  # `_`: the next character is a subscript
     i = 0
     while i < len(s):
         ch = s[i]
@@ -60,8 +62,16 @@ def parse(s: str, style: str = "regular") -> list[Run]:
             italic = not italic
             i += 1
             continue
+        if ch == "_":
+            sub_next = True
+            i += 1
+            continue
         nxt = s[i + 1] if i + 1 < len(s) else ""
-        if ch.isdigit() and prev_kind in ("letter", "paren", "sub"):
+        if sub_next:
+            chars.append((ch, st, "sub"))
+            prev_kind = "sub"
+            sub_next = False
+        elif ch.isdigit() and prev_kind in ("letter", "paren", "sub"):
             chars.append((ch, st, "sub"))
             prev_kind = "sub"
         elif ch in _SUP_SIGNS + _NOT_MINUS and prev_kind in ("letter", "paren", "sub") and (nxt == "" or nxt in _SUP_FOLLOW):
@@ -76,6 +86,8 @@ def parse(s: str, style: str = "regular") -> list[Run]:
         i += 1
     if italic:
         raise ValueError(f"unclosed '*' (italic) in {s!r}")
+    if sub_next:
+        raise ValueError(f"'_' (subscript) with nothing after it in {s!r}")
     runs: list[Run] = []
     for ch, st, sc in chars:
         if runs and runs[-1].style == st and runs[-1].script == sc:

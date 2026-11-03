@@ -93,7 +93,7 @@ import yaml
 from pydantic import BaseModel, ConfigDict, Discriminator, Field, Tag, field_validator, model_validator
 from rdkit import Chem
 
-from . import chem
+from . import abbrev, chem
 from .draw_mol import parse_charge_text
 from .preset import available, load_preset
 
@@ -233,6 +233,19 @@ class ChairOptions(BaseModel):
         return self
 
 
+class AbbrevDef(BaseModel):
+    """A spec's own abbreviation (abbrev.py, acs-style.md §3.5). `smiles` with one `*` (the bond
+    to the rest); none for a text label (drawn through `labels:`). `kind`: group (merges into a
+    heteroatom's label: O + Xyz -> OXyz), formula (default with smiles) or text (default without).
+    `text`: richtext markup (*t*-Bu); `reversed`: the right-justified text where the rule is wrong."""
+    model_config = ConfigDict(extra="forbid")
+    smiles: str | None = None
+    kind: Literal["group", "formula", "text"] | None = None
+    text: str | None = None
+    reversed: str | None = None
+    nickname: bool | None = None
+
+
 class Species(BaseModel):
     model_config = ConfigDict(extra="forbid")
     smiles: str | None = None
@@ -242,7 +255,7 @@ class Species(BaseModel):
     # explicit labels on terminal carbons (CH3): atom ids are atom-map numbers if set, else 1-based atom indices.
     # Molfile atom aliases (CH3, H3C, ...) are honored as well.
     show_carbons: Literal["none", "terminal"] | list[int | str] = "none"
-    abbreviate: list[str] | None = None  # collapse these groups to labels (chem.ABBREVIATIONS): OMe, OBn, ...
+    abbreviate: list[str] | None = None  # collapse these groups to labels (abbrev registry ∪ spec abbreviations): OMe, OBn, ...
     align: bool = True  # take the orientation of the species it is drawn from (steps); false = own layout
     align_to: str | None = None  # align to this species instead
     show_lone_pairs: list[int] = Field(default_factory=list)  # atom-map numbers whose lone pairs are drawn (M3)
@@ -329,13 +342,6 @@ class Species(BaseModel):
                 raise ValueError(f"kekule entry {p!r} must look like '1=2' (atom-map numbers)")
         return v
 
-    @field_validator("abbreviate")
-    @classmethod
-    def _known_abbrevs(cls, v):
-        unknown = [a for a in v or [] if a not in chem.ABBREVIATIONS]
-        if unknown:
-            raise ValueError(f"unknown abbreviation {', '.join(unknown)}; known: {', '.join(chem.ABBREVIATIONS)}")
-        return v
 
 
 Names = str | list[str]
@@ -577,7 +583,9 @@ class Spec(BaseModel):
     numbers: dict[str, int | str] | None = None
     align: Literal["auto"] | bool = "auto"
     arrow_head: Literal["standard", "large"] | None = None  # reaction, equilibrium and ↔ heads; default: the preset's
-    labels: dict[int, str] = Field(default_factory=dict)  # atom-map number -> drawn symbol (X); chemistry keeps the SMILES element
+    labels: dict[int, str] = Field(default_factory=dict)  # atom-map number -> drawn symbol (X) or registry text label (L, dppf); chemistry keeps the SMILES element
+    # the spec's own abbreviations, added to the registry (abbrev.py): key -> {smiles, text, reversed, nickname, kind}
+    abbreviations: dict[str, AbbrevDef] = Field(default_factory=dict)
     charges: ChargeOptions = Field(default_factory=ChargeOptions)
     overrides: Overrides = Field(default_factory=Overrides)
 
@@ -588,14 +596,34 @@ class Spec(BaseModel):
             raise ValueError(f"unknown preset {v!r}; available: {', '.join(available())}")
         return v
 
-    @field_validator("labels")
-    @classmethod
-    def _label_text(cls, v):
-        for m, t in v.items():
-            if not LABEL_TEXT.match(t):
-                raise ValueError(f"labels: {m}: {t!r} must be a plain symbol: a capital letter, an optional "
-                                 "lower-case one and primes (X, R, Nu, R')")
-        return v
+    @property
+    def registry(self) -> abbrev.Registry:
+        """The abbreviation registry with this spec's `abbreviations:` entries."""
+        return abbrev.default().with_entries({k: d.model_dump(exclude_none=True) for k, d in self.abbreviations.items()})
+
+    @model_validator(mode="after")
+    def _labels_and_abbrevs(self):
+        try:
+            reg = self.registry
+        except ValueError as e:
+            raise ValueError(f"abbreviations: {e}") from None
+        for m, t in self.labels.items():
+            e = reg.get(t)
+            if not LABEL_TEXT.match(t) and (e is None or e.kind != "text"):
+                raise ValueError(f"labels: {m}: {t!r} must be a plain symbol (a capital letter, an optional "
+                                 "lower-case one and primes: X, R, Nu, R') or a text abbreviation (L, Ln, dppf, "
+                                 "XPhos; or one defined under `abbreviations:` with no smiles)")
+        for name, sp in self.species.items():
+            unknown = [a for a in sp.abbreviate or [] if a not in reg]
+            if unknown:
+                raise ValueError(f"species {name}: unknown abbreviation {', '.join(unknown)}; define it under "
+                                 f"`abbreviations:` (known: {', '.join(reg.keys())})")
+        for key in self.abbreviations:
+            try:
+                abbrev.markup(key, "left", reg)
+            except ValueError as e:
+                raise ValueError(f"abbreviations: {e}") from None
+        return self
 
     @model_validator(mode="after")
     def _scheme(self):
@@ -867,11 +895,20 @@ def with_spin(spec: Spec, name: str, mol: chem.Molecule) -> chem.Molecule:
 
 
 def relabel(spec: Spec, mol: chem.Molecule) -> chem.Molecule:
-    """The drawing's atoms with `labels` symbols in place of their stand-in elements."""
+    """The drawing's atoms with `labels` symbols in place of their stand-in elements. A registry
+    text label (L, Ln, dppf; abbrev.py) on an atom without H is drawn as an abbreviation (Lₙ,
+    reversed and centered by §3.5); a plain symbol (X, R) as an element."""
     if not spec.labels or not any(a.map in spec.labels for a in mol.atoms):
         return mol
-    return replace(mol, atoms=[replace(a, element=spec.labels[a.map]) if a.map in spec.labels else a
-                               for a in mol.atoms])
+    reg = spec.registry
+
+    def one(a: chem.Atom) -> chem.Atom:
+        t = spec.labels[a.map]
+        e = reg.get(t)
+        if e is not None and e.kind == "text" and not a.num_h:
+            return replace(a, abbrev=t, abbrev_info=abbrev.info(t, reg), lone_pairs=0, radicals=0)
+        return replace(a, element=t)
+    return replace(mol, atoms=[one(a) if a.map in spec.labels else a for a in mol.atoms])
 
 
 def molecules(spec: Spec, base_dir: Path) -> list[chem.Molecule]:
@@ -894,13 +931,13 @@ def molecules(spec: Spec, base_dir: Path) -> list[chem.Molecule]:
             rot = "auto" if o.rotate is None else o.rotate
             try:
                 mol = chem.from_smiles(sp.smiles, name, bl, sp.kekule, rot, o.flip_h, o.flip_v, sp.abbreviate,
-                                       chair=chair_spec(sp, preset))
+                                       chair=chair_spec(sp, preset), registry=spec.registry)
             except ValueError as e:
                 raise ValueError(f"species {name}: {e}") from None
         else:
             rot = 0.0 if o.rotate is None else o.rotate
             mol = chem.from_molfile(resolve_molfile(sp.molfile, base_dir), name, bl, sp.kekule,
-                                    rot, o.flip_h, o.flip_v, sp.abbreviate)
+                                    rot, o.flip_h, o.flip_v, sp.abbreviate, registry=spec.registry)
         out.append(with_front(name, sp, with_spin(spec, name, with_charges(
             spec, name, relabel(spec, chem.show_carbons(mol, sp.show_carbons))))))
     check_labels(spec, base_dir)
@@ -947,7 +984,7 @@ def scheme_prepared(spec: Spec, base_dir: Path) -> dict[str, chem.Prepared]:
         o = sp.orientation or Orientation()
         try:
             built[name] = chem.prepare(mol, name, bl, sp.abbreviate, from_file, o.rotate, o.flip_h, o.flip_v, cands,
-                                       chair=chair_spec(sp, preset))
+                                       chair=chair_spec(sp, preset), registry=spec.registry)
         except ValueError as e:
             raise ValueError(f"species {name}: {e}") from None
     return built

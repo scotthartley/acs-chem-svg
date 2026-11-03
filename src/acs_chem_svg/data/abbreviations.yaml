@@ -1,0 +1,106 @@
+# Abbreviation registry (acs-style.md §3.5; abbrev.py). Each key is the label in plain ASCII, as
+# a spec's `abbreviate:` names it and as the CDXML label text holds it.
+#
+#   smiles:   the group, `*` = the bond to the rest of the molecule (one `*`)
+#   text:     richtext markup when it differs from the key (*t*-Bu: italic t)
+#   reversed: the right-justified text, only where the reversal rule (abbrev.reverse) is wrong
+#   nickname: true when ChemDraw writes it as a NodeType="Nickname" (measured: abbrev_x*, abbrev_2_x*)
+#
+# groups:   named substituents. They are labels on their own (Ph, Boc) and merge into a
+#           heteroatom's label when collapsed on one (O + TBS -> OTBS, Sn + 3 Bu -> SnBu3).
+# formulas: labels written on their attachment atom (OMe, CO2Me, PPh3). They take precedence over
+#           composition.
+# text:     labels with no chemistry (L, Ln, dppf): drawn on a stand-in atom through `labels:`
+#           (a dummy atom [*:1] or a real element, as for X and R).
+#
+# ChemDraw's display text of every key below with a reference is checked by
+# tests/test_abbrev_grammar.py (reverse(key) == ChemDraw's right-justified text).
+
+groups:
+  Me: {smiles: "*C", nickname: true}
+  Et: {smiles: "*CC", nickname: true}
+  Pr: {smiles: "*CCC"}
+  n-Pr: {smiles: "*CCC", text: "*n*-Pr"}
+  i-Pr: {smiles: "*C(C)C", text: "*i*-Pr", nickname: true}
+  Bu: {smiles: "*CCCC"}
+  n-Bu: {smiles: "*CCCC", text: "*n*-Bu", nickname: true}
+  i-Bu: {smiles: "*CC(C)C", text: "*i*-Bu"}
+  s-Bu: {smiles: "*C(C)CC", text: "*s*-Bu"}
+  t-Bu: {smiles: "*C(C)(C)C", text: "*t*-Bu", nickname: true}
+  Cy: {smiles: "*C1CCCCC1", nickname: true}
+  Ph: {smiles: "*c1ccccc1", nickname: true}
+  Bn: {smiles: "*Cc1ccccc1", nickname: true}
+  Mes: {smiles: "*c1c(C)cc(C)cc1C", nickname: true}
+  p-Tol: {smiles: "*c1ccc(C)cc1", text: "*p*-Tol"}
+  o-tol: {smiles: "*c1ccccc1C", text: "*o*-tol"}
+  Ac: {smiles: "*C(C)=O", nickname: true}
+  Bz: {smiles: "*C(=O)c1ccccc1"}
+  Piv: {smiles: "*C(=O)C(C)(C)C"}
+  Boc: {smiles: "*C(=O)OC(C)(C)C", nickname: true}
+  Cbz: {smiles: "*C(=O)OCc1ccccc1", nickname: true}
+  Fmoc: {smiles: "*C(=O)OCC1c2ccccc2-c2ccccc21", nickname: true}
+  Ts: {smiles: "*S(=O)(=O)c1ccc(C)cc1", nickname: true}
+  Ms: {smiles: "*S(C)(=O)=O"}
+  Tf: {smiles: "*S(=O)(=O)C(F)(F)F"}
+  Ns: {smiles: "*S(=O)(=O)c1ccccc1[N+](=O)[O-]"}
+  TMS: {smiles: "*[Si](C)(C)C", nickname: true}
+  TES: {smiles: "*[Si](CC)(CC)CC", nickname: true}
+  TBS: {smiles: "*[Si](C)(C)C(C)(C)C", nickname: true}
+  TIPS: {smiles: "*[Si](C(C)C)(C(C)C)C(C)C", nickname: true}
+  TBDPS: {smiles: "*[Si](c1ccccc1)(c1ccccc1)C(C)(C)C"}
+  MOM: {smiles: "*COC"}
+  MEM: {smiles: "*COCCOC"}
+  SEM: {smiles: "*COCC[Si](C)(C)C"}
+  THP: {smiles: "*C1CCCCO1"}
+  PMB: {smiles: "*Cc1ccc(OC)cc1"}
+  Tr: {smiles: "*C(c1ccccc1)(c1ccccc1)c1ccccc1"}
+
+formulas:
+  OMe: {smiles: "*OC"}
+  OEt: {smiles: "*OCC"}
+  OBn: {smiles: "*OCc1ccccc1"}
+  OPh: {smiles: "*Oc1ccccc1"}
+  OAc: {smiles: "*OC(C)=O"}
+  OBz: {smiles: "*OC(=O)c1ccccc1"}
+  OPiv: {smiles: "*OC(=O)C(C)(C)C"}
+  OTf: {smiles: "*OS(=O)(=O)C(F)(F)F"}
+  OTs: {smiles: "*OS(=O)(=O)c1ccc(C)cc1"}
+  OMs: {smiles: "*OS(C)(=O)=O"}
+  OMOM: {smiles: "*OCOC"}
+  OTHP: {smiles: "*OC1CCCCO1"}
+  OPMB: {smiles: "*OCc1ccc(OC)cc1"}
+  OTBS: {smiles: "*O[Si](C)(C)C(C)(C)C"}
+  OTIPS: {smiles: "*O[Si](C(C)C)(C(C)C)C(C)C"}
+  SMe: {smiles: "*SC"}
+  SPh: {smiles: "*Sc1ccccc1"}
+  SO2Ph: {smiles: "*S(=O)(=O)c1ccccc1"}
+  NHAc: {smiles: "*NC(C)=O"}
+  NHBoc: {smiles: "*NC(=O)OC(C)(C)C"}
+  NHTs: {smiles: "*NS(=O)(=O)c1ccc(C)cc1"}
+  NMe2: {smiles: "*N(C)C"}
+  N3: {smiles: "*N=[N+]=[N-]", nickname: true}
+  NO2: {smiles: "*[N+](=O)[O-]"}
+  CO2Me: {smiles: "*C(=O)OC"}
+  CO2Et: {smiles: "*C(=O)OCC"}
+  CO2t-Bu: {smiles: "*C(=O)OC(C)(C)C", text: "CO2*t*-Bu"}
+  CO2H: {smiles: "*C(=O)O"}
+  CHO: {smiles: "*C=O"}
+  CF3: {smiles: "*C(F)(F)F"}
+  CN: {smiles: "*C#N"}
+  B(OH)2: {smiles: "*B(O)O"}
+  Bpin: {smiles: "*B1OC(C)(C)C(C)(C)O1", reversed: "pinB"}  # pin bridges both O: not a group
+  SnBu3: {smiles: "*[Sn](CCCC)(CCCC)CCCC"}
+  # ligands, through a dative bond (P->M)
+  PPh3: {smiles: "*P(c1ccccc1)(c1ccccc1)c1ccccc1"}
+  PMe3: {smiles: "*P(C)(C)C"}
+  PCy3: {smiles: "*P(C1CCCCC1)(C1CCCCC1)C1CCCCC1"}
+  P(t-Bu)3: {smiles: "*P(C(C)(C)C)(C(C)(C)C)C(C)(C)C", text: "P(*t*-Bu)3"}
+  P(o-tol)3: {smiles: "*P(c1ccccc1C)(c1ccccc1C)c1ccccc1C", text: "P(*o*-tol)3"}
+
+text:
+  L: {}
+  Ln: {text: "L_*n*"}
+  dppf: {}
+  XPhos: {}
+  IPr: {}
+  Ar: {}

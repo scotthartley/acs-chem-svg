@@ -67,8 +67,16 @@ def test_stages():
 
 
 def test_unknown_abbreviation():
-    with pytest.raises(ValidationError, match="unknown abbreviation OTf"):
-        Spec.model_validate({"species": {"a": {"smiles": "CCO", "abbreviate": ["OTf"]}}})
+    with pytest.raises(ValidationError, match="unknown abbreviation OXyz"):
+        Spec.model_validate({"species": {"a": {"smiles": "CCO", "abbreviate": ["OXyz"]}}})
+    # a spec's own entry makes it known; its text must reverse by the grammar, or say how
+    with pytest.raises(ValidationError, match="can't read 'Xyz'"):
+        Spec.model_validate({"species": {"a": {"smiles": "CCOC", "abbreviate": ["OXyz"]}},
+                             "abbreviations": {"OXyz": {"smiles": "*OC"}}})
+    Spec.model_validate({"species": {"a": {"smiles": "CCOC", "abbreviate": ["OXyz"]}},
+                         "abbreviations": {"OXyz": {"smiles": "*OC", "reversed": "XyzO"}}})
+    Spec.model_validate({"species": {"a": {"smiles": "CCOC", "abbreviate": ["Xyz"]}},
+                         "abbreviations": {"Xyz": {"smiles": "*C", "kind": "group"}}})
 
 
 def test_m1_spec_has_no_steps():

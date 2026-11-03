@@ -1,0 +1,18 @@
+# M1 general abbreviation labels (acs-style.md §3.5, abbrev_2_x*, ligands_x*): one of each kind.
+# - registry groups and formulas with a ChemDraw reference: OTf, t-Bu (italic t), N3 (subscript
+#   at the centered end), NHBoc;
+# - composition: a group collapsed on a heteroatom merges into its label (TBS on O -> OTBS, Ts on
+#   a ring N -> NTs with two bonds);
+# - a registry group without a reference (MEM): its CDXML fragment is generated;
+# - the spec's own group (Xyz, here 2,2,2-trichloroethyl) composed on O: OXyz / XyzO;
+# - text labels on stand-in atoms through `labels:` (Ln, dppf on Pd: no chemistry).
+preset: acs1996
+abbreviations:
+  Xyz: {smiles: "*CC(Cl)(Cl)Cl", kind: group}
+species:
+  triflate: {smiles: "FC(F)(F)S(=O)(=O)Oc1ccc(cc1)C(C)(C)C", abbreviate: [OTf, t-Bu]}
+  azide:    {smiles: "[N-]=[N+]=NCc1ccc(NC(=O)OC(C)(C)C)cc1", abbreviate: [N3, NHBoc]}
+  silyl:    {smiles: "CC(C)(C)[Si](C)(C)OCC1CCN(C1)S(=O)(=O)c1ccc(C)cc1", abbreviate: [TBS, Ts]}
+  mem:      {smiles: "COCCOCOc1ccc(OCC(Cl)(Cl)Cl)cc1", abbreviate: [MEM, Xyz]}
+  ligands:  {smiles: "[*:1][Pd]([*:2])(Cl)Cl"}
+labels: {1: Ln, 2: dppf}

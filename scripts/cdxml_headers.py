@@ -10,8 +10,8 @@ CreationProgram (ours, not ChemDraw's), Name and BoundingBox, the page id, size 
 style numbers in them (BondLength, LineWidth, LabelSize, ...) trace to the references;
 tests/test_cdxml.py checks them against the presets and the other references at each scale.
 
-Also presets/cdxml/<preset>.nicknames.xml from abbrev_x<k> (phase 4, acs-style.md §13.3): per
-chem.ABBREVIATIONS key, the inner <fragment> of ChemDraw's nickname node in its left-justified
+Also presets/cdxml/<preset>.nicknames.xml from abbrev_x<k>, abbrev_2_x<k> and ligands_x<k> (phase 4,
+acs-style.md §13.3): per registry group or formula (abbrev.py) that one of them holds, the inner <fragment> of ChemDraw's nickname node in its left-justified
 form (bond leaving to the left), its NodeType (Fragment or Nickname) and IsNickname, moved so the
 attachment atom (the inner node at the outer node's p) is at the origin; the
 ExternalConnectionPoint then lies on -x. Ids and attributes are ChemDraw's (cdxml_writer renumbers
@@ -34,10 +34,16 @@ from lxml import etree
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import measure_refs as mr  # noqa: E402
 
+from acs_chem_svg import abbrev  # noqa: E402
 from acs_chem_svg.cdxml_writer import HEADER_DIR  # noqa: E402
 
 SOURCES = {"acs1996": "m1_set_x1.0", "acs1996_x0.8": "m1_set_x0.8", "acs1996_x0.6": "m1_set_x0.6"}
-NICKNAME_SOURCES = {"acs1996": "abbrev_x1.0", "acs1996_x0.8": "abbrev_x0.8", "acs1996_x0.6": "abbrev_x0.6"}
+NICKNAME_SOURCES = {k: [f"{r}_x{k.rsplit('_x', 1)[1] if '_x' in k else '1.0'}" for r in ("abbrev", "abbrev_2", "ligands")]
+                    for k in ("acs1996", "acs1996_x0.8", "acs1996_x0.6")}
+# abbrev_x*'s labels: their templates must come from the references
+REQUIRED = ["OMe", "OEt", "OBn", "OPh", "OAc", "SMe", "NHAc", "CO2Me", "CO2Et", "CO2H", "CF3", "CN", "NO2",
+            "Ph", "Bn", "Et", "Ac", "TMS", "TES", "TBS", "TIPS", "PPh3", "PMe3"]
+DROP_ATTRS = ("Z", "CrossingBonds", "BondCircularOrdering", "AtomID", "AS", "BS", "NeedsClean")
 EXTRA_NICKNAME_SOURCES = {"acs1996": "metals_x1.0", "acs1996_x0.8": "metals_x0.8", "acs1996_x0.6": "metals_x0.6"}
 DERIVED_NICKNAMES = {"PMe3": "PPh3"}  # key -> the template it is cut from (_methyls)
 PER_FILE_ROOT = ("CreationProgram", "Name", "BoundingBox")
@@ -84,6 +90,9 @@ def _found(ref: str, found: dict, right_turned: bool = False) -> None:
         if n.get("NodeType") not in ("Fragment", "Nickname", "Unspecified") or inner is None:
             continue
         key = "".join(s.text or "" for s in n.find("t").iter("s"))
+        e = abbrev.default().get(key)
+        if e is None or not e.smiles:  # composed (ring NTs) and text labels (IPr) are generated
+            continue
         ax, ay = _xy(n)
         ecp = next(m for m in inner.findall("n") if m.get("NodeType") == "ExternalConnectionPoint")
         ex, ey = _xy(ecp)
@@ -97,6 +106,9 @@ def _found(ref: str, found: dict, right_turned: bool = False) -> None:
             m.set("p", pts(sign * (x - ax), sign * (y - ay)))
             for t in m.findall("t"):  # a label ChemDraw kept on the inner atom (metals_x1.0's second P)
                 m.remove(t)
+        for el in frag.iter("n", "b"):  # z order and references to ids of the source file
+            for k in DROP_ATTRS:
+                el.attrib.pop(k, None)
         el = etree.Element("nickname", {"key": key, "NodeType": n.get("NodeType")})
         if n.find("t").get("IsNickname"):
             el.set("IsNickname", n.find("t").get("IsNickname"))
@@ -124,23 +136,28 @@ def _methyls(src: etree._Element, key: str) -> etree._Element:
     return el
 
 
-def nicknames(ref: str, extra: str | None = None) -> bytes:
-    """The <nicknames> template: one <nickname key NodeType [IsNickname]> per ABBREVIATIONS key,
-    holding the inner <fragment> of its first left-justified node in `ref` (or `extra`, turned
-    from its right-justified form; or DERIVED_NICKNAMES), relative to the attachment atom."""
+def nicknames(refs: list[str], extra: str | None = None) -> bytes:
+    """The <nicknames> template: one <nickname key NodeType [IsNickname]> per registry group or
+    formula with a reference, holding the inner <fragment> of its first left-justified node in
+    `refs` (or `extra`, turned from its right-justified form; or DERIVED_NICKNAMES), relative to
+    the attachment atom. Every key abbrev_x* holds must be found; the other registry keys get a
+    generated fragment (cdxml_writer.generated_nickname)."""
     from acs_chem_svg.chem import ABBREVIATIONS
     found = {}
-    _found(ref, found)
+    for ref in refs:
+        _found(ref, found)
+    for ref in refs[1:]:  # a key with only its right-justified form (OTs in abbrev_2_x*)
+        _found(ref, found, right_turned=True)
     if extra:
         _found(extra, found, right_turned=True)
     for key, src in DERIVED_NICKNAMES.items():
         if key not in found and src in found:
             found[key] = _methyls(found[src], key)
-    missing = [k for k in ABBREVIATIONS if k not in found]
+    missing = [k for k in REQUIRED if k not in found]
     if missing:
-        raise ValueError(f"{ref}: no left-justified nickname node for {', '.join(missing)}")
-    root = etree.Element("nicknames", {"source": f"{ref}.cdxml" + (f" {extra}.cdxml" if extra else "")})
-    root.extend(found[k] for k in ABBREVIATIONS)
+        raise ValueError(f"{refs[0]}: no left-justified nickname node for {', '.join(missing)}")
+    root = etree.Element("nicknames", {"source": " ".join(f"{r}.cdxml" for r in refs + ([extra] if extra else []))})
+    root.extend(found[k] for k in ABBREVIATIONS if k in found)
     return etree.tostring(root, xml_declaration=True, encoding="UTF-8", pretty_print=True)
 
 
@@ -150,11 +167,11 @@ def main() -> int:
         path = HEADER_DIR / f"{preset}.xml"
         path.write_bytes(header(ref))
         print(f"wrote {path.relative_to(mr.REPO)} from {ref}.cdxml")
-    for preset, ref in NICKNAME_SOURCES.items():
+    for preset, refs in NICKNAME_SOURCES.items():
         path = HEADER_DIR / f"{preset}.nicknames.xml"
         extra = EXTRA_NICKNAME_SOURCES[preset]
-        path.write_bytes(nicknames(ref, extra))
-        print(f"wrote {path.relative_to(mr.REPO)} from {ref}.cdxml and {extra}.cdxml")
+        path.write_bytes(nicknames(refs, extra))
+        print(f"wrote {path.relative_to(mr.REPO)} from {', '.join(refs)} and {extra}")
     return 0
 
 

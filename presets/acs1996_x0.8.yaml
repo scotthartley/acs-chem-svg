@@ -44,7 +44,9 @@ nonlinear:
   - cdxml.lone_pair_box_reach        # 0.97 / 0.67 / 0.67 (mech_basic_x*): CDXML data, not drawn
   - cdxml.electron_box_reach         # 0.90 / 0.60 / 0.60 (mech_basic_x*): CDXML data, not drawn
   - lengths.label_h_line_pitch      # 8.342 / 6.650 / 5.017 (nh_x*): copied exactly
+  - lengths.label_tail_above_pitch  # 8.542 / 6.800 / 5.117 (abbrev_2_x*): copied exactly
   - cdxml.h_above_rise              # 8.37 / 6.74 / 5.30 (nh_x*): CDXML data, not drawn
+  - cdxml.tail_above_rise           # 8.57 / 6.90 / 5.43 (abbrev_2_x*): CDXML data, not drawn
   - charge.unlabeled_distance       # placement default, each preset from its own 3.84 / 3.24 / 2.87 (resonance_x*)
 # Fitted or chosen, not measured per preset: kept at the x1.0 value.
 assumed_exempt:
@@ -117,6 +119,7 @@ lengths:
   label_outline_offset_x: -0.01      # measure_refs.py --fit-clip: glyph outline shift for clipping, all references but CLIP_FIT_EXCLUDE (n=783, refit 2026-10-27, re-run 2026-11-01)
   label_outline_offset_y: 0.03       # measure_refs.py --fit-clip
   label_h_line_pitch: 6.650         # nh_x0.8: H above / below N, baseline to baseline (measure_refs.py --nh, n=11, spread 0.001)
+  label_tail_above_pitch: 6.800     # abbrev_2_x0.8: ring NTs with Ts above N, baseline to baseline (measure_refs.py --abbrev, n=1; below = label_h_line_pitch)
 
 ratios:                             # dimensionless; identical in every preset
   bond_spacing_fraction: 0.18       # all files: CDXML BondSpacing=18; measured 2.592/14.40
@@ -258,3 +261,4 @@ cdxml:                              # CDXML export only (acs-style.md §13); not
   resonance_box_pad: 0.67             # ↔ <arrow> BoundingBox beyond the head's half width (ArrowheadWidth x LineWidth / 100), both sides; resonance_x0.8: 0.67 / 0.67 (measure_refs.py --cdxml-scheme)
   bracket_lip_size: 60              # bracket <graphic> LipSize; 60 in resonance_x1.0/x0.8/x0.6, whose drawn lips are 4.01 / 3.21 / 2.42 (not lip_length / LineWidth x 100) (measure_refs.py --cdxml-scheme)
   h_above_rise: 6.74               # nh_x0.8: an H-above NH's <t> p.y (-3.87) is this above the usual first-line y (2.87) (measure_refs.py --nh)
+  tail_above_rise: 6.90            # abbrev_2_x0.8: ring NTs with Ts above N, <t> p.y (-4.03) this above the usual first-line y (2.87) (measure_refs.py --abbrev)

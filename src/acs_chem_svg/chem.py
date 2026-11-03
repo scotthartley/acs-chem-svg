@@ -29,14 +29,16 @@ from __future__ import annotations
 
 import itertools
 import math
+import zlib
 import re
 import statistics
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 from rdkit import Chem, rdBase, Geometry
 from rdkit.Chem import rdAbbreviations, rdCoordGen, rdDepictor, rdFMCS
 
+from . import abbrev
 from .geometry import Point, add, rotate, segments_cross
 
 _SANITIZE = Chem.SanitizeFlags.SANITIZE_ALL ^ Chem.SanitizeFlags.SANITIZE_SETAROMATICITY
@@ -46,29 +48,14 @@ _MOLFILE_STEREO = {1: "wedge", 6: "hash"}
 _CARBON_ALIAS = re.compile(r"C(H\d?)?|H\d?C")  # CH3, H3C, CH2, CH, C
 STANDARD_BOND = 1.5  # A; molfile bond length that maps exactly onto the preset bond length
 _RDKIT_DIR = {Chem.BondDir.BEGINWEDGE: "wedge", Chem.BondDir.BEGINDASH: "hash"}
-# label -> group SMILES (* = attachment). Drawn left-justified with the first letter on the
-# atom (OMe, OBn: scheme_multi_x*); the label text goes through richtext (CO2Me -> CO₂Me).
-ABBREVIATIONS = {
-    "OMe": "*OC", "OEt": "*OCC", "OBn": "*OCc1ccccc1", "OPh": "*Oc1ccccc1", "OAc": "*OC(C)=O",
-    "SMe": "*SC", "NHAc": "*NC(C)=O", "CO2Me": "*C(=O)OC", "CO2Et": "*C(=O)OCC", "CO2H": "*C(=O)O",
-    "CF3": "*C(F)(F)F", "CN": "*C#N", "NO2": "*[N+](=O)[O-]", "Ph": "*c1ccccc1", "Bn": "*Cc1ccccc1",
-    "Et": "*CC", "Ac": "*C(C)=O",
-    "TMS": "*[Si](C)(C)C", "TES": "*[Si](CC)(CC)CC", "TBS": "*[Si](C)(C)C(C)(C)C",
-    "TIPS": "*[Si](C(C)C)(C(C)C)C(C)C",
-    "PPh3": "*P(c1ccccc1)(c1ccccc1)c1ccccc1", "PMe3": "*P(C)(C)C",  # ligands, through a dative bond (P->M)
-}
-# The right-justified form (bond leaving the label to the right), as ChemDraw displays each
-# nickname (abbrev_x1.0 SVG; the CDXML keeps the key text). Formula-like ones are reversed;
-# Ph, Bn, Et, Ac and the silyl groups keep their text. PPh3 is measured on metals_x*; PMe3 by
-# analogy (unmeasured).
-ABBREVIATIONS_REVERSED = {
-    "OMe": "MeO", "OEt": "EtO", "OBn": "BnO", "OPh": "PhO", "OAc": "AcO",
-    "SMe": "MeS", "NHAc": "AcHN", "CO2Me": "MeO2C", "CO2Et": "EtO2C", "CO2H": "HO2C",
-    "CF3": "F3C", "CN": "NC", "NO2": "O2N", "Ph": "Ph", "Bn": "Bn",
-    "Et": "Et", "Ac": "Ac",
-    "TMS": "TMS", "TES": "TES", "TBS": "TBS", "TIPS": "TIPS",
-    "PPh3": "Ph3P", "PMe3": "Me3P",
-}
+# Abbreviations come from the registry (abbrev.py, data/abbreviations.yaml): label -> group
+# SMILES (* = attachment) for groups and formulas, and the right-justified text by the reversal
+# rule (OMe -> MeO, CO2Me -> MeO2C, TMS unchanged; acs-style.md §3.5). Views of abbrev.default().
+ABBREVIATIONS = {k: e.smiles for k, e in abbrev.default().entries.items() if e.smiles}
+ABBREVIATIONS_REVERSED = {k: abbrev.reverse(k) for k in ABBREVIATIONS}
+ABBREV_PROP = "_abbrevInfo"  # a collapsed dummy atom's abbrev.LabelInfo (JSON)
+# composition (§3.5): a heteroatom merges with its collapsed groups when it keeps this many other bonds
+COMPOSE_MAX_SKELETON = 2
 MCS_TIMEOUT = 2  # s
 # Pauling electronegativities (CRC Handbook of Chemistry and Physics, "Electronegativity of the
 # Elements"): chemistry constants for Lewis oxidation-state views, not style numbers.
@@ -97,7 +84,8 @@ class Atom:
     num_h: int = 0  # implicit + explicit-count H (H atoms are separate Atoms)
     map: int | None = None
     show_label: bool = False  # explicit carbon label (CH3); heteroatoms are always labeled
-    abbrev: str | None = None  # abbreviation label text (OMe); `element` is its attachment atom
+    abbrev: str | None = None  # abbreviation label key (OMe, NTs); `element` is its attachment atom
+    abbrev_info: abbrev.LabelInfo | None = None  # its texts, anchors and CDXML data (None: from the registry by key)
     radicals: int = 0  # unpaired electrons (RDKit GetNumRadicalElectrons)
     lone_pairs: int = 0  # (valence electrons - charge - bond orders - H - radicals) / 2
     singlet: bool = False  # a carbene / nitrene: RDKit's two radicals are this lone pair (nonbonding()); always drawn
@@ -470,12 +458,17 @@ def to_molecule(mol: Chem.Mol, name: str, bond_length: float, scale: float | Non
     for a in mol.GetAtoms():
         i = a.GetIdx()
         mp = a.GetAtomMapNum() or None
-        show, abbrev = _alias_label(a)
-        element = abbrev_element(abbrev) if abbrev and a.GetAtomicNum() == 0 else a.GetSymbol()
+        show, key = _alias_label(a)
+        info = label_info(a) if key else None
+        element = info.element if info and a.GetAtomicNum() == 0 else a.GetSymbol()
+        if info is not None and info.kind == "text":  # no chemistry: drawn on its stand-in, which keeps its element
+            info = replace(info, element=element)
         lp, rad = nonbonding(a)
+        if key:  # a label stands for its whole group: RDKit's radicals on a template's Sn (SnBu3,
+            rad = 0  # one drawn bond) are not electrons to draw, nor a carbene's pair
         atoms.append(Atom(i, str(mp) if mp else str(i + 1), element, pts[i][0], pts[i][1],
-                          a.GetFormalCharge(), 0 if abbrev else a.GetTotalNumHs(includeNeighbors=False), mp,
-                          show, abbrev, rad, 0 if abbrev else lp, singlet=rad != a.GetNumRadicalElectrons(),
+                          a.GetFormalCharge(), 0 if key else a.GetTotalNumHs(includeNeighbors=False), mp,
+                          show, key, info, rad, 0 if key else lp, singlet=not key and rad != a.GetNumRadicalElectrons(),
                           z=(depth or {}).get(i, 0.0)))
     bonds = []
     for b in mol.GetBonds():
@@ -529,20 +522,35 @@ def nonbonding(a: Chem.Atom) -> tuple[int, int]:
     return lone_pairs(a), rad
 
 
-def _alias_label(a: Chem.Atom) -> tuple[bool, str | None]:
-    """(explicit carbon label, abbreviation). An abbreviation comes from rdAbbreviations
-    (atomLabel) or a molfile alias naming one (OMe on the O, as cdxml_to_molfile writes ChemDraw
-    nicknames). A carbon alias that is its own label (CH3, H3C, ...) shows the carbon. Any other
-    alias is a condensed label we don't draw."""
+def _alias_label(a: Chem.Atom, reg: abbrev.Registry | None = None) -> tuple[bool, str | None]:
+    """(explicit carbon label, abbreviation key). An abbreviation comes from condense (atomLabel)
+    or a molfile alias naming a registry group or formula (OMe on the O, as cdxml_to_molfile
+    writes ChemDraw nicknames). A carbon alias that is its own label (CH3, H3C, ...) shows the
+    carbon. Any other alias is a condensed label we don't draw."""
     if a.HasProp("atomLabel") and a.GetAtomicNum() == 0:
         return False, a.GetProp("atomLabel")
     if not a.HasProp("molFileAlias"):
         return False, None
     alias = a.GetProp("molFileAlias")
-    if alias in ABBREVIATIONS:
-        if abbrev_element(alias) != a.GetSymbol():
+    reg = reg or abbrev.default()
+    e = reg.get(alias)
+    if e is None and _CARBON_ALIAS.fullmatch(alias) is None:
+        # (a template's stand-in atom has implicit H for the atoms the label holds: not checked)
+        info = composed_info(alias, a.GetSymbol(), a.GetDegree(), None, reg)
+        if info is not None:  # a composed label read from a template (ring NTs, abbrev_2_x*)
+            if not a.HasProp(ABBREV_PROP):
+                a.SetProp(ABBREV_PROP, info.to_prop())
+            return False, alias
+    if e is not None and e.kind == "text":  # a text label on its stand-in atom (L, dppf: ligands_x*)
+        if not a.HasProp(ABBREV_PROP):
+            a.SetProp(ABBREV_PROP, abbrev.info(alias, reg).to_prop())
+        return False, alias
+    if e is not None and e.smiles:
+        if abbrev_element(alias, reg) != a.GetSymbol():
             raise ValueError(f"atom {a.GetIdx() + 1}: alias {alias!r} attaches through "
-                             f"{abbrev_element(alias)}, not {a.GetSymbol()}")
+                             f"{abbrev_element(alias, reg)}, not {a.GetSymbol()}")
+        if not a.HasProp(ABBREV_PROP):
+            a.SetProp(ABBREV_PROP, abbrev.info(alias, reg).to_prop())
         return False, alias
     if a.GetSymbol() == "C" and _CARBON_ALIAS.fullmatch(alias):
         n_h = int(re.sub(r"\D", "", alias) or ("1" if "H" in alias else "0"))
@@ -554,7 +562,44 @@ def _alias_label(a: Chem.Atom) -> tuple[bool, str | None]:
                                       "(unmeasured, acs-style.md §6 Open 8)")
         return True, None
     raise ValueError(f"atom {a.GetIdx() + 1}: alias {alias!r} is a nickname or condensed label we don't "
-                     f"draw; known abbreviations: {', '.join(ABBREVIATIONS)}")
+                     f"draw; define it under the spec's `abbreviations:` (acs-style.md §3.5)")
+
+
+def composed_info(key: str, element: str, degree: int, n_h: int | None = None,
+                  reg: abbrev.Registry | None = None) -> abbrev.LabelInfo | None:
+    """LabelInfo of a composed label read back from its key (a molfile alias on its heteroatom:
+    NTs on a ring N): the element's token, an H count (checked against `n_h` when given), then
+    registry groups with counts; None when the key doesn't read that way."""
+    reg = reg or abbrev.default()
+    try:
+        toks = abbrev.tokenize(key, reg)
+    except ValueError:
+        return None
+    if not toks or toks[0].element != element or toks[0].count != 1:
+        return None
+    rest = toks[1:]
+    h = 0
+    if rest and rest[0].element == "H":
+        h, rest = rest[0].count, rest[1:]
+    groups = []
+    for t in rest:
+        name = t.inner[0].key if t.inner and len(t.inner) == 1 and t.inner[0].count == 1 else t.key
+        e = reg.get(name)
+        if e is None or e.kind != "group":
+            return None
+        groups += [e.smiles] * t.count
+    if not groups or (n_h is not None and h != n_h):
+        return None
+    info = abbrev.info(key, reg, element=element)
+    return replace(info, kind="composed", smiles=_composed_smiles(element, h, groups, degree))
+
+
+def label_info(a: Chem.Atom) -> abbrev.LabelInfo:
+    """The LabelInfo condense stored on a collapsed atom, else the registry's for its key."""
+    if a.HasProp(ABBREV_PROP):
+        return abbrev.LabelInfo.from_prop(a.GetProp(ABBREV_PROP))
+    key = a.GetProp("atomLabel") if a.HasProp("atomLabel") else a.GetProp("molFileAlias")
+    return abbrev.info(key, element=a.GetSymbol() if a.GetAtomicNum() else None)
 
 
 def show_carbons(m: Molecule, which: str | list[str | int] | None) -> Molecule:
@@ -579,21 +624,34 @@ def show_carbons(m: Molecule, which: str | list[str | int] | None) -> Molecule:
     return m
 
 
-def abbrev_element(label: str) -> str:
+def abbrev_element(label: str, reg: abbrev.Registry | None = None) -> str:
     """Element of the atom an abbreviation attaches through (OMe: O, CO2Me: C, Ph: C)."""
-    star = Chem.MolFromSmiles(ABBREVIATIONS[label]).GetAtomWithIdx(0)
-    return star.GetNeighbors()[0].GetSymbol()
+    e = (reg or abbrev.default()).get(label)
+    if e is None or not e.smiles:
+        raise ValueError(f"{label!r} is not a group or formula abbreviation")
+    return abbrev.attachment_element(e)
 
 
-def condense(mol: Chem.Mol, labels: list[str] | None, name: str = "") -> Chem.Mol:
-    """Collapse each named group (ABBREVIATIONS) to one dummy atom carrying atomLabel, at the
-    attachment atom (its index, coordinates and atom-map number are kept). Groups are found by RDKit
-    rdAbbreviations on an aromatic copy (its patterns are aromatic); the Kekulé bonds drawn
-    are those of `mol`. Every label must be found. rdAbbreviations misses a group attached by a
-    dative bond (PMe3 on Pd), so the copy has its dative bonds made single; the drawn bond stays dative."""
+def condense(mol: Chem.Mol, labels: list[str] | None, name: str = "",
+             reg: abbrev.Registry | None = None) -> Chem.Mol:
+    """Collapse each named group or formula (`labels`, registry keys) to one dummy atom carrying
+    atomLabel and its abbrev.LabelInfo, at the attachment atom (its index, coordinates and
+    atom-map number are kept). Groups are found by RDKit rdAbbreviations on an aromatic copy (its
+    patterns are aromatic); the Kekulé bonds drawn are those of `mol`. Every label must be found.
+    rdAbbreviations misses a group attached by a dative bond (PMe3 on Pd), so the copy has its
+    dative bonds made single; the drawn bond stays dative. Then compose() merges heteroatoms with
+    their collapsed groups (OTBS, NHBoc, ring NTs)."""
+    reg = reg or abbrev.default()
+    for a in mol.GetAtoms():  # molfile aliases naming a spec's own entries carry its texts
+        if a.HasProp("molFileAlias") and reg.get(a.GetProp("molFileAlias")) is not None:
+            a.SetProp(ABBREV_PROP, abbrev.info(a.GetProp("molFileAlias"), reg).to_prop())
     if not labels:
         return mol
-    defs = rdAbbreviations.ParseAbbreviations("\n".join(f"{lab} {ABBREVIATIONS[lab]}" for lab in labels))
+    text = [lab for lab in labels if reg.get(lab) is not None and reg.get(lab).kind == "text"]
+    if text:
+        raise ValueError(f"{name}: abbreviate {', '.join(text)}: a text label has no structure to collapse; "
+                         "draw it on a stand-in atom with `labels:` (acs-style.md §3.5)")
+    defs = rdAbbreviations.ParseAbbreviations("\n".join(f"{lab} {reg.get(lab).smiles}" for lab in labels))
     ar = Chem.Mol(_dative_as_single(mol))
     Chem.SetAromaticity(ar)
     found = Chem.GetMolSubstanceGroups(rdAbbreviations.LabelMolAbbreviations(ar, defs, maxCoverage=1.0))
@@ -609,6 +667,7 @@ def condense(mol: Chem.Mol, labels: list[str] | None, name: str = "") -> Chem.Mo
         dummy = Chem.Atom(0)
         dummy.SetNoImplicit(True)
         dummy.SetProp("atomLabel", sg.GetProp("LABEL"))
+        dummy.SetProp(ABBREV_PROP, abbrev.info(sg.GetProp("LABEL"), reg).to_prop())
         dummy.SetAtomMapNum(mol.GetAtomWithIdx(attach).GetAtomMapNum())  # aligned species keep the label in place
         rw.ReplaceAtom(attach, dummy)
         drop += [i for i in group if i != attach]
@@ -616,7 +675,85 @@ def condense(mol: Chem.Mol, labels: list[str] | None, name: str = "") -> Chem.Mo
         rw.RemoveAtom(i)
     out = rw.GetMol()
     Chem.SanitizeMol(out, _SANITIZE)
+    return compose(out, reg)
+
+
+def _composable(a: Chem.Atom) -> bool:
+    """A heteroatom that can take its groups into its label: not C or H, not a d-block metal
+    (Pd keeps its Ph and PPh3 bonds: metals_x*), uncharged, no unpaired electrons."""
+    return (a.GetAtomicNum() not in (0, 1, 6) and a.GetAtomicNum() not in _D_BLOCK
+            and not a.GetFormalCharge() and not a.GetNumRadicalElectrons())
+
+
+def compose(mol: Chem.Mol, reg: abbrev.Registry | None = None) -> Chem.Mol:
+    """§3.5 composition: a heteroatom (_composable) bonded to collapsed groups (registry kind
+    group) and to one or two other atoms (the skeleton) becomes one labeled atom: element, H count,
+    then the groups (abbrev.compose: NHBoc, OTBS, SnBu3, P(t-Bu)3, ring NTs). Its LabelInfo holds
+    the merged atoms as SMILES with [*:k] for its k-th skeleton bond, by neighbor index."""
+    reg = reg or abbrev.default()
+
+    def group_key(n: Chem.Atom) -> str | None:
+        if n.GetAtomicNum() or not n.HasProp("atomLabel") or not n.HasProp(ABBREV_PROP):
+            return None
+        info = abbrev.LabelInfo.from_prop(n.GetProp(ABBREV_PROP))
+        return info.key if info.kind == "group" else None
+
+    rw = Chem.RWMol(mol)
+    drop = []
+    for a in mol.GetAtoms():
+        if not _composable(a):
+            continue
+        nbs = sorted(a.GetNeighbors(), key=lambda n: n.GetIdx())
+        groups = [n for n in nbs if group_key(n)]
+        skeleton = [n for n in nbs if not group_key(n)]
+        if not groups or not 1 <= len(skeleton) <= COMPOSE_MAX_SKELETON:
+            continue
+        if any(mol.GetBondBetweenAtoms(a.GetIdx(), g.GetIdx()).GetBondType() != Chem.BondType.SINGLE for g in groups):
+            continue
+        n_h = a.GetTotalNumHs(includeNeighbors=False)
+        keys = [group_key(g) for g in groups]
+        key = abbrev.compose(a.GetSymbol(), n_h, keys, reg)
+        smiles = _composed_smiles(a.GetSymbol(), n_h, [reg.get(k).smiles for k in keys], len(skeleton))
+        info = replace(abbrev.info(key, reg, element=a.GetSymbol()), kind="composed", smiles=smiles)
+        dummy = Chem.Atom(0)
+        dummy.SetNoImplicit(True)
+        dummy.SetProp("atomLabel", key)
+        dummy.SetProp(ABBREV_PROP, info.to_prop())
+        dummy.SetAtomMapNum(a.GetAtomMapNum())
+        rw.ReplaceAtom(a.GetIdx(), dummy)
+        drop += [g.GetIdx() for g in groups]
+    if not drop:
+        return mol
+    for i in sorted(drop, reverse=True):
+        rw.RemoveAtom(i)
+    out = rw.GetMol()
+    Chem.SanitizeMol(out, _SANITIZE)
     return out
+
+
+def _composed_smiles(element: str, n_h: int, groups: list[str], n_outer: int) -> str:
+    """The merged atoms of a composed label: the heteroatom with its H, each group's SMILES
+    bonded by its `*`, and [*:1]..[*:n] for the skeleton bonds."""
+    rw = Chem.RWMol()
+    x = rw.AddAtom(Chem.Atom(element))
+    rw.GetAtomWithIdx(x).SetNumExplicitHs(n_h)
+    rw.GetAtomWithIdx(x).SetNoImplicit(True)
+    for k in range(1, n_outer + 1):
+        d = rw.AddAtom(Chem.Atom(0))
+        rw.GetAtomWithIdx(d).SetAtomMapNum(k)
+        rw.AddBond(x, d, Chem.BondType.SINGLE)
+    for g in groups:
+        gm = Chem.MolFromSmiles(g)
+        off = rw.GetNumAtoms()
+        star = next(a.GetIdx() for a in gm.GetAtoms() if a.GetAtomicNum() == 0)
+        nb = gm.GetAtomWithIdx(star).GetNeighbors()[0].GetIdx()
+        combo = Chem.RWMol(Chem.CombineMols(rw, gm))
+        combo.AddBond(x, off + nb, Chem.BondType.SINGLE)
+        combo.RemoveAtom(off + star)
+        rw = combo
+    m = rw.GetMol()
+    Chem.SanitizeMol(m)
+    return Chem.MolToSmiles(m)
 
 
 def _orient_molfile(mol: Chem.Mol, rotate_deg, flip_h: bool, flip_v: bool) -> None:
@@ -634,12 +771,12 @@ def _orient_molfile(mol: Chem.Mol, rotate_deg, flip_h: bool, flip_v: bool) -> No
 def from_smiles(smiles: str, name: str, bond_length: float, kekule: list[str] | None = None,
                 rotate_deg: float | str | None = "auto", flip_h: bool = False, flip_v: bool = False,
                 abbreviate: list[str] | None = None, lewis: str | None = None, lewis_lines: bool = False,
-                chair: ChairSpec | None = None) -> Molecule:
+                chair: ChairSpec | None = None, registry: abbrev.Registry | None = None) -> Molecule:
     """`lewis` (a LEWIS_MODES value): a Lewis structure with every H an atom and every atom
     labeled, laid out by lewis_layout with `bond_length` as the lattice step (lewis.bond_length);
     `lewis_lines`: its bonds drawn as lines (shared only). `chair`: drawn as a chair (chair.py)."""
     if chair is not None:
-        p = prepare(parse_smiles(smiles, kekule), name, bond_length, abbreviate, chair=chair)
+        p = prepare(parse_smiles(smiles, kekule), name, bond_length, abbreviate, chair=chair, registry=registry)
         return p.molecule()
     if lewis is not None:
         mol = Chem.AddHs(parse_smiles(smiles))
@@ -656,7 +793,7 @@ def from_smiles(smiles: str, name: str, bond_length: float, kekule: list[str] | 
                 if ox:
                     a.charge_label = f"{abs(ox) if abs(ox) > 1 else ''}{'+' if ox > 0 else '-'}"
         return m
-    mol = condense(parse_smiles(smiles, kekule), abbreviate, name)
+    mol = condense(parse_smiles(smiles, kekule), abbreviate, name, registry)
     layout_2d(mol)
     orient(mol, rotate_deg, flip_h, flip_v)
     return to_molecule(mol, name, bond_length)
@@ -675,9 +812,9 @@ class ChairSpec:
 
 def from_molfile(path_or_text: str | Path, name: str, bond_length: float, kekule: list[str] | None = None,
                  rotate_deg: float | str | None = None, flip_h: bool = False, flip_v: bool = False,
-                 abbreviate: list[str] | None = None) -> Molecule:
+                 abbreviate: list[str] | None = None, registry: abbrev.Registry | None = None) -> Molecule:
     text = Path(path_or_text).read_text() if isinstance(path_or_text, Path) else path_or_text
-    mol = condense(parse_molfile(text, kekule), abbreviate, name)
+    mol = condense(parse_molfile(text, kekule), abbreviate, name, registry)
     _orient_molfile(mol, rotate_deg, flip_h, flip_v)
     return to_molecule(mol, name, bond_length)
 
@@ -846,14 +983,13 @@ class Prepared:
 def _mcs_copy(mol: Chem.Mol) -> Chem.Mol:
     """Copy for MCS: aromaticity perceived (so Kekulé forms don't matter) and each atom's
     isotope set to its element, or to a per-label code for abbreviations (OMe != OBn)."""
-    labels = sorted(ABBREVIATIONS)
     c = Chem.Mol(mol)
     for a in c.GetAtoms():
         if a.GetAtomicNum():
             a.SetIsotope(a.GetAtomicNum())
-        else:
+        else:  # a stable per-label code below the map codes (1000 + map)
             lab = a.GetProp("atomLabel") if a.HasProp("atomLabel") else ""
-            a.SetIsotope(200 + labels.index(lab) if lab in labels else 199)
+            a.SetIsotope(200 + zlib.crc32(lab.encode()) % 700 if lab else 199)
     Chem.FastFindRings(c)
     Chem.SetAromaticity(c)
     return c
@@ -1110,7 +1246,8 @@ def orient_to(mol: Chem.Mol, ref: Chem.Mol, pairs: list[tuple[int, int]], relayo
 
 def prepare(mol: Chem.Mol, name: str, bond_length: float, abbreviate: list[str] | None = None,
             from_file: bool = False, rotate_deg: float | str | None = None, flip_h: bool = False,
-            flip_v: bool = False, refs: list[Prepared] | None = None, chair: ChairSpec | None = None) -> Prepared:
+            flip_v: bool = False, refs: list[Prepared] | None = None, chair: ChairSpec | None = None,
+            registry: abbrev.Registry | None = None) -> Prepared:
     """Condense abbreviations, then lay out against the best of `refs`: the one whose stable
     core (stable_core) is largest, then with the most matched atoms. Pin mode: with a core of at
     least 3 atoms, those atoms keep the reference's coordinates (align_coords); with no core, all
@@ -1124,7 +1261,7 @@ def prepare(mol: Chem.Mol, name: str, bond_length: float, abbreviate: list[str] 
     CoordGen + orientation, default auto; molfile: its own layout, oriented as asked). A `chair`
     species is laid out by chair.layout and aligns to nothing; nothing aligns to a chair either
     (its pseudo-3D coordinates would bend a flat drawing)."""
-    mol = condense(mol, abbreviate, name)
+    mol = condense(mol, abbreviate, name, registry)
     if chair is not None:
         from . import chair as chair_mod
         m, z, pl = chair_mod.layout(mol, chair.templates, bond_length, chair.ring, chair.flip,

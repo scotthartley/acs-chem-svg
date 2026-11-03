@@ -47,7 +47,7 @@ from lxml import etree
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import measure_refs as mr  # noqa: E402
-from cdxml_to_molfile import fragments, front_path, template_path  # noqa: E402
+from cdxml_to_molfile import fragments, front_path, ids_path, template_path  # noqa: E402
 
 from acs_chem_svg import chem, richtext  # noqa: E402
 from acs_chem_svg.arrows import equilibrium_arrow, reaction_arrow, resonance_arrow  # noqa: E402
@@ -106,6 +106,9 @@ def render_reference(name: str, preset_name: str | None = None) -> Rendered:
     groups, mols, drawers = [], [], []
     for n, _, _ in [] if name.startswith(ARROWS_ONLY) else fragments(ref):
         mol = chem.from_molfile(template_path(name, n), f"{name}__{n}", preset.lengths.bond_length)
+        if ids_path(name, n).exists():  # CDXML ids above 999 (V2000 atom maps hold 3 digits)
+            for a, aid in zip(mol.atoms, json.loads(ids_path(name, n).read_text())):
+                a.id = aid
         if front_path(name, n).exists():  # crossings: ChemDraw's front bonds (higher Z), acs-style.md §14.2
             ids = {a.id: a.idx for a in mol.atoms}
             pairs = {frozenset(ids[i] for i in p) for p in json.loads(front_path(name, n).read_text())}

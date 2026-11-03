@@ -55,7 +55,7 @@ def build_mol(doc: mr.Doc, pt_per_unit: float = 9.6, atom_ids=None, map_ids: boo
     for aid, a in doc.atoms.items():
         if (a.nickname and not nicknames) or (atom_ids is not None and aid not in atom_ids):
             continue
-        at = Chem.Atom(ANUM[a.element])
+        at = Chem.Atom(ANUM.get(a.element, 0))  # 0: a text label's stand-in (dppf: no inner fragment)
         at.SetFormalCharge(a.charge)
         if a.label and a.num_h is not None and not a.nickname:
             at.SetNumExplicitHs(a.num_h)

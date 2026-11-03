@@ -21,9 +21,9 @@
       <n id="3" p="130.98 46.02" Z="1" NodeType="Unspecified" NeedsClean="yes">
         <fragment id="4">
           <n id="5" p="130.98 46.02" Element="15" NumHydrogens="0"/>
-          <n id="6" p="138.16 58.45" NumHydrogens="3"/>
-          <n id="7" p="138.16 33.59" NumHydrogens="3"/>
-          <n id="8" p="116.63 46.02" NumHydrogens="3"/>
+          <n id="6" p="130.98 31.67" NumHydrogens="3"/>
+          <n id="7" p="116.63 46.02" NumHydrogens="3"/>
+          <n id="8" p="130.98 60.37" NumHydrogens="3"/>
           <n id="9" p="145.33 46.02" NodeType="ExternalConnectionPoint"/>
           <b id="10" B="5" E="6"/>
           <b id="11" B="5" E="7"/>
@@ -42,9 +42,9 @@
       <n id="15" p="159.78 46.02" Z="3" NodeType="Unspecified" NeedsClean="yes">
         <fragment id="16">
           <n id="17" p="159.78 46.02" Element="15" NumHydrogens="0"/>
-          <n id="18" p="152.60 33.59" NumHydrogens="3"/>
-          <n id="19" p="152.60 58.45" NumHydrogens="3"/>
-          <n id="20" p="174.13 46.02" NumHydrogens="3"/>
+          <n id="18" p="159.78 60.37" NumHydrogens="3"/>
+          <n id="19" p="174.13 46.02" NumHydrogens="3"/>
+          <n id="20" p="159.78 31.67" NumHydrogens="3"/>
           <n id="21" p="145.43 46.02" NodeType="ExternalConnectionPoint"/>
           <b id="22" B="17" E="18"/>
           <b id="23" B="17" E="19"/>
@@ -78,9 +78,9 @@
       <n id="37" p="225.48 197.64" Z="15" NodeType="Unspecified" NeedsClean="yes">
         <fragment id="38">
           <n id="39" p="225.48 197.64" Element="15" NumHydrogens="0"/>
-          <n id="40" p="232.66 210.07" NumHydrogens="3"/>
-          <n id="41" p="232.66 185.21" NumHydrogens="3"/>
-          <n id="42" p="211.13 197.64" NumHydrogens="3"/>
+          <n id="40" p="225.48 183.29" NumHydrogens="3"/>
+          <n id="41" p="211.13 197.64" NumHydrogens="3"/>
+          <n id="42" p="225.48 211.99" NumHydrogens="3"/>
           <n id="43" p="239.83 197.64" NodeType="ExternalConnectionPoint"/>
           <b id="44" B="39" E="40"/>
           <b id="45" B="39" E="41"/>
@@ -94,9 +94,9 @@
       <n id="48" p="254.28 197.64" Z="16" NodeType="Unspecified" NeedsClean="yes">
         <fragment id="49">
           <n id="50" p="254.28 197.64" Element="15" NumHydrogens="0"/>
-          <n id="51" p="247.10 185.21" NumHydrogens="3"/>
-          <n id="52" p="247.10 210.07" NumHydrogens="3"/>
-          <n id="53" p="268.63 197.64" NumHydrogens="3"/>
+          <n id="51" p="254.28 211.99" NumHydrogens="3"/>
+          <n id="52" p="268.63 197.64" NumHydrogens="3"/>
+          <n id="53" p="254.28 183.29" NumHydrogens="3"/>
           <n id="54" p="239.93 197.64" NodeType="ExternalConnectionPoint"/>
           <b id="55" B="50" E="51"/>
           <b id="56" B="50" E="52"/>
@@ -140,9 +140,9 @@
       <n id="84" p="46.74 197.64" Z="42" NodeType="Unspecified" NeedsClean="yes">
         <fragment id="85">
           <n id="86" p="46.74 197.64" Element="15" NumHydrogens="0"/>
-          <n id="87" p="53.92 210.07" NumHydrogens="3"/>
-          <n id="88" p="53.92 185.21" NumHydrogens="3"/>
-          <n id="89" p="32.39 197.64" NumHydrogens="3"/>
+          <n id="87" p="46.74 183.29" NumHydrogens="3"/>
+          <n id="88" p="32.39 197.64" NumHydrogens="3"/>
+          <n id="89" p="46.74 211.99" NumHydrogens="3"/>
           <n id="90" p="61.09 197.64" NodeType="ExternalConnectionPoint"/>
           <b id="91" B="86" E="87"/>
           <b id="92" B="86" E="88"/>
@@ -156,9 +156,9 @@
       <n id="95" p="75.54 197.64" Z="43" NodeType="Unspecified" NeedsClean="yes">
         <fragment id="96">
           <n id="97" p="75.54 197.64" Element="15" NumHydrogens="0"/>
-          <n id="98" p="68.36 185.21" NumHydrogens="3"/>
-          <n id="99" p="68.36 210.07" NumHydrogens="3"/>
-          <n id="100" p="89.89 197.64" NumHydrogens="3"/>
+          <n id="98" p="75.54 211.99" NumHydrogens="3"/>
+          <n id="99" p="89.89 197.64" NumHydrogens="3"/>
+          <n id="100" p="75.54 183.29" NumHydrogens="3"/>
           <n id="101" p="61.19 197.64" NodeType="ExternalConnectionPoint"/>
           <b id="102" B="97" E="98"/>
           <b id="103" B="97" E="99"/>

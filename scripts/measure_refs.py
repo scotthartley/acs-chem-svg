@@ -43,6 +43,7 @@ from pathlib import Path
 
 import pypdfium2
 from lxml import etree
+from rdkit import Chem as _Chem
 
 from acs_chem_svg.fontmetrics import load_face
 from acs_chem_svg.geometry import (  # shared with the renderer
@@ -51,7 +52,7 @@ from acs_chem_svg.geometry import (  # shared with the renderer
 
 REPO = Path(__file__).resolve().parents[1]
 REF_DIR = REPO / "reference_renders" / "chemdraw"
-ELEMENTS = {1: "H", 6: "C", 7: "N", 8: "O", 9: "F", 14: "Si", 15: "P", 16: "S", 17: "Cl", 35: "Br", 46: "Pd", 53: "I"}
+ELEMENTS = {n: _Chem.GetPeriodicTable().GetElementSymbol(n) for n in range(1, 104)}  # CDXML Element -> symbol
 
 
 def stats(values):
@@ -77,6 +78,8 @@ class Atom:
     nickname: bool = False
     radicals: int = 0  # CDXML Radical="Doublet"
     justification: str = ""  # CDXML LabelJustification of the node's <t> (Left / Right; nicknames: MeO is Right)
+    alignment: str = ""  # CDXML LabelAlignment (Above / Below: a label's tail on the line above / below, ring NTs)
+    node_type: str = ""  # CDXML NodeType (Nickname, Fragment, Unspecified; "" for an element)
 
 
 @dataclass
@@ -355,8 +358,10 @@ def load_cdxml(doc: Doc, path: Path, off):
             el = ELEMENTS.get(int(n.get("Element", "6")), "?")
             # a label typed into a structure that ChemDraw expanded (metals_x* PPh3) is Unspecified
             # with the expansion inside: drawn and justified as a nickname
+            # (or ChemDraw could not interpret it: L, Ln, dppf, XPhos, Bpin, p-Tol in abbrev_2_x* and
+            # ligands_x* are Unspecified with no inner fragment; they are placed the same way)
             nick = n.get("NodeType") in ("Fragment", "Nickname") or (
-                n.get("NodeType") == "Unspecified" and n.find("fragment") is not None)
+                n.get("NodeType") == "Unspecified" and t is not None)
             if nick:  # the attachment atom of the nickname sits at the node (OMe: O)
                 el = next((ELEMENTS.get(int(m.get("Element", "6")), "?") for m in n.iter("n")
                            if m is not n and m.get("p") == n.get("p")), "X")
@@ -364,7 +369,8 @@ def load_cdxml(doc: Doc, path: Path, off):
                 n.get("id"), _xy(n.get("p"), off), el, label,
                 int(n.get("Charge", "0")), int(n.get("NumHydrogens")) if n.get("NumHydrogens") else None,
                 fid, nick, 1 if n.get("Radical") == "Doublet" else 0,
-                t.get("LabelJustification", "") if t is not None else "")
+                t.get("LabelJustification", "") if t is not None else "",
+                t.get("LabelAlignment", "") if t is not None else "", n.get("NodeType", ""))
         for b in frag.findall("b"):
             order = b.get("Order", "1")
             doc.bonds.append(Bond(b.get("id"), b.get("B"), b.get("E"),
@@ -580,8 +586,18 @@ def label_glyphs(doc: Doc, atom: Atom):
     return elem, [g for g in _glyph_chain(doc, elem) if g.box]
 
 
+def _kern(left: Glyph, right: Glyph) -> float:
+    """Pair kerning between two neighboring glyphs of one run style (T|s in Ts: fontmetrics,
+    as resvg and ChemDraw apply it); 0 across a size or face change."""
+    if left.size != right.size or left.bold != right.bold or left.italic != right.italic:
+        return 0.0
+    face = load_face("Bold" if left.bold else "Oblique" if left.italic else "Regular")
+    return face.kerning(left.ch, right.ch, left.size)
+
+
 def _glyph_chain(doc: Doc, seed: list) -> list:
-    """`seed` extended both ways by glyphs set contiguously with it on (about) its baseline."""
+    """`seed` extended both ways by glyphs set contiguously with it on (about) its baseline,
+    pair kerning included (Ts, OTs, NHTs: abbrev_2_x*)."""
     whole = list(seed)
     tol = 0.05
     changed = True
@@ -591,11 +607,11 @@ def _glyph_chain(doc: Doc, seed: list) -> list:
         for g in doc.glyphs:
             if g in whole or abs(g.base - first.base) > 0.35 * first.size:
                 continue
-            if abs(g.x - (last.x + last.adv)) < tol:
+            if abs(g.x - (last.x + last.adv + _kern(last, g))) < tol:
                 whole.append(g)
                 changed = True
                 break
-            if abs(g.x + g.adv - first.x) < tol:
+            if abs(g.x + g.adv + _kern(g, first) - first.x) < tol:
                 whole.insert(0, g)
                 changed = True
                 break
@@ -616,7 +632,12 @@ def _nickname_glyphs(doc: Doc, atom: Atom):
         return [], []
     whole = _glyph_chain(doc, [best[1]])
     text = "".join(g.ch for g in whole)
-    side = "left" if best[1] is whole[-1] and len(whole) > 1 else "right"
+    if atom.alignment == "Right":  # bond leaving to the right: the last glyph is on the atom (P(o-tol)₃'s ₃)
+        side = "left"
+    elif atom.alignment in ("Left", "Above", "Below"):
+        side = "right"
+    else:
+        side = "left" if best[1] is whole[-1] and len(whole) > 1 else "right"
     k = len(anchor_symbol(text, atom.element, side))
     elem = whole[-k:] if side == "left" else whole[:k]
     return elem, [g for g in whole if g.box]
@@ -1930,7 +1951,9 @@ def mech_summary(name: str) -> dict:
     return out
 
 
-ABBREV_REFS = ["abbrev_x1.0", "abbrev_x0.8", "abbrev_x0.6", "metals_x1.0", "metals_x0.8", "metals_x0.6"]  # metals_x*: PPh3
+ABBREV_REFS = ["abbrev_x1.0", "abbrev_x0.8", "abbrev_x0.6", "abbrev_2_x1.0", "abbrev_2_x0.8", "abbrev_2_x0.6",
+               "ligands_x1.0", "ligands_x0.8", "ligands_x0.6",
+               "metals_x1.0", "metals_x0.8", "metals_x0.6"]  # metals_x*: PPh3
 
 
 def abbrev_summary(name: str) -> dict:
@@ -1947,7 +1970,7 @@ def abbrev_summary(name: str) -> dict:
     preset = load_preset("acs1996" if k == "1.0" else f"acs1996_x{k}")
     L, r = preset.lengths, preset.ratios
     margin = float(doc.settings["MarginWidth"])
-    forms, offsets, baselines, residuals = [], [], [], []
+    forms, offsets, baselines, residuals, pitches = [], [], [], [], {}
     for a in doc.atoms.values():
         if not a.nickname:
             continue
@@ -1955,14 +1978,23 @@ def abbrev_summary(name: str) -> dict:
         text = "".join(g.ch for g in whole)
         right = elem[-1] is whole[-1] and elem[0] is not whole[0]
         c = whole[-1] if right else whole[0]
-        outline = [[(x - a.p[0], y - a.p[1]) for x, y in cont] for g in elem for cont in g.outline()]
+        # a subscript at the centered end (N₃, P(o-tol)₃, Lₙ) clips as if its advance center were on the atom,
+        # wherever it is drawn (N₃: drawn 0.70 right of that, as if full size). Not modeled: dppf above Pd,
+        # whose bond ChemDraw stops below the p descenders (1.9 pt farther; x0.8 / x0.6: no bond drawn)
+        # A first glyph kerned with the next (T|s in Ts) clips where its kerned advance would be
+        # centered: -kern / 2 right of where the SVG draws it (draw_mol.Label.internal_dx)
+        clip_glyphs = elem
+        dx0 = (c.x + c.adv / 2 - a.p[0]) if c.size < float(doc.settings["LabelSize"]) else 0.0
+        if not right and len(whole) > len(elem):
+            dx0 += _kern(elem[-1], whole[len(elem)]) / 2
+        outline = [[(x - a.p[0] - dx0, y - a.p[1]) for x, y in cont] for g in clip_glyphs for cont in g.outline()]
         ends = []
         for b in doc.bonds:
             if a.id not in (b.a, b.b) or not asg.get(b.id, {}).get("lines"):
                 continue
             fr = frame(doc, b.b if b.a == a.id else b.a, a.id)
             end = statistics.median(fr.L - _line_from_shape(ln.shape, fr).u1 for ln in asg[b.id]["lines"])
-            model = draw_mol.clip_distance_band(outline, (-fr.u[0], -fr.u[1]), r.label_band_per_size * c.size, margin,
+            model = draw_mol.clip_distance_band(outline, (-fr.u[0], -fr.u[1]), r.label_band_per_size * preset.text.label_size, margin,
                                                 r.label_clearance_per_margin,
                                                 (L.label_outline_offset_x, L.label_outline_offset_y))
             ends.append({"dir_deg": round(math.degrees(math.atan2(fr.u[1], -fr.u[0])), 1), "end": _r(end),
@@ -1971,15 +2003,34 @@ def abbrev_summary(name: str) -> dict:
         off = c.x + c.adv / 2 - a.p[0]
         offsets.append((right, off))
         baselines.append(c.base - a.p[1])
-        forms.append({"key": a.label, "text": text, "justification": a.justification, "centered": c.ch,
-                      "anchor": "".join(g.ch for g in elem), "centered_dx": _r(off),
-                      "baseline_minus_atom_y": _r(c.base - a.p[1]), "bonds": ends})
+        form = {"atom": a.id, "key": a.label, "text": text, "justification": a.justification, "node_type": a.node_type,
+                "centered": c.ch, "anchor": "".join(g.ch for g in elem), "centered_dx": _r(off),
+                "baseline_minus_atom_y": _r(c.base - a.p[1]), "bonds": ends}
+        if a.alignment in ("Above", "Below"):
+            form["alignment"] = a.alignment
+            form["tail_line"] = tail = _tail_line(doc, elem[0], a.alignment)
+            pitches.setdefault(a.alignment, []).append(tail["pitch"])
+        forms.append(form)
     return {"forms": forms,
+            "tail_line_pitch": {k: stats(v) for k, v in pitches.items()},
             "centered_dx_left_justified": stats(o for rt, o in offsets if not rt),
             "centered_dx_right_justified": stats(o for rt, o in offsets if rt),
             "baseline_minus_atom_y": stats(baselines),
             "bond_end_model_minus_end": stats(residuals),
             "bond_ends_over_0.1": sum(abs(x) > 0.1 for x in residuals)}
+
+
+def _tail_line(doc: Doc, anchor: Glyph, alignment: str) -> dict:
+    """A label set over two lines (ring NTs with LabelAlignment Above / Below, abbrev_2_x*): the
+    tail's glyph chain on the nearest baseline above / below the anchor glyph, its text, its first
+    glyph origin x minus the anchor's, and the baseline pitch."""
+    sign = -1 if alignment == "Above" else 1
+    cands = [g for g in doc.glyphs if g.box and abs(g.x - anchor.x) < anchor.size
+             and 0.5 * anchor.size < sign * (g.base - anchor.base) < 1.3 * anchor.size]
+    seed = min(cands, key=lambda g: (abs(g.x - anchor.x), abs(g.base - anchor.base)))
+    whole = _glyph_chain(doc, [seed])
+    return {"text": "".join(g.ch for g in whole), "origin_dx": _r(whole[0].x - anchor.x),
+            "pitch": _r(abs(whole[0].base - anchor.base))}
 
 
 NH_REFS = ["nh_x1.0", "nh_x0.8", "nh_x0.6"]

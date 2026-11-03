@@ -14,8 +14,8 @@ import math
 import re
 from dataclasses import dataclass, field, replace
 
-from . import richtext
-from .chem import ABBREVIATIONS_REVERSED, ELECTRONEGATIVITY, Bond, Molecule
+from . import abbrev, richtext
+from .chem import ELECTRONEGATIVITY, Atom, Bond, Molecule
 from .fontmetrics import FontFace, load_face
 from .geometry import (Point, add, angle_deg, dot, length, mul, perp, ray_box_exit, seg_point_dist, segment_box_dist,
                        segments_cross,
@@ -61,6 +61,10 @@ class Label:
     size: float
     face: FontFace
     outline: list[list[Point]] = field(default_factory=list)  # element glyph contours, relative to the atom
+    # ChemDraw's own (CDXML, bond clip) x of the label minus where its SVG draws it: T of Ts centered by
+    # its kerned advance (+0.55 at x1.0), N3's subscript 3 centered as drawn (-0.70); elem_origin and
+    # outline are at ChemDraw's own place, the runs where it draws them (layout_abbreviation, §3.5)
+    internal_dx: float = 0.0
 
     def elem_ink_box(self):
         b = self.face.text_ink_bounds(self.element, self.size)
@@ -104,10 +108,17 @@ def h_side(mol: Molecule, i: int) -> str:
 def vertical_h(mol: Molecule, i: int) -> str | None:
     """"top" / "bottom" when atom i is a neutral NH (H_VERTICAL, one H) with two bonds and its open
     side, opposite the sum of the bond directions, within H_VERTICAL_DEG of straight up / down
-    (pyrrolidine with N at the top: H above, nh_x*); else None."""
+    (pyrrolidine with N at the top: H above, nh_x*); else None. A composed label with two bonds
+    (ring NTs: Ts above / below N, abbrev_2_x*) follows the same rule (measured on N only)."""
     a = mol.atoms[i]
     nbs = mol.neighbors(i)
-    if a.element not in H_VERTICAL or a.num_h != 1 or a.charge or a.abbrev is not None or len(nbs) != 2:
+    if len(nbs) != 2 or a.charge:
+        return None
+    if a.abbrev is not None:  # a composed label with two bonds (ring NTs): its tail goes where an NH's H would
+        info = label_info(a)
+        if info.kind != "composed" or info.anchor("right") != a.element:
+            return None
+    elif a.element not in H_VERTICAL or a.num_h != 1:
         return None
     us = [unit(sub(mol.atoms[j].p, a.p)) for j, _ in nbs]
     ox, oy = -(us[0][0] + us[1][0]), -(us[0][1] + us[1][1])  # screen frame: y down
@@ -206,34 +217,68 @@ def layout_label(mol: Molecule, i: int, preset: Preset, face: FontFace, side: st
 
 
 def anchor_symbol(text: str, element: str, side: str = "right") -> str:
-    """The glyphs of an abbreviation that stand for its attachment atom: the element symbol when
-    the label starts with it (OMe: O, CO2Me: C), else the first character (Ph, Bn). A
-    right-justified label (side "left": MeO, MeO2C, TMS) is read from its end instead."""
+    """Text-level anchor (measure_refs reads ChemDraw's glyphs with it): the element symbol when
+    the text starts with it (OMe: O, CO2Me: C), else the first character (Ph, Bn). A
+    right-justified label (side "left": MeO, MeO2C, TMS) is read from its end instead.
+    Drawing uses abbrev.anchor (token-level, LabelInfo.anchor)."""
     if side == "left":
         return element if text.endswith(element) else text[-1:]
     return element if text.startswith(element) else text[:1]
 
 
+def label_info(atom: Atom) -> abbrev.LabelInfo:
+    """The atom's abbreviation label info: set by chem.condense, else the registry's by key."""
+    return atom.abbrev_info or abbrev.info(atom.abbrev, element=atom.element)
+
+
 def layout_abbreviation(mol: Molecule, i: int, preset: Preset, face: FontFace, side: str, base: float) -> Label:
-    """Abbreviation label on the label baseline (acs-style.md §3.5; abbrev_x*: all 21
-    ABBREVIATIONS, both forms, three presets). Bonds leaving to the left or vertically: the key
-    text (OMe, CO2Me) left-justified, first letter centered on the atom. Bonds leaving to the right
-    (side "left"): ChemDraw's reversed text (ABBREVIATIONS_REVERSED: MeO, MeO2C, TMS)
-    right-justified, last letter centered on the atom, as element_x does for –Cl. The bond clips
-    against the anchor glyphs (anchor_symbol, read from the centered end) by the §2.1 model."""
+    """Abbreviation label on the label baseline (acs-style.md §3.5; abbrev_x*, abbrev_2_x*,
+    ligands_x*, metals_x*: about 75 labels, both forms, three presets). Bonds leaving to the left
+    or vertically: the key text (OMe, CO2Me) left-justified, first glyph centered on the atom.
+    Bonds leaving to the right (side "left"): the reversed text (abbrev.reverse: MeO, MeO2C, TMS)
+    right-justified, last glyph centered on the atom, as element_x does for –Cl. The bond clips
+    against the anchor glyphs (abbrev.anchor, at the centered end) by the §2.1 model.
+    - A count subscript at the centered end (N₃, P(o-tol)₃ right-justified) is drawn as if it
+      were full size: the text ends where the full-size digit centered on the atom would end
+      (+0.70 at x1.0); ChemDraw's own place (clip, CDXML) has it centered. A letter subscript (Lₙ)
+      is centered as drawn.
+    - A first glyph kerned with the next (T|s in Ts) is drawn with its plain advance centered;
+      ChemDraw's own place centers its kerned advance (0.55 right at x1.0): the clip and the
+      CDXML use that (Label.internal_dx).
+    - side "top" / "bottom" (vertical_h, a composed label with two bonds: ring NTs): the element
+      on the atom, the tail on the line above / below at the element's origin x, pitch
+      label_tail_above_pitch / label_h_line_pitch (abbrev_2_x*)."""
     atom = mol.atoms[i]
+    info = label_info(atom)
     size = preset.text.label_size
-    text = ABBREVIATIONS_REVERSED[atom.abbrev] if side == "left" else atom.abbrev
-    parts = richtext.parse(text)
-    anchor = anchor_symbol("".join(p.text for p in parts), atom.element, side)
+    src = f"atom:{atom.id}"
+    if side in ("top", "bottom"):
+        ex = atom.x + element_x(face, atom.element, size, "right")
+        pitch = preset.lengths.label_tail_above_pitch if side == "top" else preset.lengths.label_h_line_pitch
+        head = richtext.layout_line(atom.element, ex, base, size, preset, source=src)
+        tail = richtext.layout_line(info.text[len(atom.element):], ex, base - pitch if side == "top" else base + pitch,
+                                    size, preset, source=src)
+        outline = element_outline(face, atom.element, size, ex - atom.x, base - atom.y)
+        return Label(i, atom.element, 0, side, head.runs + tail.runs, (ex, base), size, face, outline)
+    parts = richtext.parse(info.markup(side))
+    anchor = info.anchor(side)
     end = parts[-1] if side == "left" else parts[0]
+    sz, dy = richtext.run_metrics(end, size, preset)
     aface = richtext.face_for(end.style)
-    ex = atom.x + element_x(aface, anchor, size, side)  # anchor glyph origin
-    line = richtext.layout_line(parts, ex, base, size, preset, source=f"atom:{atom.id}")
+    ex = atom.x + element_x(aface, anchor, sz, side)  # anchor glyph origin
+    line = richtext.layout_line(parts, ex, base, size, preset, source=src)
     if side == "left":  # the text ends where the anchor does
-        line.shift(ex + aface.advance(anchor, size) - (line.x0 + line.advance))
-    outline = element_outline(aface, anchor, size, ex - atom.x, base - atom.y)
-    return Label(i, anchor, 0, side, line.runs, (ex, base), size, aface, outline)
+        line.shift(ex + aface.advance(anchor, sz) - (line.x0 + line.advance))
+    internal_dx = 0.0
+    if end.script == "sub" and anchor.isdigit():  # a count at the centered end: drawn as if full size (N3)
+        half = (aface.advance(anchor, size) - aface.advance(anchor, sz)) / 2
+        line.shift(half if side == "left" else -half)
+        internal_dx = -half if side == "left" else half
+    elif side != "left" and len(end.text) > len(anchor):  # ChemDraw centers the anchor's kerned advance (Ts)
+        internal_dx = -aface.kerning(anchor[-1], end.text[len(anchor)], sz) / 2
+    ix = ex + (internal_dx if not (end.script == "sub" and anchor.isdigit()) else 0.0)
+    outline = element_outline(aface, anchor, sz, ix - atom.x, base + dy - atom.y)
+    return Label(i, anchor, 0, side, line.runs, (ix, base), sz, aface, outline, internal_dx)
 
 
 # --------------------------------------------------------------------------- clearance (§2.1)
@@ -275,7 +320,7 @@ def clip_distance_band(contours: list[list[Point]], direction: Point, band: floa
 def clip_distance(label: Label, direction: Point, preset: Preset) -> float:
     """Where a bond leaving `label` along `direction` must stop, from the atom center."""
     L, r = preset.lengths, preset.ratios
-    return clip_distance_band(label.outline, direction, r.label_band_per_size * label.size, L.margin_width,
+    return clip_distance_band(label.outline, direction, r.label_band_per_size * preset.text.label_size, L.margin_width,
                               r.label_clearance_per_margin, (L.label_outline_offset_x, L.label_outline_offset_y))
 
 

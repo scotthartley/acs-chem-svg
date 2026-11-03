@@ -1,0 +1,7 @@
+# expect: label 'OXyz': can't read 'Xyz'
+# a spec's own abbreviation whose text the reversal grammar can't read: Xyz is neither a group nor
+# an element, so the right-justified text (XyzO?) needs `reversed:` or Xyz defined as a group
+species:
+  a: {smiles: "CCOc1ccccc1", abbreviate: [OXyz]}
+abbreviations:
+  OXyz: {smiles: "*OCC"}

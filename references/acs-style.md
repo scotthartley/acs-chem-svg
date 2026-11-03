@@ -313,37 +313,76 @@ Notes:
 - Conditions sit as in §3.3 (above 4.50–5.75, below 11.36–12.50); compound numbers share one
   baseline per row (3 is 0.18 pt high, by hand).
 
-### 3.5 Abbreviations (source: abbrev_x1.0 / x0.8 / x0.6; PPh₃: metals_x1.0 / x0.8 / x0.6)
+### 3.5 Abbreviations (source: abbrev_x\*, abbrev_2_x\*, ligands_x\*, metals_x\* at ×1.0 / 0.8 / 0.6)
 
-Method: `uv run python scripts/measure_refs.py --abbrev`. Each of 21 `chem.ABBREVIATIONS` on
-a benzene ring, once with the bond leaving the label to the left (ring on the right) and once
-to the right, plus OMe, CO₂Me and NO₂ at ±30°. ChemDraw justified them itself
-(`LabelJustification` Left / Right); the CDXML keeps the key text in both forms, and the SVG
-shows the reversed text. PPh₃ is a label typed on Pd in metals_x\* (`NodeType="Unspecified"`
-with ChemDraw's expansion inside, read as a nickname), PPh₃ with its bond to the left and
-below, Ph₃P with it to the right: the same rules as the table below, first / last P on the atom
-within 0.004, bond ends model − end −0.08 to +0.06 (`test_pph3_vs_chemdraw`). PMe₃ follows
-PPh₃ by analogy (Me₃P reversed): **unmeasured**.
+Method: `uv run python scripts/measure_refs.py --abbrev` (2026-11-03 for abbrev_2_x\* and
+ligands_x\*). abbrev_x\*: 21 labels on a benzene ring, bond leaving the label to the left (ring
+on the right) and to the right, plus OMe, CO₂Me and NO₂ at ±30°. abbrev_2_x\*: about 30 more
+groups and formulas the same way (OTf, OTs, OMs, OTBS, OTIPS, OBz, OPiv, OMOM, OTHP, OPMB, NHBoc,
+NHTs, NMe₂, N₃, SPh, SO₂Ph, CHO, CO₂*t*-Bu, B(OH)₂, Bpin / pinB, SnBu₃, Boc, Ts, Cbz, Fmoc, Me,
+*t*-Bu, *i*-Pr, *n*-Bu, Cy, Mes, *p*-Tol), ring NTs (an N-tosyl pyrrolidine turned in 60° steps:
+Ts beside, above and below N), OTBS / NHBoc on vertical bonds, OTf / NHBoc at ±30° and ±150°.
+ligands_x\*: PMe₃, PCy₃, P(*t*-Bu)₃, P(*o*-tol)₃, L, Lₙ, OAc, Cl, Br, dppf, XPhos and IPr round a Pd
+(both justifications, above and below). metals_x\*: PPh₃. ChemDraw justified every label
+itself (`LabelJustification`); the CDXML keeps the key text in both forms and the SVG shows the
+reversed one.
 
-| Parameter | ×1.0 | ×0.8 | ×0.6 | Class |
+The labels are rules, not a list (`abbrev.py`; registry `src/acs_chem_svg/data/abbreviations.yaml`,
+plus a spec's `abbreviations:`). Groups (Me, Boc, TBS) are named substituents; formulas (OMe,
+CO₂Me, PPh₃) are labels on their attachment atom; text labels (L, Lₙ, dppf, XPhos, IPr) have no
+chemistry.
+
+| Rule | ×1.0 | ×0.8 | ×0.6 | Class |
 |---|---|---|---|---|
-| Bond leaving to the left or below | key text left-justified, **first** letter's advance center on the atom: −0.005 (−0.005 to 0.000) | −0.001 | +0.002 | exact |
-| Bond leaving to the right | reversed text right-justified, **last** letter's advance center on the atom, as for Cl– (§2): +0.003 (+0.001 to +0.003) | −0.003 | +0.002 | exact |
-| Baseline below atom center | 3.586 (both forms) | 2.870 | 2.153 | exact (= §2) |
-| Bond clip | §2.1 on the anchor glyph(s): the attachment element at the centered end (OMe, MeO: O; MeO₂C: C; O₂N: N), else the centered letter (Ph: P / h; TMS: T / S). Model − end: −0.09 to +0.06 | −0.08 to +0.07 | −0.08 to +0.06 | exact: all 48 ends per preset within 0.1 pt |
-| Runs | split at script changes, as in conditions: MeO \| ₂ \| C | | | exact |
+| Bond leaving to the left or vertically | key text left-justified, **first** glyph's advance center on the atom: −0.005 to +0.004 (all four references) | −0.005 to +0.005 | −0.005 to +0.005 | exact |
+| Bond leaving to the right | reversed text right-justified, **last** glyph's advance center on the atom: −0.003 to +0.003 | −0.005 to +0.005 | −0.004 to +0.005 | exact |
+| Baseline below atom center | 3.582–3.590 | 2.864–2.874 | 2.147–2.157 | exact (= §2) |
+| Anchor (`abbrev.anchor`) | the attachment element's glyphs when the text starts (reversed: ends) with its token (OMe, MeO: O; MeO₂C: C; Bu₃Sn: Sn; NTs: N), else the end glyph (Ph: P / h; TMS: T / S; N₃ reversed: the ₃) | | | exact |
+| Bond clip | §2.1 on the anchor glyphs at ChemDraw's own place (below). Model − end: −0.09 to +0.06 (abbrev_x\*), −0.09 to +0.12 (abbrev_2_x\*, not counting ring NTs's ends 3° and 9° off the axes), −0.08 to +0.08 (ligands_x\*, not counting dppf above Pd) | −0.09 to +0.08 | −0.09 to +0.09 | exact |
+| Count subscript at the centered end | N₃ and P(*o*-tol)₃ right-justified: the ₃ drawn as if full size (text ends where the full-size 3 centered on the atom would: advance center +0.698 / +0.697); ChemDraw's own place (bond clip, CDXML p) has the ₃ centered | +0.552 / +0.558 | +0.419 / +0.421 | exact |
+| Letter subscript at the centered end | Lₙ right-justified (typed italic subscript): ₙ centered as drawn, +0.002 | +0.005 | +0.005 | exact |
+| Kerned first glyph | Ts left-justified: T drawn with its plain advance centered (−0.004); ChemDraw's own place centers its kerned advance (T\|s −1.11 at 10 pt: +0.55), which the bond clip (model − end −0.08 with it, +0.47 without) and the CDXML label (p, box +0.55) use | −0.02 with it (+0.46) | +0.03 (+0.30) | exact |
+| Ring NTs (two bonds) | the NH rule (§2): Ts beside N (NTs / TsN by the bonds' x sum), or on the line below / above N when the open side is within 15° of vertical, its origin x on N's (0.00); pitch below 8.342 (= `label_h_line_pitch`), above 8.542 (`label_tail_above_pitch`) | 6.650 / 6.800 | 5.017 / 5.117 | exact, n = 1 each |
+| Runs | split at style and script changes, as in conditions: MeO \| ₂ \| C, *t* \| -Bu | | | exact |
 
-Reversed text (ChemDraw's display; `chem.ABBREVIATIONS_REVERSED`):
+**Reversal** (`abbrev.reverse`): the key's tokens in reverse order, also inside parentheses.
+Tokens are matched longest first against the group names, then element symbols (case-sensitive),
+then italic-prefixed names (*s*-Bu); digits after a token or `)` are its count. A one-token
+label stays as it is. An entry's `reversed:` overrides it (Bpin → pinB: pin bridges both O, so
+it is no group). `tests/test_abbrev_grammar.py` holds every right-justified text ChemDraw shows
+in the four references:
 
-| Key | Reversed | Key | Reversed | Key | Reversed |
+| Key | ChemDraw | Key | ChemDraw | Key | ChemDraw |
 |---|---|---|---|---|---|
-| OMe | MeO | NHAc | AcHN | NO₂ | O₂N |
-| OEt | EtO | CO₂Me | MeO₂C | Ph, Bn, Et, Ac | unchanged |
-| OBn | BnO | CO₂Et | EtO₂C | TMS, TES, TBS, TIPS | unchanged |
-| OPh | PhO | CO₂H | HO₂C | | |
-| OAc | AcO | CF₃ | F₃C | | |
-| SMe | MeS | CN | NC | PPh₃ | Ph₃P (metals_x\*) |
-| | | | | PMe₃ | Me₃P (unmeasured) |
+| OMe, OEt, OBn, OPh, OAc | MeO, EtO, BnO, PhO, AcO | OTf, OTs, OTBS, OTIPS | TfO, TsO, TBSO, TIPSO | NHAc, NHBoc, NHTs | AcHN, BocHN, TsHN |
+| OBz, OPiv, OMOM, OTHP, OPMB | BzO, PivO, MOMO, THPO, PMBO | SMe, SPh, SO₂Ph | MeS, PhS, PhO₂S | NMe₂, NO₂, NTs | Me₂N, O₂N, TsN |
+| CO₂Me, CO₂Et, CO₂H, CO₂*t*-Bu | MeO₂C, EtO₂C, HO₂C, *t*-BuO₂C | CHO, CF₃, CN | OHC, F₃C, NC | B(OH)₂, Bpin, SnBu₃ | (HO)₂B, pinB, Bu₃Sn |
+| PPh₃, PMe₃, PCy₃, P(*t*-Bu)₃ | Ph₃P, Me₃P, Cy₃P, (*t*-Bu)₃P | Ph, Bn, Et, Ac, Me, Cy, Mes, *p*-Tol | unchanged | TMS, TES, TBS, TIPS, Boc, Ts, Cbz, Fmoc | unchanged |
+| *t*-Bu, *i*-Pr, *n*-Bu, N₃ | unchanged | Lₙ, dppf, XPhos | unchanged | IPr, P(*o*-tol)₃ | PrI, P(*o*-tol)₃: **ours IPr, (*o*-tol)₃P** |
+
+**User decisions (2026-11-03):** one reversal rule rather than ChemDraw's reading of labels it
+can't interpret: IPr stays IPr (ChemDraw: PrI, iodine + propyl) and P(*o*-tol)₃ reverses to
+(*o*-tol)₃P (ChemDraw: unchanged). Scope: the user's own definitions plus **composition** below.
+
+**Composition** (`chem.compose`): after groups are collapsed, a heteroatom (not C, not a d-block
+metal; uncharged) bonded to collapsed groups and to one or two other atoms becomes one label:
+element, H count, then the groups in SMILES order, identical ones counted, a counted group with
+a hyphen in parentheses: NHBoc, OTBS, SnBu₃, P(*t*-Bu)₃, ring NTs. A formula entry takes
+precedence (CO₂Me stays one entry). Placement as above; two bonds take the NH rule.
+
+**Text labels** (L, Lₙ, dppf, XPhos, IPr, Ar, or the spec's own without SMILES): drawn on a
+stand-in atom (`[*:1]` with `labels: {1: dppf}`), placed by the same rules, no chemistry.
+
+Not matched, by reference (tests list them as known):
+- ring NTs's bonds 3° and 9° off horizontal stop 0.12–0.60 pt nearer N than our model (Open 28's
+  cut, not emulated);
+- dppf above Pd: ChemDraw stops the bond below the p descenders, 1.9 pt farther (x0.8 / x0.6:
+  no bond at all); ours clips at d (Open 31);
+- *p*-Tol left-justified at ×1.0: 0.12 nearer than the oblique p's outline;
+- abbrev_2_x0.8 / x0.6 set *t*-Bu, *i*-Pr, *n*-Bu, *p*-Tol and CO₂*t*-Bu upright (CDXML face 96,
+  not 98), and ligands_x0.8 / x0.6 Lₙ's n upright (face 32): ours stay italic (bond ends up to
+  0.74 pt apart); several of their fragments also sit 1.3–2.3 pt apart in the CDXML and the SVG,
+  so the CDXML diff runs on the ×1.0 files (Open 32).
 
 ### 3.6 Equilibrium arrows (source: equilibrium_x1.0 / x0.8 / x0.6, arrows_large_x1.0)
 
@@ -647,10 +686,9 @@ Rules (M4; unmeasured, user decisions 2026-10-25, flagged at review):
     directions at Pd and Si are within 0.1. A refit with metals_x\* (2026-11-01) does not close it:
     the Pd ends stay 0.16–0.25 off and the other parameters move (offset −0.03, 1.015 × margin,
     band 0.19), so metals_x\* is left out of the fit (`CLIP_FIT_EXCLUDE`).
-26. **Ligand abbreviations other than PPh₃** (§3.5): PMe₃ is drawn by analogy with PPh₃
-    (unmeasured; its CDXML nickname fragment is PPh₃'s cut to the ipso carbons). PCy₃, P(t-Bu)₃,
-    a generic L and LₙPd have no reference: a metals-style file with them on Pd in both
-    justifications, at x0.6 / 0.8 / 1.0, would settle them.
+26. ~~**Ligand abbreviations other than PPh₃** (§3.5).~~ **Resolved (ligands_x\*, 2026-11-03):**
+    PMe₃, PCy₃, P(*t*-Bu)₃, P(*o*-tol)₃, L, Lₙ, dppf, XPhos and IPr on Pd, both justifications, three
+    presets; PMe₃'s CDXML fragment is ChemDraw's own now.
 27. ~~**H above or below an NH / OH** (§2).~~ **Resolved (nh_x\*, 2026-10-30):** an NH's H goes
     above / below N when its open side is within 15° of vertical, beside from 30° (§2). Still
     open: where between 15° and 30° it switches (22.5° assumed), and charged N (iminium NH⁺,
@@ -661,13 +699,23 @@ Rules (M4; unmeasured, user decisions 2026-10-25, flagged at review):
     error; our rings are regular and their bond ends should follow rotation smoothly.
     `tests/test_nh_vs_chemdraw.py` allows these at their measured size (`NEAR_AXIS_KNOWN`,
     `KNOWN`); the other nh_x\* ends stay within 0.1 pt.
-29. **Further group abbreviations** (§3.5; inbox 2026-10-30): OTf / TfO (aryl triflates are
-    drawn in full now) and other common groups (OTs, OMs, Boc, …). Needs an abbrev-style
-    reference (abbrev2_x0.6 / 0.8 / 1.0) with each in both justifications, so the label and its
-    CDXML nickname fragment come from ChemDraw.
+29. ~~**Further group abbreviations** (§3.5).~~ **Resolved (abbrev_2_x\*, 2026-11-03):** about 30
+    more groups and formulas in both justifications; labels are now rules (registry, reversal,
+    anchor, composition), so a label without a reference is drawn and exported too.
 30. **Repeat-unit brackets** ([ ]ₙ for an oligomer or polymer; inbox 2026-10-30): not drawn. Needs
     a reference (polymer_x0.6 / 0.8 / 1.0): brackets across the two bonds at several angles, the
     subscript n's size and place, and the CDXML objects ChemDraw writes for them.
+
+31. **dppf above Pd** (§3.5, ligands_x1.0): ChemDraw stops the bond below dppf's p descenders,
+    1.9 pt beyond our anchor-glyph clip, and draws no bond at ×0.8 / ×0.6; Lₙ above Pd (its
+    subscript n below the baseline) has no bond at any preset, where ours draws a short one. Clipping against the
+    whole label fits dppf but not P(*o*-tol)₃ or XPhos above Pd (2.5 / 0.28 pt off), so the rule
+    is unknown: a reference with descender labels (dppf, dppp, Tol) above and below a metal at
+    several offsets would settle it.
+32. **abbrev_2_x0.8 / x0.6 and ligands_x0.8 / x0.6 re-export** (§3.5): their italic prefixes and
+    Lₙ's n are upright, unlike ×1.0's, and several fragments differ by 1.3–2.3 pt between the
+    CDXML and the SVG. Re-exporting them with italics, from one save, would let the tests hold
+    those presets to 0.1 pt and run the CDXML diff on them.
 
 ## 7. Design-brief (docs/design.md) discrepancies (references win)
 
@@ -988,6 +1036,49 @@ and m2_sequence, x1.0):**
   above. Spec exports cite each caption on its own side and are unchanged.
 - Edit check (user): nicknames expand and contract, contributors drag and brackets move as with
   ChemDraw's own drawings; no problems reported.
+
+**General abbreviations (phase 4c; source: abbrev_2_x\*, ligands_x\*; 2026-11-03).**
+`tests/test_cdxml.py::test_abbrev2_reference_diff` holds abbrev_2_x1.0 and ligands_x1.0 (the
+×0.8 / ×0.6 files' CDXML and SVG disagree, Open 32); `test_ring_nts_cdxml`,
+`test_abbreviation_round_trip`, `test_text_label_cdxml`, `test_italic_label_runs`.
+
+| Item | ChemDraw's files | Ours |
+|---|---|---|
+| NodeType | its own nicknames `Nickname` (Boc, Ts, Cbz, Fmoc, Me, *t*-Bu, *i*-Pr, *n*-Bu, Cy, Mes, N₃, as abbrev_x\*'s Ph … TIPS); formula labels and compositions `Fragment` (OTf, NHBoc, SnBu₃, ring NTs); labels typed on Pd `Unspecified` with the expansion inside (PMe₃, PCy₃, P(*t*-Bu)₃; ChemDraw read IPr as I + Pr); labels it can't interpret `Unspecified` with **no** inner fragment (L, Lₙ, dppf, XPhos, P(*o*-tol)₃, Bpin, *p*-Tol) | the template's; a generated one: registry `nickname: true` → `Nickname` + IsNickname, else `Fragment`; a text label `Unspecified`, no fragment. **Deliberate difference:** P(*o*-tol)₃, Bpin, *p*-Tol keep their chemistry as a `Fragment` (RDKit reads them back) |
+| Templates | — | `presets/cdxml/<preset>.nicknames.xml` from abbrev_x, abbrev_2_x and ligands_x (left-justified forms; OTs's right-justified one turned 180°) and metals_x: 55 keys. PMe₃'s is now ChemDraw's (ligands_x\*: methyls on the cross), not PPh₃'s cut down. Z, CrossingBonds, BondCircularOrdering, NeedsClean and AS / BS / AtomID are dropped |
+| Generated fragment | — | any group, formula or composition without a template (`cdxml_writer.generated_nickname`): RDKit 2D coordinates of its SMILES scaled to BondLength, attachment atom at the origin, ExternalConnectionPoint BondLength − 0.05 out on −x; heteroatoms Element and NumHydrogens, charges, bond orders. **Written but flagged until gate 4c passes** |
+| Two-bond label (ring NTs) | one ExternalConnectionPoint per bond, BondLength − 0.05 along it (14.35 at ×1.0), some with `ExternalConnectionNum` 1 / 2; the inner `<fragment ConnectionOrder="ecp1 ecp2">`; the node `BondOrdering="bond1 bond2"` (outer bonds in the same order) | the same, ExternalConnectionNum always; the group turned (or mirrored) to fit both bonds by least squares, each ECP then put exactly on its bond |
+| Label `<t>` | key text; `<s>` runs by style: plain and count digits face 96, an italic prefix 98 (*t* \| -Bu), a typed letter subscript 32 + 2 (Lₙ's n: 34); NTs below / above: `LabelAlignment` Below / Above, `LineStarts` "2 4" / "3 5", p.y 3.59 below the node / 4.98 above it (`cdxml.tail_above_rise` 8.57 / 6.90 / 5.43) | the same (`cdxml_writer.label_runs`) |
+| p of N₃ and Ts | right-justified N₃: p.x the end of the ₃ centered on the atom (not of the drawn text, 0.70 further); Ts left-justified: p and box 0.55 right of the drawn glyphs (T's kerned advance centered) | `Label.internal_dx` |
+
+**Gate (pending):** `scripts/cdxml_spike.py --phase 4c` writes abbrev_2_x1.0, ligands_x1.0 and
+m1_abbrev2_x1.0 (a template, generated fragments for MEM and the spec's own group, OTBS, ring
+NTs, Ln and dppf, *t*-Bu, N₃); the user re-saves them in ChemDraw (CDXML and SVG, expanding and
+contracting each generated label) and `--diff` checks the nodes, ECPs and texts.
+
+**Stored text of right-justified labels (user review of the phase 4c files, 2026-11-03).**
+ChemDraw reverses a right-justified label it reads (OTf, SnBu₃: the key is stored). For the rest,
+the review showed two failures:
+- Bpin stored as pinB, a Fragment with its inner fragment, Right: ChemDraw showed **Bnip**
+  (it reversed the unknown text glyph by glyph). Its own typed pinB survives only as an
+  Unspecified node with its Warning and no inner fragment.
+- IPr written Left-justified at the drawn start: ChemDraw showed **PrI** (it re-justified the
+  label from its bond and reversed I + Pr).
+
+Resolved by `label_variants_x1.0.cdxml` (`cdxml_spike.py --phase 4c`, four candidate forms per
+row; user, 2026-11-03): only row B shows IPr and only row C shows pinB. So, right-justified:
+- a text label ChemDraw reads as a formula (IPr) stores the text whose token reversal is ours
+  (PrI; `abbrev.chemdraw_stored`), Unspecified, Right;
+- a label ChemDraw can't read (Bpin, P(*o*-tol)₃, *p*-Tol, a spec's own group) is ChemDraw's own
+  form: Unspecified, `Warning="ChemDraw can't interpret this label."`, no inner fragment, the
+  displayed text (pinB, (*o*-tol)₃P, XyzO). It has no chemistry in ChemDraw (no Expand Label);
+  left-justified, the same labels keep their generated or template fragment.
+`abbrev.chemdraw_tokens` approximates ChemDraw's reading: the registry's groups less *o*-tol and
+*p*-Tol (measured as unknown). (o-tol)₃P in row C is assumed to behave as pinB (same form).
+
+Also from that review: `cdxml_to_molfile.py` reads a label typed as its `reversed:` text (pinB)
+as its key, so abbrev_2_x\*'s left Bpin is a template; and a label atom never carries RDKit's
+radicals (the SnBu₃ template's Sn had drawn a carbene lone pair).
 
 ### 13.4 Charges and Lewis structures (phase 4b; source: charges_lewis_x1.0 / x0.8 / x0.6)
 

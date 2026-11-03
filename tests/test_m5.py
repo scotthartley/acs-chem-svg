@@ -100,4 +100,5 @@ def test_silyl_abbreviations():
         "tbs": {"smiles": "CC(C)(C)[Si](C)(C)OCCO", "abbreviate": ["TBS"]}}})
     tmsa, tbs = molecules(spec, ROOT)
     assert [a.abbrev for a in tmsa.atoms if a.abbrev] == ["TMS"] and len(tmsa.atoms) == 3
-    assert [a.abbrev for a in tbs.atoms if a.abbrev] == ["TBS"]
+    # TBS on an ether O merges into the O's label (composition, acs-style.md §3.5): OTBS
+    assert [a.abbrev for a in tbs.atoms if a.abbrev] == ["OTBS"] and len(tbs.atoms) == 4

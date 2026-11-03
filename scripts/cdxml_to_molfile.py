@@ -1,7 +1,8 @@
 """Convert each fragment of a ChemDraw reference CDXML into a molfile template.
 
 The output keeps ChemDraw's atom coordinates, wedges, charges and H counts, with each
-CDXML atom id stored as the atom-map number. Rendering these templates compares our
+CDXML atom id stored as the atom-map number (ids above 999, which V2000 can't hold, in
+<reference>__<n>.ids.json, by atom index). Rendering these templates compares our
 drawing conventions with ChemDraw's on an identical layout (scripts/compare.py,
 tests/test_m1_vs_chemdraw.py). Coordinates are pt x 1.5 / BondLength (1.5 A bonds,
 y up), so chem.from_molfile scales them back to the exact positions on ChemDraw's SVG page.
@@ -33,6 +34,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import measure_refs as mr  # noqa: E402
 import spike_rdkit  # noqa: E402
 
+from acs_chem_svg import abbrev, chem  # noqa: E402
 from acs_chem_svg.chem import ABBREVIATIONS  # noqa: E402
 
 OUT = mr.REPO / "templates" / "m1"
@@ -49,7 +51,8 @@ M2_REFERENCES = ["scheme_basic_x1.0", "scheme_basic_x0.8", "scheme_basic_x0.6",
 M3_REFERENCES = ["mech_basic_x1.0", "mech_basic_x0.8", "mech_basic_x0.6"]
 M4_REFERENCES = ["resonance_x1.0", "resonance_x0.8", "resonance_x0.6",
                  "scheme_wrap_x1.0", "scheme_wrap_x0.8", "scheme_wrap_x0.6"]
-ABBREV_REFERENCES = ["abbrev_x1.0", "abbrev_x0.8", "abbrev_x0.6"]
+ABBREV_REFERENCES = ["abbrev_x1.0", "abbrev_x0.8", "abbrev_x0.6", "abbrev_2_x1.0", "abbrev_2_x0.8", "abbrev_2_x0.6",
+                     "ligands_x1.0", "ligands_x0.8", "ligands_x0.6"]
 CHAIR_REFERENCES = mr.CHAIR_REFS
 
 
@@ -71,9 +74,28 @@ def fragments(doc: mr.Doc) -> list[tuple[int, str, set[str]]]:
             continue
         group = {fid} | {f for f, to in merged.items() if to == fid}
         atoms = {aid for aid, a in doc.atoms.items() if a.frag in group}
-        if atoms and not any(doc.atoms[a].nickname and doc.atoms[a].label not in ABBREVIATIONS for a in atoms):
+        if atoms and not any(doc.atoms[a].nickname and not _drawable(doc, a) for a in atoms):
             out.append((n, fid, atoms))
     return out
+
+
+def label_key(label: str | None) -> str | None:
+    """A nickname's registry key: a label typed in its right-justified form, where that is an
+    entry's `reversed:` override (pinB), is its key (Bpin); any other label is itself."""
+    typed = {abbrev.plain(e.reversed): k for k, e in abbrev.default().entries.items() if e.reversed}
+    return typed.get(label, label)
+
+
+def _drawable(doc: mr.Doc, aid: str) -> bool:
+    """A nickname we draw from a template alias: a registry group or formula, or a label composed
+    of its element and registry groups (ring NTs)."""
+    a = doc.atoms[aid]
+    label = label_key(a.label)
+    e = abbrev.default().get(label)
+    if label in ABBREVIATIONS or (e is not None and e.kind == "text"):  # text: L, dppf on a stand-in
+        return True
+    degree = sum(1 for b in doc.bonds if aid in (b.a, b.b))
+    return chem.composed_info(label, a.element, degree) is not None
 
 
 def front_bonds(doc: mr.Doc, atoms: set[str]) -> list[list[str]]:
@@ -87,6 +109,11 @@ def front_bonds(doc: mr.Doc, atoms: set[str]) -> list[list[str]]:
         if front.a in atoms and front.b in atoms:
             out.append([front.a, front.b])
     return out
+
+
+def ids_path(name: str, n: int) -> Path:
+    """CDXML atom ids by atom index, for a template whose ids don't fit V2000 atom maps (> 999)."""
+    return template_path(name, n).with_suffix(".ids.json")
 
 
 def front_path(name: str, n: int) -> Path:
@@ -118,7 +145,7 @@ def with_wedges(block: str, doc: mr.Doc, ids: list[str]) -> str:
 
 def template_path(name: str, n: int) -> Path:
     out = (OUT_M2 if name.startswith("scheme_") else OUT_M3 if name.startswith("mech_")
-           else OUT_M4 if name.startswith("resonance_") else OUT_ABBREV if name.startswith("abbrev_")
+           else OUT_M4 if name.startswith("resonance_") else OUT_ABBREV if name.startswith(("abbrev_", "ligands_"))
            else OUT_CHAIR if name.startswith("chair_") else OUT)
     return out / f"{name}__{n}.mol"
 
@@ -126,9 +153,17 @@ def template_path(name: str, n: int) -> Path:
 def convert(name: str) -> list[Path]:
     doc = mr.load(name)
     pt_per_unit = float(doc.settings["BondLength"]) / 1.5
+    for a in doc.atoms.values():  # a label ChemDraw kept as text (p-Tol, Bpin: no inner fragment)
+        if a.nickname:
+            a.label = label_key(a.label)
+        if a.nickname and a.element == "X" and a.label in ABBREVIATIONS:
+            a.element = chem.abbrev_element(a.label)
+        elif a.nickname and a.element == "X":  # a text label (dppf): a dummy stand-in atom
+            a.element = "*"
     written = []
     for n, fid, atoms in fragments(doc):
-        mol, ids = spike_rdkit.build_mol(doc, pt_per_unit, atoms, map_ids=True, nicknames=True)
+        big = max(int(a) for a in atoms) > 999  # V2000 atom maps hold 3 digits: ids go to a sidecar
+        mol, ids = spike_rdkit.build_mol(doc, pt_per_unit, atoms, map_ids=not big, nicknames=True)
         mol.GetConformer().Set3D(False)
         mol.SetProp("_Name", f"{name} fragment {fid}")
         for a, aid in zip(mol.GetAtoms(), ids):
@@ -137,6 +172,11 @@ def convert(name: str) -> list[Path]:
         path = template_path(name, n)
         path.write_text(with_wedges(Chem.MolToMolBlock(mol), doc, ids))
         written.append(path)
+        if big:
+            ids_path(name, n).write_text(json.dumps(ids) + "\n")
+            written.append(ids_path(name, n))
+        elif ids_path(name, n).exists():
+            ids_path(name, n).unlink()
         front = front_bonds(doc, atoms) if name.startswith("chair_") else []
         if front:
             front_path(name, n).write_text(json.dumps(front) + "\n")

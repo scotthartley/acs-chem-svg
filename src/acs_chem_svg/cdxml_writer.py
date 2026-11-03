@@ -149,12 +149,13 @@ from dataclasses import dataclass, field
 from lxml import etree
 from rdkit import Chem
 
-from . import richtext
+from . import abbrev, richtext
 from .arrows import ARROW_TYPES, arc_step_arrow
 from .brackets import square_bracket
+from .abbrev import LabelInfo
 from .chem import Molecule
 from .cycle import CycleLayout, build_cycle
-from .draw_mol import Drawer
+from .draw_mol import Drawer, label_info
 from .geometry import Point, add, arc_point, arc_segments, mul, sub, union_box, unit
 from .layout import Placed, SchemeLayout, build_scheme, m1_placed
 from .mechanism import curved_arrow, fishhook_side
@@ -166,6 +167,9 @@ from .svg_writer import to_svg
 HEADER_DIR = PRESET_DIR / "cdxml"
 ARC_TOOLS = (90, 120, 180, 270)  # ChemDraw's arc tools: the legacy <graphic>'s AngularSize (arcs_x*, arcs_eq_x*)
 _PT = Chem.GetPeriodicTable()
+
+
+CANT_INTERPRET = "ChemDraw can't interpret this label."  # abbrev_2_x*, ligands_x*: Unspecified labels
 
 
 class CdxmlUnsupported(ValueError):
@@ -259,6 +263,112 @@ def pts(*xy: float) -> str:
     return " ".join(f2(v) for v in xy)
 
 
+ECP_INSET = 0.05  # an ExternalConnectionPoint sits BondLength - 0.05 from its atom (abbrev_x*: -14.35 at 14.4)
+
+
+def outer_bonds(mol: Molecule, i: int) -> list[tuple[int, object]]:
+    """Atom i's bonds in ExternalConnectionPoint order ([*:k] of a composed label's SMILES):
+    by neighbor index, as chem.compose numbered them."""
+    return sorted(mol.neighbors(i), key=lambda nb: nb[0])
+
+
+def _fit_turn(have: list[Point], want: list[Point]) -> tuple[float, float, bool]:
+    """(cos, sin, mirror) of the turn (after mirroring y when that fits better) taking the
+    template's connection directions `have` onto the bond directions `want` (least squares)."""
+    best = None
+    for mirror in (False, True):
+        hs = [(x, -y) if mirror else (x, y) for x, y in have]
+        sx = sum(h[0] * w[0] + h[1] * w[1] for h, w in zip(hs, want))
+        sy = sum(h[0] * w[1] - h[1] * w[0] for h, w in zip(hs, want))
+        ang = math.atan2(sy, sx)
+        c, s = math.cos(ang), math.sin(ang)
+        err = sum((h[0] * c - h[1] * s - w[0]) ** 2 + (h[0] * s + h[1] * c - w[1]) ** 2 for h, w in zip(hs, want))
+        if best is None or err < best[0] - 1e-9:
+            best = (err, c, s, mirror)
+    return best[1], best[2], best[3]
+
+
+def generated_nickname(info: LabelInfo, degree: int, bond_length: float) -> etree._Element:
+    """A <nickname> template for a label ChemDraw gave no fragment for (acs-style.md §13.3,
+    generated; gate: phase 4c): RDKit 2D coordinates of the label's SMILES scaled to the bond
+    length, the attachment atom at the origin; one ExternalConnectionPoint per `*` (one: on -x,
+    BondLength - 0.05 out; [*:k]: ExternalConnectionNum k). Heteroatoms carry Element and
+    NumHydrogens, charged atoms Charge, bonds Order, as in abbrev_x*'s templates. NodeType:
+    Nickname for a registry entry ChemDraw writes as one, else Fragment."""
+    from rdkit.Chem import rdDepictor
+    m = Chem.MolFromSmiles(info.smiles)
+    rdDepictor.Compute2DCoords(m)
+    conf = m.GetConformer()
+    stars = sorted((a for a in m.GetAtoms() if a.GetAtomicNum() == 0), key=lambda a: a.GetAtomMapNum())
+    if len(stars) != degree:
+        raise CdxmlUnsupported(f"abbreviation {info.key}: {len(stars)} connection(s) for {degree} bond(s)")
+    attach = stars[0].GetNeighbors()[0].GetIdx()
+    o = conf.GetAtomPosition(attach)
+    lengths = [(conf.GetAtomPosition(b.GetBeginAtomIdx()) - conf.GetAtomPosition(b.GetEndAtomIdx())).Length()
+               for b in m.GetBonds()]
+    k = bond_length / sorted(lengths)[len(lengths) // 2]
+    xy = {a.GetIdx(): ((conf.GetAtomPosition(a.GetIdx()).x - o.x) * k, -(conf.GetAtomPosition(a.GetIdx()).y - o.y) * k)
+          for a in m.GetAtoms()}
+    if degree == 1:  # turn so the connection point is on -x
+        sx, sy = xy[stars[0].GetIdx()]
+        ang = math.pi - math.atan2(sy, sx)
+        c, s = math.cos(ang), math.sin(ang)
+        xy = {i: (x * c - y * s, x * s + y * c) for i, (x, y) in xy.items()}
+    reach = bond_length - ECP_INSET
+    for st in stars:  # each connection point BondLength - 0.05 out along its own direction
+        u = unit(xy[st.GetIdx()])
+        xy[st.GetIdx()] = (u[0] * reach, u[1] * reach)
+    attrs = {"key": info.key, "NodeType": "Nickname" if info.nickname else "Fragment"}
+    if info.nickname:
+        attrs["IsNickname"] = "yes"
+    el = etree.Element("nickname", attrs)
+    frag = etree.SubElement(el, "fragment")
+    ids = {}
+    order = [attach] + [a.GetIdx() for a in m.GetAtoms() if a.GetIdx() != attach and a.GetAtomicNum()] + \
+        [st.GetIdx() for st in stars]
+    for n, i in enumerate(order, 1):
+        a = m.GetAtomWithIdx(i)
+        ids[i] = str(n)
+        na = {"id": ids[i], "p": pts(*xy[i])}
+        if a.GetAtomicNum() == 0:
+            na["NodeType"] = "ExternalConnectionPoint"
+            if degree > 1:
+                na["ExternalConnectionNum"] = str(a.GetAtomMapNum())
+        else:
+            if a.GetSymbol() != "C":
+                na["Element"] = str(a.GetAtomicNum())
+                na["NumHydrogens"] = str(a.GetTotalNumHs())
+            if a.GetFormalCharge():
+                na["Charge"] = str(a.GetFormalCharge())
+        etree.SubElement(frag, "n", na)
+    Chem.Kekulize(m, clearAromaticFlags=True)
+    for n, b in enumerate(m.GetBonds(), len(order) + 1):
+        ba = {"id": str(n), "B": ids[b.GetBeginAtomIdx()], "E": ids[b.GetEndAtomIdx()]}
+        order_ = {Chem.BondType.DOUBLE: "2", Chem.BondType.TRIPLE: "3"}.get(b.GetBondType())
+        if order_:
+            ba["Order"] = order_
+        etree.SubElement(frag, "b", ba)
+    return el
+
+
+def label_runs(markup: str, base_face: str) -> list[tuple[str, str]]:
+    """(face, text) <s> runs of a label (abbrev_2_x1.0, ligands_x1.0): plain text and count digits
+    in the label face (96, formula: ChemDraw subscripts the digits itself), italic runs 96 | 2
+    (*t*-Bu: t 98), a letter subscript 32 (+ 2 italic: Lₙ 34)."""
+    out: list[tuple[str, str]] = []
+    base = int(base_face or 0)
+    for r in richtext.parse(markup):
+        if r.script == "sub" and not r.text.isdigit():
+            face = 32 | (2 if r.style == "italic" else 0)
+        else:
+            face = base | (2 if r.style == "italic" else 0)
+        if out and out[-1][0] == str(face):
+            out[-1] = (str(face), out[-1][1] + r.text)
+        else:
+            out.append((str(face), r.text))
+    return out
+
+
 @dataclass
 class Ids:
     """Sequential object ids and Z order, as ChemDraw numbers them."""
@@ -324,15 +434,39 @@ class _Writer:
         self.check(mol)
         frag = etree.SubElement(page, "fragment", {"id": self.ids.new()})
         node_ids, label_boxes = {}, []
+        outer_nodes = []  # (node, atom idx): labels with two or more bonds get BondOrdering
         for a in mol.atoms:
             x, y = a.x + off[0], a.y + off[1]
             node_ids[a.idx] = nid = self.ids.new()
             attrs = {"id": nid, "p": pts(x, y), "Z": self.ids.next_z()}
             if a.abbrev is not None:  # a nickname node: no Element; its atoms are in the inner fragment
-                tpl = self.nickname_template(mol, a)
+                info = label_info(a)
+                lab = d.labels[a.idx]
+                if info.kind == "text":  # no chemistry: Unspecified, no inner fragment (ligands_x*: L, dppf)
+                    n = etree.SubElement(frag, "n", {**attrs, "NodeType": "Unspecified", "NeedsClean": "yes"})
+                    text, markup = a.abbrev, info.text
+                    if lab.h_side == "left" and abbrev.reads_as_formula(a.abbrev):
+                        # ChemDraw reads IPr as I + Pr and reverses it: store the text its reversal
+                        # turns into ours (PrI shows IPr; phase 4c label variants, row B)
+                        text = markup = abbrev.chemdraw_stored(a.abbrev)
+                    label_boxes.append(self.label(n, lab, text, off, markup=markup))
+                    continue
+                if lab.h_side == "left" and abbrev.chemdraw_tokens(a.abbrev) is None:
+                    # right-justified, a label ChemDraw can't read (Bpin, P(o-tol)3, p-Tol, a spec's
+                    # own group): ChemDraw reverses a stored nickname glyph by glyph (pinB -> Bnip)
+                    # and keeps the text only as its own form, Unspecified with its Warning and no
+                    # inner fragment (abbrev_2_x*'s typed pinB; label variants, row C). No chemistry.
+                    n = etree.SubElement(frag, "n", {**attrs, "Warning": CANT_INTERPRET,
+                                                     "NodeType": "Unspecified", "NeedsClean": "yes"})
+                    label_boxes.append(self.label(n, lab, abbrev.plain(info.markup("left")), off,
+                                                  markup=info.markup("left")))
+                    continue
+                tpl = self.nickname_template(mol, a, info)
                 n = etree.SubElement(frag, "n", {**attrs, "NodeType": tpl.get("NodeType"), "NeedsClean": "yes"})
-                self.nickname(n, tpl, mol, a, off)
-                label_boxes.append(self.label(n, d.labels[a.idx], a.abbrev, off, tpl.get("IsNickname")))
+                ecps = self.nickname(n, tpl, mol, a, off)
+                if len(ecps) > 1:
+                    outer_nodes.append((n, a.idx))
+                label_boxes.append(self.label(n, lab, a.abbrev, off, tpl.get("IsNickname"), markup=info.text))
                 continue
             if a.element != "C":
                 attrs["Element"] = str(_PT.GetAtomicNumber(a.element))
@@ -352,8 +486,10 @@ class _Writer:
                 label_boxes.append(self.label(n, lab, label_text(a.element, a.num_h), off))
         zs = [self.ids.next_z() for _ in mol.bonds]
         rank = z_order(mol, d)
+        bond_ids = {}
         for b in mol.bonds:
-            attrs = {"id": self.ids.new(), "Z": zs[rank[b.idx]], "B": node_ids[b.a], "E": node_ids[b.b]}
+            bond_ids[b.idx] = self.ids.new()
+            attrs = {"id": bond_ids[b.idx], "Z": zs[rank[b.idx]], "B": node_ids[b.a], "E": node_ids[b.b]}
             if b.order != 1:
                 attrs["Order"] = str(b.order)
             if b.stereo:
@@ -361,6 +497,8 @@ class _Writer:
             if mol.lewis and not mol.lewis_lines:  # the dots show the bond; the bond keeps the chemistry
                 attrs["Visible"] = "no"
             etree.SubElement(frag, "b", attrs)
+        for n, i in outer_nodes:  # ring NTs (abbrev_2_x*): the outer bonds, in ECP order
+            n.set("BondOrdering", " ".join(bond_ids[b.idx] for _, b in outer_bonds(mol, i)))
         for a in mol.atoms:
             if d.charge_sign(a.idx) is not None:
                 self.charge(frag, d, a, off, node_ids[a.idx])
@@ -474,36 +612,54 @@ class _Writer:
                 raise CdxmlUnsupported(f"{mol.name}: {ds.kind} dots are not written to CDXML")
         return boxes
 
-    def nickname_template(self, mol: Molecule, a) -> etree._Element:
-        tpl = load_nicknames(self.preset_name).get(a.abbrev)
-        if tpl is None:
-            raise CdxmlUnsupported(f"{mol.name}: no CDXML nickname template for {a.abbrev!r}")
-        if mol.degree(a.idx) != 1:
-            raise CdxmlUnsupported(f"{mol.name}: abbreviation {a.abbrev} with {mol.degree(a.idx)} bonds")
-        return tpl
+    def nickname_template(self, mol: Molecule, a, info: LabelInfo) -> etree._Element:
+        """ChemDraw's <nickname> template for a one-bond label with a reference (abbrev_x*,
+        abbrev_2_x*, ligands_x*, metals_x*), else one generated from the label's SMILES
+        (generated_nickname: two-bond labels such as ring NTs, groups without a reference)."""
+        tpl = load_nicknames(self.preset_name).get(a.abbrev) if mol.degree(a.idx) == 1 else None
+        if tpl is not None:
+            return tpl
+        if not info.smiles:
+            raise CdxmlUnsupported(f"{mol.name}: abbreviation {a.abbrev} has no structure to write")
+        return generated_nickname(info, mol.degree(a.idx), float(self.root.get("BondLength")))
 
-    def nickname(self, n, tpl: etree._Element, mol: Molecule, a, off: Point) -> None:
-        """The nickname's inner <fragment> (abbrev_x*): ChemDraw's group from the template, turned
-        and moved rigidly so its attachment atom is on `a` and its ExternalConnectionPoint (on -x
-        in the template) points at a's one neighbor."""
-        (j, _), = mol.neighbors(a.idx)
-        u = unit(sub(mol.atoms[j].p, a.p))
-        c, s = -u[0], -u[1]  # the template's +x
+    def nickname(self, n, tpl: etree._Element, mol: Molecule, a, off: Point) -> list[str]:
+        """The nickname's inner <fragment> (abbrev_x*): the group from the template, turned and
+        moved rigidly so its attachment atom is on `a` and its ExternalConnectionPoints (on -x in a
+        one-bond template; [*:k] in bond order otherwise) point at a's neighbors; each ECP then sits
+        on its bond, BondLength - 0.05 from the atom (ring NTs, abbrev_2_x*). Returns the ECP ids."""
         src = tpl.find("fragment")
+        nbs = outer_bonds(mol, a.idx)
+        src_ecps = [m for m in src.findall("n") if m.get("NodeType") == "ExternalConnectionPoint"]
+        src_ecps.sort(key=lambda m: int(m.get("ExternalConnectionNum", "1")))
+        want = [unit(sub(mol.atoms[j].p, a.p)) for j, _ in nbs]
+        have = [unit(tuple(float(v) for v in m.get("p").split())) for m in src_ecps]
+        c, s, mirror = _fit_turn(have, want)
         frag = etree.SubElement(n, "fragment", {"id": self.ids.new()})
         ids = {m.get("id"): self.ids.new() for m in src.findall("n")}
+        reach = float(self.root.get("BondLength")) - ECP_INSET
         for m in src.findall("n"):
             vx, vy = (float(v) for v in m.get("p").split())
+            vy = -vy if mirror else vy
             p = (a.x + off[0] + vx * c - vy * s, a.y + off[1] + vx * s + vy * c)
+            if m in src_ecps and len(src_ecps) > 1:
+                u = want[src_ecps.index(m)]
+                p = (a.x + off[0] + u[0] * reach, a.y + off[1] + u[1] * reach)
             etree.SubElement(frag, "n", {"id": ids[m.get("id")], "p": pts(*p),
                                          **{k: v for k, v in m.attrib.items() if k not in ("id", "p")}})
         for b in src.findall("b"):
             etree.SubElement(frag, "b", {"id": self.ids.new(), "B": ids[b.get("B")], "E": ids[b.get("E")],
                                          **{k: v for k, v in b.attrib.items() if k not in ("id", "B", "E")}})
+        ecps = [ids[m.get("id")] for m in src_ecps]
+        if len(ecps) > 1:
+            frag.set("ConnectionOrder", " ".join(ecps))
+        return ecps
 
-    def label(self, n, lab, text: str, off: Point, is_nickname: str | None = None) -> tuple:
+    def label(self, n, lab, text: str, off: Point, is_nickname: str | None = None,
+              markup: str | None = None) -> tuple:
         """A label's <t>: `text` is the CDXML text (NH2, or an abbreviation's key, OMe, in both
-        forms)."""
+        forms); `markup` its richtext form when it has italics or letter subscripts (*t*-Bu,
+        L_*n*: label_runs)."""
         # bonds to the right: right-justified (H2N, HO, -Cl, MeO); one glyph (-F, -H) stays Left
         right = lab.h_side == "left" and len(text) > 1
         center = lab.h_side == "center"  # draw_mol.centered_label (metals_x*: Center x3, p.x on the atom)
@@ -515,14 +671,19 @@ class _Writer:
         # ChemDraw stores y half the ink top of the label's full-size glyphs below the label's
         # center line (atom y, or where center_terminal_labels moved it), not the drawn baseline:
         # 3.68 for O, C, S (OH, Cl, NO2, TMS), 3.59 for N, H, F, T (NH2, NHAc), 3.60 for Ph
-        mid = base - self.preset.ratios.label_baseline_per_size * lab.size
-        y = mid + max(r.face.text_ink_bounds(r.text, r.size)[3] for r in lab.runs if r.size == lab.size) / 2
+        size = self.preset.text.label_size  # (lab.size is the anchor's: a subscript N3's 3)
+        mid = base - self.preset.ratios.label_baseline_per_size * size
+        y = mid + max(r.face.text_ink_bounds(r.text, r.size)[3] for r in lab.runs if r.size == size) / 2
         box = union_box(r.bbox() for r in lab.runs)  # in the stored frame too: moved by y - base
-        box = (box[0] + off[0], box[1] + y - base + off[1], box[2] + off[0], box[3] + y - base + off[1])
+        dx = lab.internal_dx  # ChemDraw's own place of the text (Ts, N3: draw_mol.Label)
+        box = (box[0] + dx + off[0], box[1] + y - base + off[1], box[2] + dx + off[0], box[3] + y - base + off[1])
         just = "Right" if right else "Center" if center else "Left"
-        vertical = {"top": ("Above", "2 4"), "bottom": ("Below", "2 3")}.get(lab.h_side)  # nh_x*: NH, H above / below
-        if lab.h_side == "top":  # p is on the first line, the H's
-            y -= self.preset.cdxml.h_above_rise
+        # nh_x*: NH, H above / below (LineStarts 2 4 / 2 3); abbrev_2_x*: NTs, Ts above / below (3 5 / 2 4)
+        head, tail = len(lab.element), len(text) - len(lab.element)
+        vertical = {"top": ("Above", f"{tail + 1} {len(text) + 2}"),
+                    "bottom": ("Below", f"{head + 1} {len(text) + 1}")}.get(lab.h_side)
+        if lab.h_side == "top":  # p is on the first line, the H's (the tail's)
+            y -= self.preset.cdxml.h_above_rise if text == lab.element + "H" else self.preset.cdxml.tail_above_rise
         attrs = {"p": pts(x + off[0], y + off[1]), "BoundingBox": pts(*box), "LabelJustification": just}
         if right or center:
             attrs["Justification"] = just
@@ -533,7 +694,8 @@ class _Writer:
         if is_nickname:
             attrs["IsNickname"] = is_nickname
         t = etree.SubElement(n, "t", attrs)
-        etree.SubElement(t, "s", self.s_attrs).text = text
+        for face, run in label_runs(markup or text, self.s_attrs["face"]):
+            etree.SubElement(t, "s", {**self.s_attrs, "face": face}).text = run
         return box
 
 
