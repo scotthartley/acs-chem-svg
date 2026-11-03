@@ -290,7 +290,7 @@ def _fit_turn(have: list[Point], want: list[Point]) -> tuple[float, float, bool]
 
 def generated_nickname(info: LabelInfo, degree: int, bond_length: float) -> etree._Element:
     """A <nickname> template for a label ChemDraw gave no fragment for (acs-style.md §13.3,
-    generated; gate: phase 4c): RDKit 2D coordinates of the label's SMILES scaled to the bond
+    generated; gate 4c passed 2026-11-03): RDKit 2D coordinates of the label's SMILES scaled to the bond
     length, the attachment atom at the origin; one ExternalConnectionPoint per `*` (one: on -x,
     BondLength - 0.05 out; [*:k]: ExternalConnectionNum k). Heteroatoms carry Element and
     NumHydrogens, charged atoms Charge, bonds Order, as in abbrev_x*'s templates. NodeType:

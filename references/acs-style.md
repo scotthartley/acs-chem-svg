@@ -1044,17 +1044,25 @@ and m2_sequence, x1.0):**
 
 | Item | ChemDraw's files | Ours |
 |---|---|---|
-| NodeType | its own nicknames `Nickname` (Boc, Ts, Cbz, Fmoc, Me, *t*-Bu, *i*-Pr, *n*-Bu, Cy, Mes, N₃, as abbrev_x\*'s Ph … TIPS); formula labels and compositions `Fragment` (OTf, NHBoc, SnBu₃, ring NTs); labels typed on Pd `Unspecified` with the expansion inside (PMe₃, PCy₃, P(*t*-Bu)₃; ChemDraw read IPr as I + Pr); labels it can't interpret `Unspecified` with **no** inner fragment (L, Lₙ, dppf, XPhos, P(*o*-tol)₃, Bpin, *p*-Tol) | the template's; a generated one: registry `nickname: true` → `Nickname` + IsNickname, else `Fragment`; a text label `Unspecified`, no fragment. **Deliberate difference:** P(*o*-tol)₃, Bpin, *p*-Tol keep their chemistry as a `Fragment` (RDKit reads them back) |
+| NodeType | its own nicknames `Nickname` (Boc, Ts, Cbz, Fmoc, Me, *t*-Bu, *i*-Pr, *n*-Bu, Cy, Mes, N₃, as abbrev_x\*'s Ph … TIPS); formula labels and compositions `Fragment` (OTf, NHBoc, SnBu₃, ring NTs); labels typed on Pd `Unspecified` with the expansion inside (PMe₃, PCy₃, P(*t*-Bu)₃; ChemDraw read IPr as I + Pr); labels it can't interpret `Unspecified` with **no** inner fragment (L, Lₙ, dppf, XPhos, P(*o*-tol)₃, Bpin, *p*-Tol) | the template's; a generated one: registry `nickname: true` → `Nickname` + IsNickname, else `Fragment`; a text label `Unspecified`, no fragment. **Deliberate difference:** left-justified, P(*o*-tol)₃, Bpin, *p*-Tol keep their chemistry as a `Fragment` (RDKit reads them back); right-justified they are ChemDraw's `Unspecified` form (below) |
 | Templates | — | `presets/cdxml/<preset>.nicknames.xml` from abbrev_x, abbrev_2_x and ligands_x (left-justified forms; OTs's right-justified one turned 180°) and metals_x: 55 keys. PMe₃'s is now ChemDraw's (ligands_x\*: methyls on the cross), not PPh₃'s cut down. Z, CrossingBonds, BondCircularOrdering, NeedsClean and AS / BS / AtomID are dropped |
-| Generated fragment | — | any group, formula or composition without a template (`cdxml_writer.generated_nickname`): RDKit 2D coordinates of its SMILES scaled to BondLength, attachment atom at the origin, ExternalConnectionPoint BondLength − 0.05 out on −x; heteroatoms Element and NumHydrogens, charges, bond orders. **Written but flagged until gate 4c passes** |
+| Generated fragment | — | any group, formula or composition without a template (`cdxml_writer.generated_nickname`): RDKit 2D coordinates of its SMILES scaled to BondLength, attachment atom at the origin, ExternalConnectionPoint BondLength − 0.05 out on −x; heteroatoms Element and NumHydrogens, charges, bond orders. Gate 4c passed (below) |
 | Two-bond label (ring NTs) | one ExternalConnectionPoint per bond, BondLength − 0.05 along it (14.35 at ×1.0), some with `ExternalConnectionNum` 1 / 2; the inner `<fragment ConnectionOrder="ecp1 ecp2">`; the node `BondOrdering="bond1 bond2"` (outer bonds in the same order) | the same, ExternalConnectionNum always; the group turned (or mirrored) to fit both bonds by least squares, each ECP then put exactly on its bond |
 | Label `<t>` | key text; `<s>` runs by style: plain and count digits face 96, an italic prefix 98 (*t* \| -Bu), a typed letter subscript 32 + 2 (Lₙ's n: 34); NTs below / above: `LabelAlignment` Below / Above, `LineStarts` "2 4" / "3 5", p.y 3.59 below the node / 4.98 above it (`cdxml.tail_above_rise` 8.57 / 6.90 / 5.43) | the same (`cdxml_writer.label_runs`) |
 | p of N₃ and Ts | right-justified N₃: p.x the end of the ₃ centered on the atom (not of the drawn text, 0.70 further); Ts left-justified: p and box 0.55 right of the drawn glyphs (T's kerned advance centered) | `Label.internal_dx` |
 
-**Gate (pending):** `scripts/cdxml_spike.py --phase 4c` writes abbrev_2_x1.0, ligands_x1.0 and
+**Gate (passed 2026-11-03):** `scripts/cdxml_spike.py --phase 4c` writes abbrev_2_x1.0, ligands_x1.0,
 m1_abbrev2_x1.0 (a template, generated fragments for MEM and the spec's own group, OTBS, ring
-NTs, Ln and dppf, *t*-Bu, N₃); the user re-saves them in ChemDraw (CDXML and SVG, expanding and
-contracting each generated label) and `--diff` checks the nodes, ECPs and texts.
+NTs, Ln and dppf, *t*-Bu, N₃) and label_variants_x1.0; the user re-saved them in ChemDraw 26.1.
+`--diff`: every node paired; every nickname's inner atoms and bonds kept (abbrev_2 80, ligands
+19, m1_abbrev2 8; largest inner move 0.000); ring NTs keeps both ECPs, ConnectionOrder and
+BondOrdering; text and Unspecified labels keep NodeType, no fragment and their `<s>` faces;
+label p and boxes move ≤ 0.07 pt (rounding). ChemDraw adds AS / BS / AtomID /
+BondCircularOrdering, `Warning="ChemDraw can't interpret this label."` on L, Lₙ, dppf, XPhos,
+(*o*-tol)₃P, and `Warning="An atom in this label has an invalid valence."` on PMe₃, PCy₃,
+P(*t*-Bu)₃ (P with four bonds) and IPr / PrI: the same warnings as in its own ligands_x1.0
+(16 + 20). It also gives the left-justified IPr an inner fragment (I + Pr, 5 atoms, 1 ECP), as in
+its own file: ChemDraw's chemistry for IPr is iodopropyl, which a text label can't prevent.
 
 **Stored text of right-justified labels (user review of the phase 4c files, 2026-11-03).**
 ChemDraw reverses a right-justified label it reads (OTf, SnBu₃: the key is stored). For the rest,
