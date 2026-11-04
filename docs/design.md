@@ -202,7 +202,7 @@ species:
   benzene:     {smiles: "[CH:11]1=[CH:12][CH:13]=[CH:14][CH:15]=[CH:16]1", orientation: {rotate: 180}}
   nitronium_2: {smiles: "[O:1]=[N+:2]=[O:3]"}
   sigma_a:     {smiles: "[H:17][C:11]1([N+:2](=[O:3])[O-:1])[CH+:12][CH:13]=[CH:14][CH:15]=[CH:16]1"}
-  # sigma_b, sigma_c, bisulfate, nitrobenzene, sulfuric_2 ... (examples/m4_nitration_x1.0.yaml)
+  # sigma_b, sigma_c, bisulfate, nitrobenzene, sulfuric_2 ... (examples/m4/m4_nitration_x1.0.yaml)
 steps:
   # row A (nitronium formation) first; then a second sequence on a new row:
   - new_row: true
@@ -319,7 +319,7 @@ approved without edits; fresh-agent trials of all six benchmark prompts are summ
 
 Catalytic cycles (`cycle:`, `references/acs-style.md` §15, 2026-10-29): arc arrows measured on
 the user's arcs_x\* reference (§15.1); the circle layout, labels and tails are our own placement
-(§15.2), with the rules settled on the spike (`scripts/cycle_spike.py`). CDXML export of cycles
+(§15.2), with the rules settled on a geometry spike (since retired). CDXML export of cycles
 (phase 5, §15.3): ChemDraw arc arrows, gate passed 2026-10-30. Gallery cases (phase 6):
 the Suzuki and proline/enamine cycles, approved 2026-10-30.
 
@@ -340,7 +340,7 @@ axial/equatorial from the SMILES stereo and the flip from A-values (`chair.py`);
 are drawn ChemDraw-style in every species, the front bond whole and the rear one cut with
 oblique ends margin_width beyond it (`draw_mol.Drawer.crossings`). Both match ChemDraw within
 0.1 pt on the reference's templates. The CDXML export writes bond Z rear-first; its ChemDraw gate
-(`cdxml_spike.py --phase 5`) is pending. Not yet: fused chairs (decalins, steroids), boats.
+(`cdxml_gate.py --phase 5`) is pending. Not yet: fused chairs (decalins, steroids), boats.
 ---
 
 ## 11. Sources

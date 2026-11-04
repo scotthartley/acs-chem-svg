@@ -23,7 +23,7 @@ SEQ = ["m2_sequence_x1.0", "m2_sequence_x0.8", "m2_sequence_x0.6"]
 
 @lru_cache(maxsize=None)
 def scheme(stem):
-    return build_scheme(load_spec(EX / f"{stem}.yaml"), EX, stem)
+    return build_scheme(load_spec(EX / stem[:2] / f"{stem}.yaml"), EX, stem)
 
 
 def union(boxes):
@@ -125,7 +125,7 @@ def test_ring_centers_on_the_axis():
 
 def test_alignment_holds_matched_atoms():
     """Each product's atoms matched to its reference land on the same pt coordinates (0.01)."""
-    spec = load_spec(EX / "m2_sequence_x1.0.yaml")
+    spec = load_spec(EX / "m2" / "m2_sequence_x1.0.yaml")
     prepared = scheme_prepared(spec, EX)
     for name, p in prepared.items():
         if not p.aligned_to:
@@ -155,7 +155,7 @@ def test_correspondence_seeds_mcs_with_maps():
 
 def test_norcarane_aligns_to_cyclohexene():
     """inbox 2026-10-29: norcarane was pinned to the carbene's bent Cl–C–Cl and drawn tilted."""
-    p = scheme_prepared(load_spec(EX / "m4_cyclopropanation_x1.0.yaml"), EX)["norcarane"]
+    p = scheme_prepared(load_spec(EX / "m4" / "m4_cyclopropanation_x1.0.yaml"), EX)["norcarane"]
     assert p.aligned_to == "cyclohexene"
     assert len(p.matched) >= 4
     ring = next(r for r in p.mol.GetRingInfo().BondRings() if len(r) == 6)
@@ -169,7 +169,7 @@ def test_norcarane_aligns_to_cyclohexene():
 ])
 def test_orient_mode(example, name, ref):
     """No unchanged core of 3 atoms: own layout turned to the reference, nothing pinned."""
-    p = scheme_prepared(load_spec(EX / f"{example}.yaml"), EX)[name]
+    p = scheme_prepared(load_spec(EX / example[:2] / f"{example}.yaml"), EX)[name]
     assert p.aligned_to == ref and p.matched == []
     assert chem.uneven_bonds(p.mol) == []
     assert _bonds_on_grid(p.mol)
@@ -189,7 +189,7 @@ def test_overlaid_pin_falls_to_orient_mode():
 
 def test_suzuki_trans_aligned_without_overlay():
     """The Suzuki cycle's trans, aligned to oxadd, no longer lays the tolyl over a PMe3."""
-    spec = load_spec(EX / "m6_suzuki_cycle_x1.0.yaml")
+    spec = load_spec(EX / "m6" / "m6_suzuki_cycle_x1.0.yaml")
     assert spec.species["trans"].align
     p = scheme_prepared(spec, EX)["trans"]
     assert p.aligned_to == "oxadd" and p.matched
@@ -236,7 +236,7 @@ def test_right_justified_abbreviation(smiles, key, text, anchor):
 @pytest.mark.parametrize("stem", ["m1_smiles_x1.0", "m1_smiles_x0.8", "m1_smiles_x0.6"])
 def test_m1_specs_unchanged(stem):
     """M1 specs (no steps) render byte-identical to the M1 layout code."""
-    path = EX / f"{stem}.yaml"
+    path = EX / stem[:2] / f"{stem}.yaml"
     spec = load_spec(path)
     preset = load_preset(spec.preset)
     groups, x = [], 0.0

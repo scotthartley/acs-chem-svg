@@ -2,7 +2,7 @@
 
 Values are used as written; nothing is derived from `scale` here. The `exempt`,
 `nonlinear`, `assumed_exempt`, `approx` and `placement` lists document how each value
-relates to the x1.0 preset (tests/test_m0.py checks them); the renderer does not read them.
+relates to the x1.0 preset (tests/test_presets.py checks them); the renderer does not read them.
 `placement` keys are round defaults (0.5 pt grid) for hand-placed positions.
 """
 

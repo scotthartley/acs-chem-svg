@@ -1,11 +1,12 @@
-"""CDXML export spike gate (acs-style.md §13): what does ChemDraw recompute when it opens our file?
+"""CDXML export gate (acs-style.md §13): what does ChemDraw recompute when it opens our file?
 
-Step 1 (default): write build/cdxml_spike/<case>.cdxml for the gate cases: the M1 references'
+Step 1 (default): write build/cdxml_gate/<case>.cdxml for the gate cases: the M1 references'
 templates at ChemDraw's own CDXML coordinates (so a re-save can be compared with the original
-reference), and render.py --cdxml's output for examples/m1_smiles_x1.0.yaml.
+reference), and render.py --cdxml's output for examples/m1/m1_smiles_x1.0.yaml.
 
 Step 2 (by hand, in ChemDraw): open each file, note any warning, and save it as CDXML and as SVG
-(File > Save As, same name) into build/cdxml_spike/resaved/. Then drag a labeled atom (does its
+(File > Save As, same name) into reference_renders/resaves/phase1/ (local only, like the
+references: re-saves can't be regenerated, so they stay out of build/). Then drag a labeled atom (does its
 charge follow?) and run Clean Structure on a copy; neither is saved.
 
 Step 3: --diff compares each re-saved file with our export, nodes paired by position:
@@ -16,7 +17,7 @@ Step 3: --diff compares each re-saved file with our export, nodes paired by posi
   by ChemDraw at the same positions (measure_refs): label baselines and anchors, bond ends at
   labels, charge centers. Equal ink means ChemDraw drew our file exactly as its own.
 
-Phase 2 (--phase 2, acs-style.md §13.1; files in build/cdxml_spike/phase2/): the scheme
+Phase 2 (--phase 2, acs-style.md §13.1; files in build/cdxml_gate/phase2/): the scheme
 references' round-trip exports (compare.reference_cdx_scheme) and render.py --cdxml's output for
 M2 specs. By hand in ChemDraw, besides the
 re-saves: select each arrow (do the reaction tools see its reactants and products?), drag a
@@ -28,7 +29,7 @@ reactant, and retype a condition (does it stay in the step?). --diff then report
    original reference's: line pitch of each stacked caption, and the largest glyph origin shift
    (sub- and superscripts included).
 
-Phase 3 (--phase 3, acs-style.md §13.2; files in build/cdxml_spike/phase3/): mech_basic_x1.0 /
+Phase 3 (--phase 3, acs-style.md §13.2; files in build/cdxml_gate/phase3/): mech_basic_x1.0 /
 x0.6 round trips (compare.reference_cdx_scheme) and render.py --cdxml's output for M3 specs
 (two-electron arrows, fishhooks with HalfRight and HalfLeft barbs, an added reactant above its
 arrow). By hand in ChemDraw, besides the re-saves (CDXML and SVG): drag an atom with dots (do they
@@ -39,7 +40,7 @@ follow?), move a curve, and run Clean Structure on a copy. --diff reports, besid
    (spec cases: tip and head polygon from the layout) or the original reference (reference
    cases), and the drawn dot centers against the centers our symbols declare.
 
-Phase 4a (--phase 4a, acs-style.md §13.3; files in build/cdxml_spike/phase4a/): round trips of
+Phase 4a (--phase 4a, acs-style.md §13.3; files in build/cdxml_gate/phase4a/): round trips of
 abbrev_x1.0 (templates, as phase 1), resonance_x1.0 and scheme_wrap_x1.0 (as phase 2), and
 render.py --cdxml's output for m1_abbrev, m4_resonance, m4_wrap, m4_nitration and m2_sequence.
 By hand in ChemDraw, besides the re-saves (CDXML and SVG): expand and contract a nickname (Edit >
@@ -49,7 +50,7 @@ Expand Label), drag a contributor (do the brackets and ↔ steps hold?), and mov
 9. the brackets: BoundingBox and LipSize (phase 2's <graphic> diff), and any <bracketedgroup>
    or objecttag ChemDraw adds (new elements in the re-save).
 
-Phase 4c (--phase 4c, acs-style.md §13.3; files in build/cdxml_spike/phase4c/): general
+Phase 4c (--phase 4c, acs-style.md §13.3; files in build/cdxml_gate/phase4c/): general
 abbreviations. abbrev_2_x1.0 and ligands_x1.0 round trips (templates, as phase 1) and render.py
 --cdxml's output for m1_abbrev2_x1.0: one of each kind (a reference template, a generated
 fragment for a registry group without a reference and for the spec's own group, OTBS composed,
@@ -63,7 +64,7 @@ Also label_variants_x1.0 (VARIANT_ROWS): Bpin, IPr and P(o-tol)3 with their bond
 four candidate CDXML forms, one per row (user 2026-11-03: row B keeps IPr, row C pinB; cdxml_writer
 now writes those).
 
-Phase 4b (--phase 4b, acs-style.md §13.4; files in build/cdxml_spike/phase4b/): render.py
+Phase 4b (--phase 4b, acs-style.md §13.4; files in build/cdxml_gate/phase4b/): render.py
 --cdxml's output for m1_charges (circled signs, 2+ / 2-, +3, triplet CH2), m1_lewis,
 m1_lewis_lines and m1_lewis_assigned (oxidation states). By hand in ChemDraw, besides the
 re-saves (CDXML and SVG): note any warning, drag a Lewis atom and a charged atom (what follows?).
@@ -71,7 +72,7 @@ re-saves (CDXML and SVG): note any warning, drag a Lewis atom and a charged atom
 10. the symbols per type, bound or free, with the largest move, and the free digit texts; node
    Charge / Radical rewrites show in the species attributes.
 
-Draft (--lewis-draft, phase 4b; files in build/cdxml_spike/lewis_draft/): a first draft of the
+Draft (--lewis-draft, phase 4b; files in build/cdxml_gate/lewis_draft/): a first draft of the
 charges_lewis_x* reference, for the user to edit in ChemDraw and save as the reference, at each
 preset. Row 1: the charge structures with their bonds, without charges or unpaired electrons
 (ChemDraw's tools place those, so they are measured, not ours read back). Rows 2-4: there is no
@@ -81,7 +82,7 @@ every atom labeled; shared pairs as dots (bonds kept but Visible="no") and as bo
 symbol (shared pairs free, assigned and lone pairs bound to their atom), an odd electron an
 Electron.
 
-Phase 5 (--phase 5, acs-style.md §14; files in build/cdxml_spike/phase5/): chair_x1.0's templates
+Phase 5 (--phase 5, acs-style.md §14; files in build/cdxml_gate/phase5/): chair_x1.0's templates
 (as phase 1, with ChemDraw's front bonds) and render.py --cdxml's output for m1_chair_x1.0. We
 write each crossing's rear bond with the lower Z (cdxml_writer.z_order) and no CrossingBonds. By
 hand in ChemDraw, besides the re-saves (CDXML and SVG): does each crossing show its gap on the
@@ -89,7 +90,7 @@ same bond as our SVG, and does moving an atom keep it? --diff reports, besides p
 11. every crossing ChemDraw records (CrossingBonds) with the bond it draws in front (higher Z),
    against ours, by node positions.
 
-Phase 6 (--phase 6, acs-style.md §15.1; files in build/cdxml_spike/phase6/): render.py --cdxml's
+Phase 6 (--phase 6, acs-style.md §15.1; files in build/cdxml_gate/phase6/): render.py --cdxml's
 output for the catalytic cycles (m6_suzuki_cycle_x1.0, m6_enamine_cycle_x1.0). Every arrow and
 tail is a ChemDraw arc arrow (<arrow> with AngularSize, as arcs_x*); an equilibrium arrow is two
 half-headed arcs, an entering tail a headless one (neither is in arcs_x*). By hand in ChemDraw,
@@ -98,9 +99,9 @@ do the equilibrium halves point their barbs outward, are the entering tails plai
 dragging an arc's end keep it an arc? --diff reports phase 2's items: the <step>s, and each
 <arrow> and <graphic> (paired by Head3D / BoundingBox) with what ChemDraw rewrote.
 
-Usage: uv run python scripts/cdxml_spike.py [--phase N]          # write the gate files
-       uv run python scripts/cdxml_spike.py --lewis-draft        # the Lewis reference draft
-       uv run python scripts/cdxml_spike.py [--phase N] --diff   # after the ChemDraw re-saves
+Usage: uv run python scripts/cdxml_gate.py [--phase N]          # write the gate files
+       uv run python scripts/cdxml_gate.py --lewis-draft        # the Lewis reference draft
+       uv run python scripts/cdxml_gate.py [--phase N] --diff   # after the ChemDraw re-saves
 """
 
 from __future__ import annotations
@@ -123,26 +124,26 @@ from acs_chem_svg.layout import build_scheme  # noqa: E402
 from acs_chem_svg.spec import load_spec  # noqa: E402
 from acs_chem_svg.svg_writer import to_svg  # noqa: E402
 
-OUT = mr.REPO / "build" / "cdxml_spike"
-RESAVED = OUT / "resaved"
+OUT = mr.REPO / "build" / "cdxml_gate"
+RESAVES = mr.REPO / "reference_renders" / "resaves"
 REFS = ["labels_x1.0", "m1_set_x1.0", "m1_set_x0.6", "stereo_x1.0", "double_bonds_x1.0", "clearance_x1.0"]
-SPECS = ["examples/m1_smiles_x1.0.yaml"]
+SPECS = ["examples/m1/m1_smiles_x1.0.yaml"]
 PHASE2_REFS = ["scheme_basic_x1.0", "scheme_multi_x1.0", "equilibrium_x1.0"]
-PHASE2_SPECS = ["examples/m2_scheme_basic_x1.0.yaml", "examples/m2_stages3_x1.0.yaml",
-                "examples/m2_equilibrium_x1.0.yaml", "examples/m2_suzuki_x1.0.yaml"]
+PHASE2_SPECS = ["examples/m2/m2_scheme_basic_x1.0.yaml", "examples/m2/m2_stages3_x1.0.yaml",
+                "examples/m2/m2_equilibrium_x1.0.yaml", "examples/m2/m2_suzuki_x1.0.yaml"]
 PHASE3_REFS = ["mech_basic_x1.0", "mech_basic_x0.6"]
-PHASE3_SPECS = ["examples/m3_sn2_x1.0.yaml", "examples/m3_radical_initiation_x1.0.yaml",
-                "examples/m3_radical_propagation_x1.0.yaml", "examples/m3_carbonyl_addition_x1.0.yaml"]
+PHASE3_SPECS = ["examples/m3/m3_sn2_x1.0.yaml", "examples/m3/m3_radical_initiation_x1.0.yaml",
+                "examples/m3/m3_radical_propagation_x1.0.yaml", "examples/m3/m3_carbonyl_addition_x1.0.yaml"]
 PHASE4A_REFS = ["abbrev_x1.0", "resonance_x1.0", "scheme_wrap_x1.0"]
-PHASE4A_SPECS = ["examples/m1_abbrev_x1.0.yaml", "examples/m4_resonance_x1.0.yaml", "examples/m4_wrap_x1.0.yaml",
-                 "examples/m4_nitration_x1.0.yaml", "examples/m2_sequence_x1.0.yaml"]
+PHASE4A_SPECS = ["examples/m1/m1_abbrev_x1.0.yaml", "examples/m4/m4_resonance_x1.0.yaml", "examples/m4/m4_wrap_x1.0.yaml",
+                 "examples/m4/m4_nitration_x1.0.yaml", "examples/m2/m2_sequence_x1.0.yaml"]
 PHASE4C_REFS = ["abbrev_2_x1.0", "ligands_x1.0"]
-PHASE4C_SPECS = ["examples/m1_abbrev2_x1.0.yaml"]
-PHASE4B_SPECS = ["examples/m1_charges_x1.0.yaml", "examples/m1_lewis_x1.0.yaml", "examples/m1_lewis_lines_x1.0.yaml",
-                 "examples/m1_lewis_assigned_x1.0.yaml"]
+PHASE4C_SPECS = ["examples/m1/m1_abbrev2_x1.0.yaml"]
+PHASE4B_SPECS = ["examples/m1/m1_charges_x1.0.yaml", "examples/m1/m1_lewis_x1.0.yaml", "examples/m1/m1_lewis_lines_x1.0.yaml",
+                 "examples/m1/m1_lewis_assigned_x1.0.yaml"]
 PHASE5_REFS = ["chair_x1.0"]
-PHASE5_SPECS = ["examples/m1_chair_x1.0.yaml"]
-PHASE6_SPECS = ["examples/m6_suzuki_cycle_x1.0.yaml", "examples/m6_enamine_cycle_x1.0.yaml"]
+PHASE5_SPECS = ["examples/m1/m1_chair_x1.0.yaml"]
+PHASE6_SPECS = ["examples/m6/m6_suzuki_cycle_x1.0.yaml", "examples/m6/m6_enamine_cycle_x1.0.yaml"]
 PHASES = {"2": (PHASE2_REFS, PHASE2_SPECS), "3": (PHASE3_REFS, PHASE3_SPECS), "4a": (PHASE4A_REFS, PHASE4A_SPECS),
           "4c": (PHASE4C_REFS, PHASE4C_SPECS), "4b": ([], PHASE4B_SPECS), "5": (PHASE5_REFS, PHASE5_SPECS), "6": ([], PHASE6_SPECS)}
 PAIR_TOL = 0.05  # pt: node positions should survive a re-save unchanged
@@ -152,6 +153,11 @@ PARSER = etree.XMLParser(load_dtd=False, no_network=True, remove_blank_text=True
 
 def out_dir(phase: str) -> Path:
     return OUT if phase == "1" else OUT / f"phase{phase}"
+
+
+def resaved_dir(phase: str) -> Path:
+    """ChemDraw's re-saves of a phase's files (by hand; local only, never in build/)."""
+    return RESAVES / f"phase{phase}"
 
 
 def species_reference(ref: str) -> str:
@@ -271,7 +277,8 @@ def label_variants(out: Path) -> Path:
 
 def write(phase: str = "1") -> list[Path]:
     out = out_dir(phase)
-    (out / "resaved").mkdir(parents=True, exist_ok=True)
+    out.mkdir(parents=True, exist_ok=True)
+    resaved_dir(phase).mkdir(parents=True, exist_ok=True)
     if phase in PHASES:
         refs, specs = PHASES[phase]
         paths = []
@@ -392,7 +399,7 @@ class Changes:
             c = self.counts[key]
             d = f", max |delta| {self.delta[key]:.3f}" if key in self.delta else ""
             out.append(f"  {key[0]:9} {key[1]:20} " + ", ".join(f"{n} {k}" for k, n in sorted(c.items()))
-                       + f"{d}  (e.g. {self.examples[key]})")
+                       + f"{d}" + (f"  (e.g. {self.examples[key]})" if key in self.examples else ""))
         return out or ["  no attribute changes"]
 
 
@@ -442,6 +449,7 @@ def attribute_diff(ours_root, theirs_root) -> list[str]:
         if t is None:
             # a wedge whose ends ChemDraw swapped (WedgeEnd) shows up here
             ch.counts[("b", "<b> unpaired")]["removed"] += 1
+            ch.examples.setdefault(("b", "<b> unpaired"), f"ours B={b.get('B')} E={b.get('E')}")
             continue
         ch.compare("b", b, t, skip=("id", "Z", "B", "E"))
         if t.get("B") != pair[b.get("B")].get("id"):
@@ -600,7 +608,7 @@ def scheme_diff(ours_root, theirs_root) -> list[str]:
     if not same:
         theirs = {st for sch in their_steps for st in sch}
         for sch in ours_steps:
-            for st in sch:
+            for st in sorted(sch, key=repr):
                 if st not in theirs:
                     lines.append(f"  step not in the re-save: {st}")
     for tag, key in (("arrow", "Head3D"), ("graphic", "BoundingBox")):
@@ -800,7 +808,7 @@ def _cdxml_xy(doc, p):
 
 def ink_diff(ref: str) -> list[str]:
     """The re-saved SVG vs the original reference, both drawn by ChemDraw at the same positions."""
-    a, b = mr.load(ref), mr.load(ref, RESAVED)
+    a, b = mr.load(ref), mr.load(ref, resaved_dir("1"))
     ma, mb = mr.measure(a), mr.measure(b)
     pos_b = {_cdxml_xy(b, at.p): at.id for at in b.atoms.values()}
     a_to_b = {}
@@ -913,7 +921,7 @@ def crossing_diff(ours_root, theirs_root) -> list[str]:
 def diff(phase: str = "1") -> int:
     found = False
     out = out_dir(phase)
-    resaved = out / "resaved"
+    resaved = resaved_dir(phase)
     for path in sorted(out.glob("*.cdxml")):
         saved = resaved / path.name
         if not saved.exists():
@@ -960,7 +968,7 @@ def diff(phase: str = "1") -> int:
         print(f"{path.stem}: attributes (ours -> ChemDraw's re-save)")
         for line in attribute_diff(etree.parse(str(path), PARSER).getroot(), etree.parse(str(saved), PARSER).getroot()):
             print(line)
-        if path.stem in REFS and (RESAVED / f"{path.stem}.svg").exists():
+        if path.stem in REFS and (resaved / f"{path.stem}.svg").exists():
             print(f"{path.stem}: ink (original reference -> re-save)")
             for line in ink_diff(path.stem):
                 print(line)
@@ -984,7 +992,7 @@ def main(argv=None) -> int:
         return diff(args.phase)
     for p in write(args.phase):
         print(p.relative_to(mr.REPO))
-    resaved = (out_dir(args.phase) / "resaved").relative_to(mr.REPO)
+    resaved = resaved_dir(args.phase).relative_to(mr.REPO)
     print(f"Open each in ChemDraw; save as CDXML and SVG into {resaved}/, same names.")
     return 0
 

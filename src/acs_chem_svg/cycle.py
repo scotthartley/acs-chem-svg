@@ -2,7 +2,7 @@
 them, and tails for species entering and leaving.
 
 ChemDraw has no cycle layout, so every rule here is ours (the presets' `cycle:` keys,
-unmeasured; user decision 2026-10-29 on the spike, scripts/cycle_spike.py). Only the arc
+unmeasured; user decision 2026-10-29 on the geometry spike, since retired). Only the arc
 arrows are measured (arrows.arc_arrow, §15.1).
 
 - Circle: centered at (0, 0); angles in radians counter-clockwise on screen from +x, so the

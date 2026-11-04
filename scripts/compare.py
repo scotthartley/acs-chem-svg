@@ -15,7 +15,7 @@ exact items (arrowheads, text advances, sub/superscripts) compare one to one. Me
 references (mech_*) get those too, plus our curved arrows drawn on ChemDraw's CurvePoints
 (mechanism.curved_arrow) and our dots at ChemDraw's lone-pair midpoints and radical centers
 (mech_dots): the exact items are the heads, strokes and dot sizes. Our own dot placement and
-arrow layout (approximate) are what examples/m3_*.yaml show. Equilibrium references
+arrow layout (approximate) are what examples/m3/m3_*.yaml show. Equilibrium references
 (equilibrium_*, arrows_large_*) get our equilibrium arrows on ChemDraw's (ref_arrow) and the
 captions only: their "B" is a lone boron atom standing in for a structure, with no template.
 
@@ -29,9 +29,9 @@ Writes the side-by-side images to build/compare/:
     <ref>_zoom.png            per-fragment crops at 10 px/pt
 
 Usage: uv run python scripts/compare.py m1_set_x1.0 [more refs] [--preset acs1996]
-       uv run python scripts/compare.py scheme_multi_x1.0 --spec examples/m2_scheme_multi_x1.0.yaml
-       uv run python scripts/compare.py scheme_wrap_x1.0 --spec examples/m4_wrap_x1.0.yaml
-       uv run python scripts/compare.py resonance_x1.0 --spec examples/m4_resonance_x1.0.yaml
+       uv run python scripts/compare.py scheme_multi_x1.0 --spec examples/m2/m2_scheme_multi_x1.0.yaml
+       uv run python scripts/compare.py scheme_wrap_x1.0 --spec examples/m4/m4_wrap_x1.0.yaml
+       uv run python scripts/compare.py resonance_x1.0 --spec examples/m4/m4_resonance_x1.0.yaml
 """
 
 from __future__ import annotations
@@ -270,7 +270,7 @@ def cited_ids(page, st, attr: str) -> list[str]:
 
 def reference_cdx_scheme(ref: str) -> CdxScheme:
     """A scheme reference as cdxml_writer records, at ChemDraw's CDXML coordinates (tests/
-    test_cdxml.py, cdxml_spike.py): the templates; equilibrium_*'s A and B as one-atom
+    test_cdxml_*.py, cdxml_gate.py): the templates; equilibrium_*'s A and B as one-atom
     stand-ins at their nodes; its arrows (cdx_ref_arrow) and brackets (on its bars); every caption and formula fragment (K2CO3) set by richtext at ChemDraw's
     glyph origins, with its justification; its steps, minus the species left out. Every
     object a step cites is paired with ChemDraw's by its p. mech_*: its curves (curve_points),

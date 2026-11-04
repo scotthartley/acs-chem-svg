@@ -1,6 +1,6 @@
 # M5 acceptance (2026-10-25): the spec a use session wrote from the one-sentence nitration
 # prompt (examples/benchmarks/prompts.yaml), approved by the user without edits. Its body is
-# examples/m4_nitration_x1.0.yaml: the session found and adapted the approved M4 example.
+# examples/m4/m4_nitration_x1.0.yaml: the session found and adapted the approved M4 example.
 # Revised 2026-10-28 with the M4 example (user-approved): H2SO4 over the first arrow, by-products
 # omitted ("−H2O" on the arrow), the regenerated H2SO4 omitted.
 preset: acs1996

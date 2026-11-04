@@ -90,7 +90,7 @@ def test_triplet_adds_to_an_alkene_with_fishhooks():
 
 
 def test_cyclopropanation_example_validates():
-    spec = load_spec(ROOT / "examples/m4_cyclopropanation_x1.0.yaml")
+    spec = load_spec(ROOT / "examples/m4/m4_cyclopropanation_x1.0.yaml")
     assert [p for c in electrons.check_spec(spec, ROOT / "examples") for p in c.problems] == []
 
 
@@ -201,8 +201,8 @@ def test_terminal_carbene_with_show_carbons_draws_ch():
 
 
 def test_cdxml_singlet_and_triplet():
-    text = spec_cdxml(ROOT / "examples/m1_carbenes_x1.0.yaml", warn=lambda m: None)
-    frags = dict(zip(load_spec(ROOT / "examples/m1_carbenes_x1.0.yaml").species,
+    text = spec_cdxml(ROOT / "examples/m1/m1_carbenes_x1.0.yaml", warn=lambda m: None)
+    frags = dict(zip(load_spec(ROOT / "examples/m1/m1_carbenes_x1.0.yaml").species,
                      etree.fromstring(text.encode()).find("page").findall("fragment")))
 
     def symbols(f, kind):

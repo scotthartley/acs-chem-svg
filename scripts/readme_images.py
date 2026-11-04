@@ -19,9 +19,9 @@ from acs_chem_svg.svg_writer import to_svg
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "docs" / "images"
 SPECS = {
-    "synthesis": "examples/m2_sequence_x1.0.yaml",
+    "synthesis": "examples/m2/m2_sequence_x1.0.yaml",
     "nitration": "examples/benchmarks/nitration_accepted.yaml",
-    "chairs": "examples/m1_chair_x1.0.yaml",
+    "chairs": "examples/m1/m1_chair_x1.0.yaml",
 }
 
 

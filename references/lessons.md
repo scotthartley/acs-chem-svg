@@ -249,7 +249,7 @@ removed renders pixel-identical to the approved `m4_nitration_x1.0`. Inbox triag
   one-sentence nitration prompt and approved the render without editing the spec. Saved as
   `examples/benchmarks/nitration_accepted.yaml`, gallery case `nitration_accepted`.
 - **The session reused the approved example.** The accepted spec is
-  `examples/m4_nitration_x1.0.yaml` line for line (`_2` names, `align: false` and its comment),
+  `examples/m4/m4_nitration_x1.0.yaml` line for line (`_2` names, `align: false` and its comment),
   so it shows the skill finding and adapting its own example, not building the mechanism.
   `references/workflow.md` names that file as the approved result, which invites this. The
   evidence for building from scratch is the r1 trial, which could not read `examples/` (7

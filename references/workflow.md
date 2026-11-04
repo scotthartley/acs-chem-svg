@@ -89,7 +89,7 @@ steps:
 ```
 
 Orient only the first species of each sequence and separate reactants; products follow their
-reactants. The approved result is `examples/m4_nitration_x1.0.yaml` (written there with `_2`
+reactants. The approved result is `examples/m4/m4_nitration_x1.0.yaml` (written there with `_2`
 copies; reusing the names gives the same drawing). At acs1996 it takes three rows (504 pt);
 that is expected.
 

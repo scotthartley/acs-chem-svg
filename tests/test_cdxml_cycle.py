@@ -38,7 +38,7 @@ HEADLESS_TOL = 0.25
 CENTER_TOL = 0.02
 ARC_REFS = ["arcs_x1.0", "arcs_x0.8", "arcs_x0.6", "arcs_eq_x1.0", "arcs_eq_x0.8", "arcs_eq_x0.6"]
 VARIANTS = {"1000": "standard", "1500": "large"}
-CYCLES = sorted(str(p.relative_to(mr.REPO)) for p in (mr.REPO / "examples").glob("m6_*_cycle_*.yaml"))
+CYCLES = sorted(str(p.relative_to(mr.REPO)) for p in (mr.REPO / "examples" / "m6").glob("m6_*_cycle_*.yaml"))
 needs_refs = pytest.mark.skipif(not mr.REF_DIR.exists(), reason="ChemDraw references (reference_renders/) are local only")
 
 

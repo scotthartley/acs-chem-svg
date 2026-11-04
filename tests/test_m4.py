@@ -32,7 +32,7 @@ def spec(steps, species=None, **kw):
 
 @lru_cache(maxsize=None)
 def scheme(stem):
-    return build_scheme(load_spec(EX / f"{stem}.yaml"), EX, stem)
+    return build_scheme(load_spec(EX / stem[:2] / f"{stem}.yaml"), EX, stem)
 
 
 # ---------------------------------------------------------------- schema
@@ -183,12 +183,12 @@ def test_wrapped_rows(stem):
     assert r2[1] - r1[3] == pytest.approx(lay.preset.scheme.row_gap)
     st = lay.steps[2]  # the continuation row starts with its arrow at the left margin
     assert st.tail[0] == pytest.approx(lay.species["ester"].group.ink_bbox()[0])
-    assert max(r1[2], r2[2]) - r1[0] <= load_spec(EX / f"{stem}.yaml").layout.width
+    assert max(r1[2], r2[2]) - r1[0] <= load_spec(EX / stem[:2] / f"{stem}.yaml").layout.width
     assert {n for n in lay.numbers} == set("ester bnbr ether alcohol aldehyde enoate ester_h2".split())
 
 
 def test_default_width_is_the_preset_wrap_width():
-    s = load_spec(EX / "m4_wrap_x1.0.yaml")
+    s = load_spec(EX / "m4" / "m4_wrap_x1.0.yaml")
     s.layout.width = None
     lay = build_scheme(s, EX, "wide")
     assert lay.preset.scheme.wrap_width == 504.0 and lay.width <= 504.0
@@ -205,4 +205,4 @@ def test_a_step_after_a_bracket_reaches_into_it():
 @pytest.mark.parametrize("stem", ["m4_nitration_x1.0", "m4_nitration_x0.8", "m4_nitration_x0.6",
                                   "m4_resonance_x1.0", "m4_wrap_x1.0", "m4_perkin_x1.0"])
 def test_m4_examples_validate(stem):
-    assert validate(EX / f"{stem}.yaml") == []
+    assert validate(EX / stem[:2] / f"{stem}.yaml") == []

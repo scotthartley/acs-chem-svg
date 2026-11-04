@@ -95,7 +95,7 @@ def test_endpoint_vocabulary():
     assert CurvedArrow.model_validate({"from": "bond(1#2)", "to": "atom(2)"}).source.order == 3
 
 
-SPECS = sorted(p for g in ("m3_*.yaml", "m4_*.yaml") for p in (ROOT / "examples").glob(g)
+SPECS = sorted(p for g in ("m3_*.yaml", "m4_*.yaml") for p in (ROOT / "examples" / g[:2]).glob(g)
                if load_spec(p).arrow_sets())
 
 

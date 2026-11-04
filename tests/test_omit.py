@@ -25,7 +25,7 @@ REPROTONATE = [{"from": "lp(4)", "to": "between(4,5)"}, {"from": "bond(5-6)", "t
 
 @lru_cache(maxsize=None)
 def nitration():
-    return build_scheme(load_spec(EX / "m4_nitration_x1.0.yaml"), EX, "nitration")
+    return build_scheme(load_spec(EX / "m4" / "m4_nitration_x1.0.yaml"), EX, "nitration")
 
 
 def drawn(lay):
@@ -92,7 +92,7 @@ def test_by_products_after_a_bracket_respect_omit():
 
 
 def test_validator_notes_products_that_are_drawn_and_never_used():
-    data = yaml.safe_load((EX / "m4_nitration_x1.0.yaml").read_text())
+    data = yaml.safe_load((EX / "m4" / "m4_nitration_x1.0.yaml").read_text())
     assert notes(Spec.model_validate(data)) == []
     for st in data["steps"]:
         for k in ("omit", "over", "above"):
@@ -102,7 +102,7 @@ def test_validator_notes_products_that_are_drawn_and_never_used():
     got = notes(Spec.model_validate(data))
     assert [n.split(" is drawn")[0] for n in got] == [
         "note: step 1: bisulfate", "note: step 2: water", "note: step 5: sulfuric_2"]
-    assert notes(load_spec(EX / "m3_sn2_x1.0.yaml")) == []  # one mechanism step: Br- stays
+    assert notes(load_spec(EX / "m3" / "m3_sn2_x1.0.yaml")) == []  # one mechanism step: Br- stays
 
 
 def test_validator_notes_a_loss_below_an_equilibrium_arrow():

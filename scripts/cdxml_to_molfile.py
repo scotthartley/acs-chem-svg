@@ -29,10 +29,10 @@ import sys
 from pathlib import Path
 
 from rdkit import Chem
+from rdkit.Geometry import Point3D
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import measure_refs as mr  # noqa: E402
-import spike_rdkit  # noqa: E402
 
 from acs_chem_svg import abbrev, chem  # noqa: E402
 from acs_chem_svg.chem import ABBREVIATIONS  # noqa: E402
@@ -43,6 +43,8 @@ OUT_M3 = mr.REPO / "templates" / "m3"
 OUT_M4 = mr.REPO / "templates" / "m4"
 OUT_ABBREV = mr.REPO / "templates" / "abbrev"
 OUT_CHAIR = mr.REPO / "templates" / "chair"
+ANUM = {v: k for k, v in mr.ELEMENTS.items()}
+DIRS = {"WedgeBegin": Chem.BondDir.BEGINWEDGE, "WedgedHashBegin": Chem.BondDir.BEGINDASH}
 M1_REFERENCES = ["m1_set_x1.0", "m1_set_x0.8", "m1_set_x0.6", "double_bonds_x1.0", "labels_x1.0",
                  "double_bonds_2", "stereo_x1.0", "stereo_x0.8", "stereo_x0.6",
                  "clearance_x1.0", "clearance_x0.8", "clearance_x0.6"]
@@ -55,6 +57,55 @@ ABBREV_REFERENCES = ["abbrev_x1.0", "abbrev_x0.8", "abbrev_x0.6", "abbrev_2_x1.0
                      "ligands_x1.0", "ligands_x0.8", "ligands_x0.6"]
 CHAIR_REFERENCES = mr.CHAIR_REFS
 
+
+
+def build_mol(doc: mr.Doc, pt_per_unit: float = 9.6, atom_ids=None, map_ids: bool = False,
+              nicknames: bool = False):
+    """RDKit mol with the CDXML atoms/bonds/coords; returns (mol, cdxml atom ids by index).
+
+    Coordinates are pt / pt_per_unit with y up (9.6 turns 14.4 pt bonds into 1.5 A). Pass
+    `atom_ids` to keep one fragment, and `map_ids` to store each CDXML id as the atom map.
+    `nicknames` keeps nickname nodes (OMe) as their attachment atom; the caller sets the alias."""
+    rw = Chem.RWMol()
+    ids = []
+    for aid, a in doc.atoms.items():
+        if (a.nickname and not nicknames) or (atom_ids is not None and aid not in atom_ids):
+            continue
+        at = Chem.Atom(ANUM.get(a.element, 0))  # 0: a text label's stand-in (dppf: no inner fragment)
+        at.SetFormalCharge(a.charge)
+        if a.label and a.num_h is not None and not a.nickname:
+            at.SetNumExplicitHs(a.num_h)
+            at.SetNoImplicit(True)
+        if a.radicals:  # tBu·, Cl· (mech_basic): no implicit H on the radical center
+            at.SetNumRadicalElectrons(a.radicals)
+            at.SetNoImplicit(True)
+            if not a.label:
+                at.SetNumExplicitHs(4 - a.radicals - sum(1 for b in doc.bonds if aid in (b.a, b.b)))
+        if map_ids:
+            at.SetAtomMapNum(int(aid))
+        rw.AddAtom(at)
+        ids.append(aid)
+    idx = {aid: i for i, aid in enumerate(ids)}
+    order = {1: Chem.BondType.SINGLE, 2: Chem.BondType.DOUBLE, 3: Chem.BondType.TRIPLE}
+    for b in doc.bonds:
+        if b.a not in idx or b.b not in idx:
+            continue
+        a, e = (b.a, b.b) if not b.display.endswith("End") else (b.b, b.a)
+        rw.AddBond(idx[a], idx[e], order[b.order])
+        display = b.display.replace("End", "Begin")  # *End: the bond was reversed above
+        if display in DIRS:
+            rw.GetBondBetweenAtoms(idx[a], idx[e]).SetBondDir(DIRS[display])
+    mol = rw.GetMol()
+    conf = Chem.Conformer(mol.GetNumAtoms())
+    for aid, i in idx.items():
+        x, y = doc.atoms[aid].p
+        conf.SetAtomPosition(i, Point3D(x / pt_per_unit, -y / pt_per_unit, 0.0))
+    mol.AddConformer(conf, assignId=True)
+    Chem.SanitizeMol(mol, Chem.SanitizeFlags.SANITIZE_ALL ^ Chem.SanitizeFlags.SANITIZE_SETAROMATICITY
+                     ^ Chem.SanitizeFlags.SANITIZE_KEKULIZE)
+    Chem.AssignChiralTypesFromBondDirs(mol)
+    Chem.AssignStereochemistry(mol, cleanIt=True, force=True)
+    return mol, ids
 
 def fragments(doc: mr.Doc) -> list[tuple[int, str, set[str]]]:
     """(n, fragment id, atom ids) for fragments drawn with real atoms and bonds. Fragments
@@ -163,7 +214,7 @@ def convert(name: str) -> list[Path]:
     written = []
     for n, fid, atoms in fragments(doc):
         big = max(int(a) for a in atoms) > 999  # V2000 atom maps hold 3 digits: ids go to a sidecar
-        mol, ids = spike_rdkit.build_mol(doc, pt_per_unit, atoms, map_ids=not big, nicknames=True)
+        mol, ids = build_mol(doc, pt_per_unit, atoms, map_ids=not big, nicknames=True)
         mol.GetConformer().Set3D(False)
         mol.SetProp("_Name", f"{name} fragment {fid}")
         for a, aid in zip(mol.GetAtoms(), ids):

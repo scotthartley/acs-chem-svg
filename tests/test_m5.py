@@ -33,7 +33,7 @@ def test_a_clone_can_be_declared_to_set_its_own_options():
 
 def test_reuse_renders_the_same_pixels_as_numbered_copies(tmp_path):
     reuse = render(ROOT / "tests" / "specs" / "nitration_reuse_x1.0.yaml", tmp_path / "reuse")
-    copies = render(ROOT / "examples" / "m4_nitration_x1.0.yaml", tmp_path / "copies")
+    copies = render(ROOT / "examples" / "m4" / "m4_nitration_x1.0.yaml", tmp_path / "copies")
     assert reuse[1].read_bytes() == copies[1].read_bytes()
     ids = [re.findall(r'<g id="([^"]*)"', p.read_text())[1:] for p in (reuse[0], copies[0])]  # [0]: the file stem
     assert ids[0] == ids[1]  # clones are named like the copies (species-nitronium_2)
@@ -45,7 +45,7 @@ def test_maps_overlay_leaves_the_svg_unchanged(tmp_path):
     from acs_chem_svg.layout import build_scheme
     from acs_chem_svg.spec import load_spec
 
-    path = ROOT / "examples" / "m3_carbonyl_addition_x1.0.yaml"
+    path = ROOT / "examples" / "m3" / "m3_carbonyl_addition_x1.0.yaml"
     plain = render(path, tmp_path / "plain")
     with_maps = render(path, tmp_path / "maps", with_maps=True)
     assert plain[0].read_text() == with_maps[0].read_text()
@@ -61,7 +61,7 @@ def test_validate_prints_nothing_on_stderr():
     # r0 trials read fontTools' parse notes as the fallback-font warning
     import subprocess
     import sys
-    r = subprocess.run([sys.executable, str(ROOT / "scripts" / "validate.py"), str(ROOT / "examples" / "m3_sn2_x1.0.yaml")],
+    r = subprocess.run([sys.executable, str(ROOT / "scripts" / "validate.py"), str(ROOT / "examples" / "m3" / "m3_sn2_x1.0.yaml")],
                        capture_output=True, text=True)
     assert r.returncode == 0 and r.stderr == ""
 
@@ -72,7 +72,7 @@ def test_the_reported_bow_reproduces_the_default():
 
     from acs_chem_svg.layout import build_scheme
     for name in ("m3_sn2_x1.0", "m3_carbonyl_addition_x1.0", "m3_e2_x1.0"):
-        path = ROOT / "examples" / f"{name}.yaml"
+        path = ROOT / "examples" / name[:2] / f"{name}.yaml"
         lay = build_scheme(Spec.model_validate(_yaml.safe_load(path.read_text())), path.parent, name)
         raw = _yaml.safe_load(path.read_text())
         raw["overrides"] = {"arrows": [{"step": a.step, "index": a.index, "bow": a.bow} for a in lay.curved]}

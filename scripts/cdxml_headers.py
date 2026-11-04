@@ -8,7 +8,7 @@ which m1_set_x* don't list: their <font> entries are copied verbatim from FONT_S
 (scheme_multi_x1.0), ids included, after the m1_set fonts. Left out are what changes per file, which cdxml_writer fills in: the root
 CreationProgram (ours, not ChemDraw's), Name and BoundingBox, the page id, size and contents. The templates are generated data, so the
 style numbers in them (BondLength, LineWidth, LabelSize, ...) trace to the references;
-tests/test_cdxml.py checks them against the presets and the other references at each scale.
+tests/test_cdxml_species.py checks them against the presets and the other references at each scale.
 
 Also presets/cdxml/<preset>.nicknames.xml from abbrev_x<k>, abbrev_2_x<k> and ligands_x<k> (phase 4,
 acs-style.md §13.3): per registry group or formula (abbrev.py) that one of them holds, the inner <fragment> of ChemDraw's nickname node in its left-justified

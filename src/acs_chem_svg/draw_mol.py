@@ -1067,7 +1067,7 @@ class Drawer:
 
     def _nearest_atom(self, p: Point) -> int:
         """The atom whose position is nearest p. ChemDraw binds a sign to it on open and resets
-        that atom's charge (cdxml_spike.py --phase 4b gate, 2026-10-28: nitromethane's corner ⊕
+        that atom's charge (cdxml_gate.py --phase 4b gate, 2026-10-28: nitromethane's corner ⊕
         sat 9.66 pt from the =O, 10.04 from the N, and became the O's); a reader pairs them the
         same way, so a sign keeps its own atom nearest."""
         return min(range(len(self.mol.atoms)), key=lambda j: math.dist(p, self.mol.atoms[j].p))

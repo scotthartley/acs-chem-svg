@@ -194,7 +194,7 @@ axis (edges clipped to that band); a **horizontal** bond keeps the whole outline
 | On a labeled atom with bonds near both upper corners (nitro N⁺ in a ring compound) | the first lower corner with no bond within 60° (lower right, then lower left; offsets mirrored down); if every corner has a bond within 60°: the first with none within 45° (m1_set_x*: N⁺ with bonds at 0° and 180° keeps the upper right, as ChemDraw); else on the largest gap's bisector, the corner offset's length beyond the element ink box | | | — | rule (M4, nitration); unmeasured (`draw_mol.CHARGE_CORNER_MIN_DEG`, Open 16) |
 | On an unlabeled C that draws a lone pair or radical (ring carbanion with an arrow from its pair) | the dots keep the largest-gap bisectors (§4.2; the charge does not count as a direction); the charge takes the direction inside the largest bond gap, every 5°, whose ink clears the dots and the atom's drawn bond lines the most, at `unlabeled_distance` or 0.5 pt steps beyond it (up to +2.0) until some direction clears by 1.0; ties go nearest the bisector | | | — | rule (inbox 2026-10-26); unmeasured (`draw_mol.CHARGE_DOT_CLEARANCE`, `CHARGE_DOT_STEP_*`, Open 16) |
 | On a labeled atom that draws lone pairs or radicals (HO⁻, Br⁻, bisulfate O⁻ in m3_sn2, m4_nitration) | the corner is chosen as above; the sign then moves out along that corner's diagonal (straight up for NH₃⁺ / single-atom HO⁻) in 0.5 pt steps, up to +2.0, until its ink clears the dots and the atom's drawn bond lines by 1.0 (`CHARGE_DOT_CLEARANCE`); a charge without dots keeps its corner | | | — | rule (user decision 2026-10-26); unmeasured (`draw_mol.Drawer._charge_clear`, Open 18) |
-| Every sign | nearer its own atom (center to atom position) than to any other atom: a corner that fails moves on; with no corner left, the largest bond gap's bisector (equal gaps within 1°: the one nearest the upper right), the center as far from the element ink box as a corner's (user review 2026-10-29: measured along the ray instead, the ring came within 0.07–0.81 pt of the N; now 1.64 / 1.20 / 0.78, as the corner signs; the user's by eye 1.42 / 1.46 / 1.58) | | | — | rule (phase 4b gate, 2026-10-28: ChemDraw binds each sign to the nearest atom on open and resets its charge; nitromethane's corner ⊕ sat 9.66 pt from =O, 10.04 from N). The user placed that ⊕ in the upper-right gap (charges_lewis_x\*). `draw_mol.Drawer._nearest_atom`, `_charge_gap_direction`; `tests/test_cdxml.py::test_signs_sit_nearest_their_atom` |
+| Every sign | nearer its own atom (center to atom position) than to any other atom: a corner that fails moves on; with no corner left, the largest bond gap's bisector (equal gaps within 1°: the one nearest the upper right), the center as far from the element ink box as a corner's (user review 2026-10-29: measured along the ray instead, the ring came within 0.07–0.81 pt of the N; now 1.64 / 1.20 / 0.78, as the corner signs; the user's by eye 1.42 / 1.46 / 1.58) | | | — | rule (phase 4b gate, 2026-10-28: ChemDraw binds each sign to the nearest atom on open and resets its charge; nitromethane's corner ⊕ sat 9.66 pt from =O, 10.04 from N). The user placed that ⊕ in the upper-right gap (charges_lewis_x\*). `draw_mol.Drawer._nearest_atom`, `_charge_gap_direction`; `tests/test_cdxml_resonance.py::test_signs_sit_nearest_their_atom` |
 | Circled ⊕ / ⊖ (`charges.circled`, `circled_charges`) | the plain bars plus a ring of `circle_radius` (stroke center), stroked at `bar_thickness`: **3.59** | 2.89 | 2.24 | charges_lewis_x\* (ChemDraw's CirclePlus / CircleMinus, all four per file; stroke 0.5; `measure_refs.py --charges-lewis`) | exact ring, copied (user decision 2026-10-28). Placement stays our rule (user decision 2026-10-28; the user's by-eye positions vary): the starting position moves out by the ring's extra reach beyond a plain sign; a circled sign always runs the clearance search (labeled: along the corner diagonal; unlabeled: the largest-gap search above). ChemDraw's bars inside the ring here: 3.93 / 3.27 / 2.60 (it sizes symbols from their CDXML box; §13.4) |
 | Multiple charges ("2+", "2−") and `charge_labels` texts ("+3") | digits in the label font at `digit_scale` × label size (**0.75**, = `ratios.superscript_scale`), ink `digit_gap` (**0.5**) from the bars, in the written order, the whole centered on the sign position and vertically on the bars; never circled. Positions move out by the extra width / height and run the clearance search | | | — | unmeasured (user decision 2026-10-26, Open 18). ChemDraw has no multiple-charge symbol: charges_lewis_x\*' Fe²⁺ is typed into the label as a superscript; the user prefers our digit + drawn sign (2026-10-28) |
 | NH₃⁺ (H on the right) | ⊕ centered above the N: center − atom = (+0.03, −7.43). **Default 7.5** | 6.0 | 4.5 | labels_x1.0 | placement default (`charge.above_label`) |
@@ -811,15 +811,15 @@ Module `src/acs_chem_svg/draw_mol.py` unless noted.
 |---|---|---|
 | ↔ arrows: reaction heads at both ends, shaft notch to notch | §4.1 | `arrows.resonance_arrow`; `tests/test_resonance_vs_chemdraw.py` (exact, 0.1 pt) |
 | Square brackets: bar and lips, stroke exempt, lips × k | §4.1 | `brackets.square_bracket`, `brackets.bracket_pair`; `tests/test_resonance_vs_chemdraw.py` |
-| Resonance placement: ↔ length and gaps, bracket gaps | §4.3 | `layout._place` (`put_bracket`), `layout._finish_row`; `scripts/compare.py resonance_x* --spec examples/m4_resonance_x*.yaml` |
+| Resonance placement: ↔ length and gaps, bracket gaps | §4.3 | `layout._place` (`put_bracket`), `layout._finish_row`; `scripts/compare.py resonance_x* --spec examples/m4/m4_resonance_x*.yaml` |
 | Resonance bookkeeping | design.md §6.3 | `electrons.check_resonance` (`skeleton`, `check_step` per list) |
-| Rows: units, greedy breaks, continuation rows start with an arrow, row gap, per-row numbers and vertical rule | §3.4 | `layout._place` (`Unit`), `layout._breaks`, `layout.build_scheme`, `layout._shift_row_records`; `scripts/compare.py scheme_wrap_x* --spec examples/m4_wrap_x*.yaml` |
+| Rows: units, greedy breaks, continuation rows start with an arrow, row gap, per-row numbers and vertical rule | §3.4 | `layout._place` (`Unit`), `layout._breaks`, `layout.build_scheme`, `layout._shift_row_records`; `scripts/compare.py scheme_wrap_x* --spec examples/m4/m4_wrap_x*.yaml` |
 | Curved arrows avoid reaction and ↔ arrows; a bond target may take its far side (ring bonds) | §4.2 | `layout._arrow_parts`, `mechanism.Planner.build(far=…)` |
 | Checks: ↔ arrows and bracket segments join the overlap checks; the step after a bracket may cross it | design.md §6.4 | `geometry_checks.elements`, `check_mechanism` |
 
 ## 12. Implemented as (Lewis)
 
-Unmeasured user decisions (2026-10-26), round defaults on the 0.5 pt grid, **approved by the user on 2026-10-28**: charges_lewis_x\* is the user's ChemDraw edit of our draft (`cdxml_spike.py --lewis-draft`), and it keeps every Lewis atom and dot where we put them (`tests/test_cdxml.py::test_charges_lewis_reference_keeps_our_lewis`). That approves the positions; it does not measure them (Open 17).
+Unmeasured user decisions (2026-10-26), round defaults on the 0.5 pt grid, **approved by the user on 2026-10-28**: charges_lewis_x\* is the user's ChemDraw edit of our draft (`cdxml_gate.py --lewis-draft`), and it keeps every Lewis atom and dot where we put them (`tests/test_cdxml_species.py::test_charges_lewis_reference_keeps_our_lewis`). That approves the positions; it does not measure them (Open 17).
 
 | Rule | Value | Implementation |
 |---|---|---|
@@ -837,7 +837,7 @@ Unmeasured user decisions (2026-10-26), round defaults on the 0.5 pt grid, **app
 
 `acs_chem_svg.cdxml_writer` writes what ChemDraw writes for its own structures, so ChemDraw can
 edit a figure. These are file conventions, not drawn geometry. They are measured from the CDXML
-files with `measure_refs.py --cdxml-symbols` and `tests/test_cdxml.py` (reference diff).
+files with `measure_refs.py --cdxml-symbols` and `tests/test_cdxml_species.py` (reference diff).
 
 | Item | ChemDraw's files | Ours |
 |---|---|---|
@@ -860,7 +860,7 @@ files with `measure_refs.py --cdxml-symbols` and `tests/test_cdxml.py` (referenc
 **DTD:** `reference_renders/cdxml/CDXML.dtd`, Revvity's file, fetched from the DOCTYPE URL
 (2026-10-28; ChemDraw.app ships only hotkeys.dtd). It is local only and never committed (user
 decision 2026-10-28), so the DTD tests skip without it. It dates from 2003. libxml2 rejects one of its enumerations (`AS` lists
-`+ - ?`, which aren't name tokens), so `tests/test_cdxml.py` loosens it to CDATA. Every
+`+ - ?`, which aren't name tokens), so `tests/cdxml_helpers.py` loosens it to CDATA. Every
 reference then fails on only two attributes the DTD doesn't declare: `ShowPrimeLabels` on
 `<CDXML>` and `IsNickname` on `<t>`. The test allows exactly those.
 
@@ -868,7 +868,7 @@ reference then fails on only two attributes the DTD doesn't declare: `ShowPrimeL
 dots (the node keeps `Radical`; written since phase 3, §13.2), circled signs and `charge_labels` texts (a plain Plus/Minus with
 the formal charge), atom maps (no `AtomID`). Each is reported on stderr.
 
-**Gate (2026-10-28, `scripts/cdxml_spike.py --diff` on the user's ChemDraw 26 re-saves of all
+**Gate (2026-10-28, `scripts/cdxml_gate.py --diff` on the user's ChemDraw 26 re-saves of all
 seven gate files):** ChemDraw opens them without warnings (apart from the page size, now fixed)
 and keeps our label p, justification, label and fragment boxes and charge boxes, all within
 0.01 pt. It draws the re-saved references with the same ink as its originals: baselines and
@@ -885,7 +885,7 @@ labels explicitly, as here.
 
 Measured with `measure_refs.py --cdxml-scheme` (captions against the glyphs drawn in each
 reference SVG, `_caption_glyphs` / `text_lines`; arrows against Head3D / Tail3D) and held by
-`tests/test_cdxml.py` (`test_scheme_reference_diff`: the 9 scheme_basic / scheme_multi /
+`tests/test_cdxml_scheme.py` (`test_scheme_reference_diff`: the 9 scheme_basic / scheme_multi /
 equilibrium references rebuilt at ChemDraw's coordinates and compared object by object).
 
 | Item | ChemDraw's files | Ours |
@@ -913,8 +913,8 @@ equilibrium references rebuilt at ChemDraw's coordinates and compared object by 
 Lewis structures; curved arrows, resonance steps and brackets. M3 is written since phase 3
 (§13.2); abbreviations, resonance and those specs since phase 4a (§13.3).
 
-**Gate (2026-10-28, `scripts/cdxml_spike.py --phase 2 --diff` on the user's ChemDraw 26 re-saves
-of all seven files in `build/cdxml_spike/phase2/`):**
+**Gate (2026-10-28, `scripts/cdxml_gate.py --phase 2 --diff` on the user's ChemDraw 26 re-saves
+of all seven files in `build/cdxml_gate/phase2/` (re-saves in `reference_renders/resaves/phase2/`)):**
 - ChemDraw opens every file and keeps every `<scheme>` and `<step>`, each citing the same
   objects (it renumbers all ids, so `--diff` pairs objects by position). The exception is
   scheme_multi_x1.0's first row, whose round-trip export leaves out the four abbreviated
@@ -943,7 +943,7 @@ of all seven files in `build/cdxml_spike/phase2/`):**
 
 Measured with `measure_refs.py --cdxml-symbols` (dot symbols against the circles drawn in each
 reference SVG; each fragment's box against its outermost dots) and `measure_refs.py` (each
-curve's anchors against its drawn stroke), and held by `tests/test_cdxml.py`
+curve's anchors against its drawn stroke), and held by `tests/test_cdxml_mech.py`
 (`test_mech_reference_diff`: the three references rebuilt at ChemDraw's coordinates, with its
 CurvePoints and lone pairs on its atoms, and compared object by object).
 
@@ -971,8 +971,8 @@ shared and assigned electrons (refused); a second unpaired electron on an atom (
 maps are not written either, but a mechanism doesn't warn about them: every species is mapped
 for its arrows (user decision 2026-10-28).
 
-**Gate (2026-10-28, `scripts/cdxml_spike.py --phase 3 --diff` on the user's ChemDraw 26 re-saves
-of all six files in `build/cdxml_spike/phase3/`):**
+**Gate (2026-10-28, `scripts/cdxml_gate.py --phase 3 --diff` on the user's ChemDraw 26 re-saves
+of all six files in `build/cdxml_gate/phase3/` (re-saves in `reference_renders/resaves/phase3/`)):**
 - ChemDraw keeps every `<curve>` (CurveType, ArrowheadHead, CurvePoints), every LonePair and
   Electron symbol with its box and `represent attribute="Radical"`, and every `<step>`, the
   added water above its arrow included.
@@ -994,7 +994,7 @@ of all six files in `build/cdxml_spike/phase3/`):**
 
 Measured with `measure_refs.py --cdxml-scheme` (now also resonance_x\*: ↔ arrows, and each
 bracket `<graphic>` against the bracket drawn in the SVG) and the nickname nodes of abbrev_x\*,
-and held by `tests/test_cdxml.py`: `test_reference_diff` on abbrev_x\* (all 21 keys in both
+and held by `tests/test_cdxml_species.py`: `test_reference_diff` on abbrev_x\* (all 21 keys in both
 forms, three scales: nickname atoms, label p and box within 0.02 pt), `test_resonance_reference_diff`
 and `test_scheme_reference_diff` on scheme_wrap_x\*.
 
@@ -1019,8 +1019,8 @@ mirrored sign box (dx −7.5, §13) is ChemDraw's.
 **Not written in phase 4a:** Lewis structures, circled signs, `charge_labels` texts, 2+ / 2−
 and a second unpaired electron: written since phase 4b (§13.4).
 
-**Gate (2026-10-28, `scripts/cdxml_spike.py --phase 4a --diff` on the user's ChemDraw 26
-re-saves of all eight files in `build/cdxml_spike/phase4a/`: the round trips of abbrev_x1.0,
+**Gate (2026-10-28, `scripts/cdxml_gate.py --phase 4a --diff` on the user's ChemDraw 26
+re-saves of all eight files in `build/cdxml_gate/phase4a/` (re-saves in `reference_renders/resaves/phase4a/`): the round trips of abbrev_x1.0,
 resonance_x1.0 and scheme_wrap_x1.0 and the specs m1_abbrev, m4_resonance, m4_wrap, m4_nitration
 and m2_sequence, x1.0):**
 - ChemDraw keeps every node (336 on abbrev_x1.0), every nickname's NodeType, IsNickname and inner
@@ -1038,7 +1038,7 @@ and m2_sequence, x1.0):**
   ChemDraw's own drawings; no problems reported.
 
 **General abbreviations (phase 4c; source: abbrev_2_x\*, ligands_x\*; 2026-11-03).**
-`tests/test_cdxml.py::test_abbrev2_reference_diff` holds abbrev_2_x1.0 and ligands_x1.0 (the
+`tests/test_cdxml_abbrev.py::test_abbrev2_reference_diff` holds abbrev_2_x1.0 and ligands_x1.0 (the
 ×0.8 / ×0.6 files' CDXML and SVG disagree, Open 32); `test_ring_nts_cdxml`,
 `test_abbreviation_round_trip`, `test_text_label_cdxml`, `test_italic_label_runs`.
 
@@ -1051,7 +1051,7 @@ and m2_sequence, x1.0):**
 | Label `<t>` | key text; `<s>` runs by style: plain and count digits face 96, an italic prefix 98 (*t* \| -Bu), a typed letter subscript 32 + 2 (Lₙ's n: 34); NTs below / above: `LabelAlignment` Below / Above, `LineStarts` "2 4" / "3 5", p.y 3.59 below the node / 4.98 above it (`cdxml.tail_above_rise` 8.57 / 6.90 / 5.43) | the same (`cdxml_writer.label_runs`) |
 | p of N₃ and Ts | right-justified N₃: p.x the end of the ₃ centered on the atom (not of the drawn text, 0.70 further); Ts left-justified: p and box 0.55 right of the drawn glyphs (T's kerned advance centered) | `Label.internal_dx` |
 
-**Gate (passed 2026-11-03):** `scripts/cdxml_spike.py --phase 4c` writes abbrev_2_x1.0, ligands_x1.0,
+**Gate (passed 2026-11-03):** `scripts/cdxml_gate.py --phase 4c` writes abbrev_2_x1.0, ligands_x1.0,
 m1_abbrev2_x1.0 (a template, generated fragments for MEM and the spec's own group, OTBS, ring
 NTs, Ln and dppf, *t*-Bu, N₃) and label_variants_x1.0; the user re-saved them in ChemDraw 26.1.
 `--diff`: every node paired; every nickname's inner atoms and bonds kept (abbrev_2 80, ligands
@@ -1073,7 +1073,7 @@ the review showed two failures:
 - IPr written Left-justified at the drawn start: ChemDraw showed **PrI** (it re-justified the
   label from its bond and reversed I + Pr).
 
-Resolved by `label_variants_x1.0.cdxml` (`cdxml_spike.py --phase 4c`, four candidate forms per
+Resolved by `label_variants_x1.0.cdxml` (`cdxml_gate.py --phase 4c`, four candidate forms per
 row; user, 2026-11-03): only row B shows IPr and only row C shows pinB. So, right-justified:
 - a text label ChemDraw reads as a formula (IPr) stores the text whose token reversal is ours
   (PrI; `abbrev.chemdraw_stored`), Unspecified, Right;
@@ -1090,7 +1090,7 @@ radicals (the SnBu₃ template's Sn had drawn a carbene lone pair).
 
 ### 13.4 Charges and Lewis structures (phase 4b; source: charges_lewis_x1.0 / x0.8 / x0.6)
 
-charges_lewis_x\* is the user's ChemDraw 26 edit (2026-10-28) of `cdxml_spike.py
+charges_lewis_x\* is the user's ChemDraw 26 edit (2026-10-28) of `cdxml_gate.py
 --lewis-draft`. Row 1 drew our charge structures without charges, and the user added them with
 ChemDraw's tools. Rows 2–4 drew our Lewis structures in ChemDraw's objects, and the user kept
 them. Measured with `measure_refs.py --charges-lewis`.
@@ -1113,7 +1113,7 @@ HCN, in both forms), but keeps them. Molecules RDKit reads from the reference (r
 charges): C[N+](=O)[O-], C[CH+]C, C=C[O-], [Fe+2] (twice), C (the broken O²⁻) and [CH2] with two
 radicals.
 
-**Gate, round 1 (2026-10-28, `scripts/cdxml_spike.py --phase 4b --diff` on the user's
+**Gate, round 1 (2026-10-28, `scripts/cdxml_gate.py --phase 4b --diff` on the user's
 ChemDraw 26 re-saves of m1_charges, m1_lewis, m1_lewis_lines and m1_lewis_assigned, x1.0, as
 first written: digit signs and Lewis electrons as free symbols):**
 - **ChemDraw ignores `<represent>` and binds every symbol to the nearest atom on open** (ties,
@@ -1206,7 +1206,7 @@ strip is dropped); an offset double or a triple in front (its outermost line cen
 side). `geometry_checks.check_labels` reports bond lines of unrelated bonds that touch without
 a gap. CDXML: bonds get Z in depth order, rear first (`cdxml_writer.z_order`), no
 CrossingBonds written; our export of chair_x1.0's templates has the same front bond as
-ChemDraw's file at all 10 crossings. Gate (`cdxml_spike.py --phase 5`): pending the user's
+ChemDraw's file at all 10 crossings. Gate (`cdxml_gate.py --phase 5`): pending the user's
 ChemDraw re-saves. A chair's CDXML has no wedges (ChemDraw's own chairs have none either), so
 ChemDraw reads its ring stereocenters as undefined.
 
@@ -1273,7 +1273,7 @@ arcs). `measure_refs.py --arc-eq` (`arc_eq_arrows`); `arrows.arc_equilibrium_arr
 
 ### 15.2 Cycle layout (ours, unmeasured; `cycle.py`, presets' `cycle:` keys)
 
-Rules settled on the spike renders (`scripts/cycle_spike.py`; user decisions 2026-10-29: equal
+Rules settled on the spike renders (`scripts/cycle_spike.py`, retired 2026-11-03 once `cycle.py` replaced it; user decisions 2026-10-29: equal
 free arcs, labels inside the circle, tails as tangent arcs). Values at x1.0; x0.8 / x0.6 are x1.0
 × k rounded to the 0.5 grid (`tail_join_in`, `tail_join_out` and `tail_turn` unchanged; the spike's 0.38 / 0.62 joins rounded to the 0.1 grid).
 
@@ -1309,7 +1309,7 @@ ChemDraw notes "An atom in this label has an invalid valence" on the P. `Order="
 the note but ChemDraw draws a small arrow on the bond (gate 2026-10-30, `dative_test.cdxml`):
 not used (user decision 2026-10-30).
 
-Gate (2026-10-30, `cdxml_spike.py --phase 6`, both cycle examples): ChemDraw keeps every arc
+Gate (2026-10-30, `cdxml_gate.py --phase 6`, both cycle examples): ChemDraw keeps every arc
 (Head3D / Tail3D within 0.04, its recomputed boxes within 0.26), the arc equilibria, the headless
 tails and the centered Pd labels, and draws them as ours (the user, by eye). It discards our
 `<scheme>` and builds its own from the drawing: a step per arrow, leaving tails included,

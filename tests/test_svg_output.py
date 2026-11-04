@@ -146,7 +146,7 @@ def arrow_case(request):
     from pathlib import Path
 
     from acs_chem_svg.layout import render_spec
-    root = render_spec(Path(__file__).resolve().parents[1] / "examples" / f"{request.param}.yaml")
+    root = render_spec(Path(__file__).resolve().parents[1] / "examples" / request.param[:2] / f"{request.param}.yaml")
     return root, to_svg(root)[0], to_svg(root, affinity=True)[0]
 
 

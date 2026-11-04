@@ -1,6 +1,8 @@
 # Renderer spike: RDKit ACS1996 mode vs ChemDraw (M0, design.md §4.1)
 
-To reproduce, run `uv run python scripts/spike_rdkit.py` (needs the local-only `reference_renders/`; `spike/` is gitignored). It writes `spike/metrics.json` and
+The decision record for M0. The spike script was retired on 2026-11-03 (its `build_mol` lives on in
+`scripts/cdxml_to_molfile.py`); to reproduce, check out `scripts/spike_rdkit.py` from commit d6d3499 and
+run it (needs the local-only `reference_renders/`; `spike/` is gitignored). It wrote `spike/metrics.json` and
 these images:
 - `spike/m1_x{1.0,0.8,0.6}_compare.png`: ChemDraw | RDKit | overlay.
 - `spike/m1_x1.0_zoom.png`: per molecule at 10 px/pt.

@@ -1,4 +1,4 @@
-"""M0 smoke tests: font faces load, presets parse and follow the documented scale rules."""
+"""Preset and font smoke tests (from M0): font faces load, presets parse and follow the documented scale rules."""
 
 from pathlib import Path
 

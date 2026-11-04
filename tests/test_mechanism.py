@@ -19,13 +19,13 @@ from acs_chem_svg.spec import Spec, load_spec
 from acs_chem_svg.svg_writer import to_svg
 
 EX = Path(__file__).resolve().parents[1] / "examples"
-M3 = sorted(p.stem for p in EX.glob("m3_*.yaml"))
+M3 = sorted(p.stem for p in (EX / "m3").glob("m3_*.yaml"))
 P = load_preset("acs1996")
 
 
 @lru_cache(maxsize=None)
 def scheme(stem):
-    return build_scheme(load_spec(EX / f"{stem}.yaml"), EX, stem)
+    return build_scheme(load_spec(EX / stem[:2] / f"{stem}.yaml"), EX, stem)
 
 
 def sides(smiles, tails=None, flip_h=False):
@@ -37,7 +37,7 @@ def sides(smiles, tails=None, flip_h=False):
 
 @pytest.mark.parametrize("stem", M3)
 def test_examples_validate(stem):
-    assert validate(EX / f"{stem}.yaml") == []
+    assert validate(EX / stem[:2] / f"{stem}.yaml") == []
 
 
 def test_lone_pair_sides_like_chemdraw():
@@ -113,7 +113,7 @@ def test_two_fishhooks_from_one_bond_take_opposite_sides():
 
 def test_overrides_flip_the_bow():
     import yaml
-    spec = yaml.safe_load((EX / "m3_sn2_x1.0.yaml").read_text())
+    spec = yaml.safe_load((EX / "m3" / "m3_sn2_x1.0.yaml").read_text())
     spec["overrides"] = {"arrows": [{"step": 1, "index": 0, "bow": "right"}]}
     from acs_chem_svg.spec import Spec
     lay = build_scheme(Spec.model_validate(spec), EX, "sn2_flipped")
@@ -328,7 +328,7 @@ def test_target_atoms_keep_their_lone_pairs_in_place():
         plain = Drawer(p.mol, lay.preset, show_lone_pairs={i}).dot_sets()[i]
         assert [(d.side, d.dots) for d in p.drawer.dot_sets()[i] if d.kind == "pair"] == \
                [(d.side, d.dots) for d in plain if d.kind == "pair"]
-    assert validate(EX / "m3_carbonyl_addition_x1.0.yaml") == []  # no head touches them
+    assert validate(EX / "m3" / "m3_carbonyl_addition_x1.0.yaml") == []  # no head touches them
 
 
 def test_fishhooks_meet_where_the_bond_forms():

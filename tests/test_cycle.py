@@ -14,7 +14,7 @@ from acs_chem_svg.preset import load_preset
 from acs_chem_svg.spec import CycleTail, Spec, load_spec
 
 ROOT = Path(__file__).resolve().parents[1]
-EXAMPLES = sorted((ROOT / "examples").glob("m6_*_cycle_x*.yaml"))
+EXAMPLES = sorted((ROOT / "examples" / "m6").glob("m6_*_cycle_x*.yaml"))
 P = load_preset("acs1996")
 
 
@@ -48,7 +48,7 @@ def test_examples_equal_free_arcs_start_on_top_and_clear(path):
 
 
 def test_example_groups():
-    root = render_spec(ROOT / "examples" / "m6_suzuki_cycle_x1.0.yaml")
+    root = render_spec(ROOT / "examples" / "m6" / "m6_suzuki_cycle_x1.0.yaml")
     ids = {g.id for g in root.children}
     assert {"cycle-arc-1", "cycle-arc-2", "cycle-arc-3", "cycle-in-1-1", "cycle-in-2-1", "cycle-out-2-1",
             "cycle-out-3-1", "cycle-label-1", "cycle-center", "numbers", "species-pd0"} <= ids
