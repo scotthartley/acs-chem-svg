@@ -168,6 +168,9 @@ if TYPE_CHECKING:
     from .layout import SchemeLayout
 
 HEADER_DIR = PRESET_DIR / "cdxml"
+_PARSER = etree.XMLParser(load_dtd=False, no_network=True, remove_blank_text=True)
+FACE_BITS = {"regular": 0, "italic": 2, "bold": 1}  # <s face>: style bits ...
+SCRIPT_BITS = {"base": 0, "sub": 32, "sup": 64}  # ... and script bits
 ARC_TOOLS = (90, 120, 180, 270)  # ChemDraw's arc tools: the legacy <graphic>'s AngularSize (arcs_x*, arcs_eq_x*)
 _PT = Chem.GetPeriodicTable()
 
@@ -361,10 +364,8 @@ def label_runs(markup: str, base_face: str) -> list[tuple[str, str]]:
     out: list[tuple[str, str]] = []
     base = int(base_face or 0)
     for r in richtext.parse(markup):
-        if r.script == "sub" and not r.text.isdigit():
-            face = 32 | (2 if r.style == "italic" else 0)
-        else:
-            face = base | (2 if r.style == "italic" else 0)
+        italic = FACE_BITS["italic"] if r.style == "italic" else 0
+        face = (SCRIPT_BITS["sub"] if r.script == "sub" and not r.text.isdigit() else base) | italic
         if out and out[-1][0] == str(face):
             out[-1] = (str(face), out[-1][1] + r.text)
         else:
@@ -387,22 +388,22 @@ class Ids:
         return str(self.z - 1)
 
 
+def _header_file(preset_name: str, suffix: str, what: str) -> etree._ElementTree:
+    """presets/cdxml/<preset><suffix>, parsed; `what` names it in the missing-file error."""
+    path = HEADER_DIR / f"{preset_name}{suffix}"
+    if not path.exists():
+        raise FileNotFoundError(f"no CDXML {what} for preset {preset_name!r} ({path}); run scripts/cdxml_headers.py")
+    return etree.parse(str(path), _PARSER)
+
+
 @lru_cache(maxsize=None)
 def load_nicknames(preset_name: str) -> dict[str, etree._Element]:
     """ABBREVIATIONS key -> its <nickname> template (presets/cdxml/<preset>.nicknames.xml)."""
-    path = HEADER_DIR / f"{preset_name}.nicknames.xml"
-    if not path.exists():
-        raise FileNotFoundError(f"no CDXML nickname templates for preset {preset_name!r} ({path}); "
-                                "run scripts/cdxml_headers.py")
-    root = etree.parse(str(path), etree.XMLParser(load_dtd=False, no_network=True, remove_blank_text=True)).getroot()
-    return {el.get("key"): el for el in root}
+    return {el.get("key"): el for el in _header_file(preset_name, ".nicknames.xml", "nickname templates").getroot()}
 
 
 def load_header(preset_name: str) -> etree._ElementTree:
-    path = HEADER_DIR / f"{preset_name}.xml"
-    if not path.exists():
-        raise FileNotFoundError(f"no CDXML header for preset {preset_name!r} ({path}); run scripts/cdxml_headers.py")
-    return etree.parse(str(path), etree.XMLParser(load_dtd=False, no_network=True, remove_blank_text=True))
+    return _header_file(preset_name, ".xml", "header")
 
 
 def label_text(element: str, num_h: int) -> str:
@@ -717,7 +718,7 @@ class _Writer:
                 font = self.caption_fonts[part.style]
                 if font is None:
                     raise ValueError(f"CDXML header has no font for {part.style} captions; run scripts/cdxml_headers.py")
-                face = {"regular": 0, "italic": 2, "bold": 1}[part.style] | {"base": 0, "sub": 32, "sup": 64}[part.script]
+                face = FACE_BITS[part.style] | SCRIPT_BITS[part.script]
                 attrs = {"font": font, "size": size, "color": self.root.get("color", "0")}
                 if face:
                     attrs["face"] = str(face)
@@ -819,17 +820,26 @@ class _Writer:
         tail3d, head3d = (add(p, off) for p in self.arrow_ends(a))
         a = CdxArrow(add(a.tail, off), add(a.head, off), a.kind, a.variant)
         box = self.arrow_box(a, attrs, tail3d, head3d)
-        gid, aid, z = self.ids.new(), self.ids.new(), self.ids.next_z()
-        etree.SubElement(page, "graphic", {
-            "id": gid, "SupersededBy": aid, "BoundingBox": pts(*head3d, *tail3d), "Z": z, "GraphicType": "Line",
-            "ArrowType": {"forward": "FullHead", "resonance": "Resonance"}.get(a.kind, "Equilibrium"),
-            "HeadSize": attrs["HeadSize"]})
         c = mul(add(head3d, tail3d), 0.5)
         d = sub(head3d, tail3d)
-        el = etree.Element("arrow", {"id": aid, "BoundingBox": pts(*box), "Z": z, **attrs,
-                                     "Head3D": _p3(head3d), "Tail3D": _p3(tail3d), "Center3D": _p3(c),
-                                     "MajorAxisEnd3D": _p3(add(c, d)), "MinorAxisEnd3D": _p3(add(c, (-d[1], d[0])))})
+        gid, aid, el = self.superseded(
+            page, (*head3d, *tail3d), {
+                "GraphicType": "Line",
+                "ArrowType": {"forward": "FullHead", "resonance": "Resonance"}.get(a.kind, "Equilibrium"),
+                "HeadSize": attrs["HeadSize"]},
+            box, {**attrs, "Head3D": _p3(head3d), "Tail3D": _p3(tail3d), "Center3D": _p3(c),
+                  "MajorAxisEnd3D": _p3(add(c, d)), "MinorAxisEnd3D": _p3(add(c, (-d[1], d[0])))})
         return gid, aid, box, el
+
+    def superseded(self, page, graphic_box: tuple, graphic_attrs: dict, arrow_box: tuple,
+                   arrow_attrs: dict) -> tuple[str, str, etree._Element]:
+        """A legacy <graphic SupersededBy> on the page and its <arrow> (returned, appended later),
+        sharing one Z; (graphic id, arrow id, arrow element)."""
+        gid, aid, z = self.ids.new(), self.ids.new(), self.ids.next_z()
+        etree.SubElement(page, "graphic", {"id": gid, "SupersededBy": aid, "BoundingBox": pts(*graphic_box), "Z": z,
+                                           **graphic_attrs})
+        el = etree.Element("arrow", {"id": aid, "BoundingBox": pts(*arrow_box), "Z": z, **arrow_attrs})
+        return gid, aid, el
 
 
     def arc(self, page, a: CdxArc, off: Point) -> tuple[str, tuple, etree._Element]:
@@ -852,17 +862,15 @@ class _Writer:
         else:
             raise ValueError(f"unknown arc kind {a.kind!r}")
         spacing = {k: attrs.pop(k) for k in ("ArrowShaftSpacing", "ArrowEquilibriumRatio") if k in attrs}
-        gid, aid, z = self.ids.new(), self.ids.new(), self.ids.next_z()
         tool = next((t for t in ARC_TOOLS if abs(round(sweep, 1)) <= t), 360)
-        etree.SubElement(page, "graphic", {
-            "id": gid, "SupersededBy": aid, "BoundingBox": pts(*head, *c), "Z": z, "GraphicType": "Arc",
-            **({"ArrowType": arrow_type} if arrow_type else {}), "HeadSize": attrs["HeadSize"],
-            # a headless arc's graphic has the other sign (arcs_eq_x*: all six)
-            "AngularSize": _angle(math.copysign(tool, -sweep if arrow_type is None else sweep))})
-        el = etree.Element("arrow", {"id": aid, "BoundingBox": pts(*ink), "Z": z, **attrs,
-                                     "AngularSize": _angle(sweep), **spacing, "Head3D": _p3(head), "Tail3D": _p3(tail),
-                                     "Center3D": _p3(c), "MajorAxisEnd3D": _p3(add(c, (a.r, 0.0))),
-                                     "MinorAxisEnd3D": _p3(add(c, (0.0, a.r)))})
+        gid, _, el = self.superseded(
+            page, (*head, *c), {
+                "GraphicType": "Arc", **({"ArrowType": arrow_type} if arrow_type else {}), "HeadSize": attrs["HeadSize"],
+                # a headless arc's graphic has the other sign (arcs_eq_x*: all six)
+                "AngularSize": _angle(math.copysign(tool, -sweep if arrow_type is None else sweep))},
+            ink, {**attrs, "AngularSize": _angle(sweep), **spacing, "Head3D": _p3(head), "Tail3D": _p3(tail),
+                  "Center3D": _p3(c), "MajorAxisEnd3D": _p3(add(c, (a.r, 0.0))),
+                  "MinorAxisEnd3D": _p3(add(c, (0.0, a.r)))})
         return gid, ink, el
 
     # ------------------------------------------------------------------ brackets
@@ -922,6 +930,17 @@ def warn_stderr(msg: str) -> None:
     print(f"warning: {msg}", file=sys.stderr)
 
 
+def _attrs_first(el: etree._Element, first: dict[str, str]) -> None:
+    """Put `first` (set in that order) before el's other attributes. An attribute el already
+    has keeps its place in `first` but its old value."""
+    old = dict(el.attrib)
+    el.attrib.clear()
+    for k, v in first.items():
+        el.set(k, v)
+    for k, v in old.items():
+        el.set(k, v)
+
+
 def to_cdxml(scheme: CdxScheme | list[tuple[Molecule, Drawer, Point]], preset_name: str, name: str = "",
              warn: Callable[[str], None] = warn_stderr) -> str:
     """CDXML text for a CdxScheme, or for a list of species: (molecule, its Drawer, the offset
@@ -978,14 +997,9 @@ def to_cdxml(scheme: CdxScheme | list[tuple[Molecule, Drawer, Point]], preset_na
             etree.SubElement(sch, "step", attrs)
     page.extend(arrows)
     box = union_box(boxes) if boxes else (0.0, 0.0, 0.0, 0.0)
-    attrs = dict(root.attrib)
-    root.attrib.clear()
     # CreationProgram, Name and BoundingBox first, as ChemDraw orders them
-    root.set("CreationProgram", f"acs-chem-svg {version('acs-chem-svg')}")
-    root.set("Name", name)
-    root.set("BoundingBox", pts(*box))
-    for k, v in attrs.items():
-        root.set(k, v)
+    _attrs_first(root, {"CreationProgram": f"acs-chem-svg {version('acs-chem-svg')}", "Name": name,
+                        "BoundingBox": pts(*box)})
     # Whole pages of the template's size, enough for the drawing: ChemDraw offers to expand a
     # page it doesn't fit in, and writes BoundingBox="0 0 1080 720" WidthPages="2" (re-save of
     # m1_smiles_x1.0, 2026-10-28).
@@ -995,12 +1009,7 @@ def to_cdxml(scheme: CdxScheme | list[tuple[Molecule, Drawer, Point]], preset_na
     page.set("BoundingBox", f"{x0:g} {y0:g} {x0 + wide * pw:g} {y0 + tall * ph:g}")
     page.set("WidthPages", str(wide))
     page.set("HeightPages", str(tall))
-    # page id first, as in the references
-    pattrs = dict(page.attrib)
-    page.attrib.clear()
-    page.set("id", pattrs.pop("id"))
-    for k, v in pattrs.items():
-        page.set(k, v)
+    _attrs_first(page, {"id": page.get("id")})  # page id first, as in the references
     return etree.tostring(header, xml_declaration=True, encoding="UTF-8", doctype=header.docinfo.doctype,
                           pretty_print=True).decode()
 
