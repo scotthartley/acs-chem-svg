@@ -49,8 +49,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import measure_refs as mr  # noqa: E402
 from compare import render_reference  # noqa: E402
 
-from acs_chem_svg.cdxml_writer import spec_cdxml  # noqa: E402
-from acs_chem_svg.layout import render_spec  # noqa: E402
+from acs_chem_svg.figure import render_spec, spec_cdxml  # noqa: E402
 from acs_chem_svg.preview import rasterize  # noqa: E402
 from acs_chem_svg.svg_writer import to_svg  # noqa: E402
 

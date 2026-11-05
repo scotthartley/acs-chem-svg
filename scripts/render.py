@@ -1,6 +1,6 @@
 """Render a spec to SVG + PNG + CDXML: a scheme (steps), a catalytic cycle, or species side by side.
 
-Layout is acs_chem_svg.layout.render_spec, shared with scripts/gallery.py. Writes
+Layout is acs_chem_svg.figure.build_figure, shared with scripts/gallery.py. Writes
 <stem>.svg and <stem>.png (4 px/pt) next to the spec, or in --out, and prints the drawing width.
 --crops also writes zoomed crops (design.md §6.5, 16 px/pt) of every curved arrow, every
 labeled atom with a charge or dots, every resonance arrow, both ends of every equilibrium arrow
@@ -35,13 +35,12 @@ import math
 import sys
 from pathlib import Path
 
-from acs_chem_svg.cdxml_writer import CdxmlUnsupported, cycle_records, placed_cdxml, scheme_records, to_cdxml
-from acs_chem_svg.cycle import CycleLayout, build_cycle
+from acs_chem_svg.cdxml_writer import CdxmlUnsupported
+from acs_chem_svg.cycle import CycleLayout
+from acs_chem_svg.figure import build_figure
 from acs_chem_svg.geometry import arc_point, union_box
-from acs_chem_svg.layout import SchemeLayout, build_scheme, m1_placed, render_spec
-from acs_chem_svg.scene import Group
+from acs_chem_svg.layout import SchemeLayout
 from acs_chem_svg.preview import crops, rasterize, rasterize_file
-from acs_chem_svg.spec import load_spec
 from acs_chem_svg.svg_writer import FONT_FAMILY, PADDING, faces_used, num, to_svg
 
 MAP_COLOR = "#d01c5b"
@@ -139,20 +138,13 @@ def maps_svg(lay: SchemeLayout) -> str:
 def render(spec_path: Path, out_dir: Path | None = None, px_per_pt: float = 4.0,
            with_crops: bool = False, with_maps: bool = False, affinity: bool = False,
            with_cdxml: bool = True) -> list[Path]:
-    spec = load_spec(spec_path)
-    cyc = build_cycle(spec, spec_path.parent, spec_path.stem) if spec.cycle is not None else None
-    lay = build_scheme(spec, spec_path.parent, spec_path.stem) if spec.steps else None
-    placed = m1_placed(spec, spec_path.parent) if with_cdxml and not lay and not cyc else None
-    root = (cyc.root if cyc else lay.root if lay else Group(spec_path.stem, [p.group for p in placed]) if placed
-            else render_spec(spec_path))
+    fig = build_figure(spec_path)
+    root, lay, cyc = fig.root, fig.scheme, fig.cycle
     svg, offset = to_svg(root, affinity=affinity)
     cdxml = None
     if with_cdxml:
-        name = f"{spec_path.stem}.cdxml"
         try:
-            cdxml = (to_cdxml(cycle_records(cyc, spec, offset), spec.preset, name) if cyc
-                     else to_cdxml(scheme_records(lay, spec, offset), spec.preset, name) if lay
-                     else placed_cdxml(placed, offset, spec.preset, name))
+            cdxml = fig.cdxml(offset)
         except CdxmlUnsupported as e:
             print(f"warning: no CDXML: {e}", file=sys.stderr)
     out_dir = out_dir or spec_path.parent

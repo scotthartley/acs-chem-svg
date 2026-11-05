@@ -6,6 +6,7 @@ import render
 from render import main
 
 from acs_chem_svg.cdxml_writer import CdxmlUnsupported
+from acs_chem_svg.figure import Figure
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEME = ROOT / "examples" / "m3" / "m3_carbonyl_addition_x1.0.yaml"
@@ -38,7 +39,7 @@ def test_flags(tmp_path, capsys):
 def test_unsupported_cdxml_warns_and_still_renders(tmp_path, monkeypatch, capsys):
     def refuse(*args, **kwargs):
         raise CdxmlUnsupported("test: not exportable")
-    monkeypatch.setattr(render, "to_cdxml", refuse)
+    monkeypatch.setattr(Figure, "cdxml", refuse)
     assert main([str(SCHEME), "--out", str(tmp_path)]) == 0
     assert sorted(p.suffix for p in tmp_path.iterdir()) == [".png", ".svg"]
     assert capsys.readouterr().err.count("warning: no CDXML: test: not exportable") == 1

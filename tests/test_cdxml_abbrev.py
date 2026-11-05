@@ -11,7 +11,7 @@ from lxml import etree
 from rdkit import Chem
 
 import measure_refs as mr
-from acs_chem_svg.cdxml_writer import spec_cdxml
+from acs_chem_svg.figure import spec_cdxml
 from acs_chem_svg.geometry import sub
 
 from cdxml_helpers import (

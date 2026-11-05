@@ -21,7 +21,8 @@ from rdkit import Chem
 from test_m1_vs_chemdraw import REFS
 
 import measure_refs as mr
-from acs_chem_svg.cdxml_writer import HEADER_DIR, spec_cdxml
+from acs_chem_svg.cdxml_writer import HEADER_DIR
+from acs_chem_svg.figure import spec_cdxml
 from acs_chem_svg.geometry import sub
 from acs_chem_svg.preset import load_preset
 from acs_chem_svg.spec import load_spec

@@ -9,7 +9,7 @@ from pydantic import ValidationError
 from acs_chem_svg.arrows import arc_arrow, arc_equilibrium_arrow
 from acs_chem_svg.cycle import _box_at, _gap, arc_ends, build_cycle, check_cycle, solve, tail_items
 from acs_chem_svg.geometry import arc_point, length, point_box_dist, sub
-from acs_chem_svg.layout import render_spec
+from acs_chem_svg.figure import render_spec
 from acs_chem_svg.preset import load_preset
 from acs_chem_svg.spec import CycleTail, Spec, load_spec
 

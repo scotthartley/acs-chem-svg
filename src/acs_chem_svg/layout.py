@@ -46,7 +46,7 @@ from .mechanism import AtomRef, MechArrow, Parts, plan_step, species_parts
 from .placed import Placed, drawer, place
 from .preset import Preset, load_preset
 from .scene import Group, Polyline, TextRun
-from .spec import ArrowSet, ResonanceStep, Spec, load_spec, molecules, scheme_molecules
+from .spec import ArrowSet, ResonanceStep, Spec, molecules, scheme_molecules
 
 
 @dataclass
@@ -141,11 +141,6 @@ def m1_placed(spec: Spec, base_dir: Path) -> list[Placed]:
         x += (x1 - x0) + preset.scheme.plus_gap
         out.append(p)
     return out
-
-
-def m1_row(spec: Spec, base_dir: Path, name: str) -> Group:
-    """M1: the m1_placed species in one group."""
-    return Group(name, [p.group for p in m1_placed(spec, base_dir)])
 
 
 def _anchor_y(p: Placed, use_rings: bool) -> float:
@@ -572,14 +567,3 @@ def curved_arrows(lay: SchemeLayout, spec: Spec, aset: ArrowSet, row: list[str] 
     return plan_step(aset.step, list(aset.arrows), overrides, lay.preset, atoms, bonds, centroids, parts,
                      [r.bbox() for r in (pluses if pluses is not None else lay.pluses)], aset.offset)
 
-
-def render_spec(path: Path) -> Group:
-    """Scene for a spec file: M1 side-by-side species, an M2 scheme when it has steps, or a
-    catalytic cycle (cycle.build_cycle)."""
-    spec = load_spec(path)
-    if spec.cycle is not None:
-        from .cycle import render_cycle  # cycle imports layout
-        return render_cycle(spec, path.parent, path.stem)
-    if not spec.steps:
-        return m1_row(spec, path.parent, path.stem)
-    return build_scheme(spec, path.parent, path.stem).root

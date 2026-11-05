@@ -9,8 +9,9 @@ import pytest
 from acs_chem_svg import chem
 from acs_chem_svg.arrows import notch_x
 from acs_chem_svg.draw_mol import Drawer, draw_molecule
+from acs_chem_svg.figure import render_spec
 from acs_chem_svg.geometry_checks import check_overlaid, check_scheme
-from acs_chem_svg.layout import build_scheme, render_spec
+from acs_chem_svg.layout import build_scheme
 from acs_chem_svg.preset import load_preset
 from acs_chem_svg.scene import Group
 from acs_chem_svg.spec import Spec, load_spec, molecules, scheme_prepared

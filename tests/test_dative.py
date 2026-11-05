@@ -9,7 +9,7 @@ from lxml import etree
 from rdkit import Chem
 
 from acs_chem_svg import chem, electrons
-from acs_chem_svg.cdxml_writer import spec_cdxml
+from acs_chem_svg.figure import spec_cdxml
 from acs_chem_svg.preset import load_preset
 from acs_chem_svg.spec import CurvedArrow
 

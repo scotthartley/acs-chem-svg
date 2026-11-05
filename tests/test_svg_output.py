@@ -145,7 +145,7 @@ def test_reaction_and_resonance_markers_place_the_old_heads(preset):
 def arrow_case(request):
     from pathlib import Path
 
-    from acs_chem_svg.layout import render_spec
+    from acs_chem_svg.figure import render_spec
     root = render_spec(Path(__file__).resolve().parents[1] / "examples" / request.param[:2] / f"{request.param}.yaml")
     return root, to_svg(root)[0], to_svg(root, affinity=True)[0]
 

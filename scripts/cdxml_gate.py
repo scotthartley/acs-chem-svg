@@ -117,7 +117,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import measure_refs as mr  # noqa: E402
 from compare import preset_for, reference_cdx_scheme, render_reference  # noqa: E402
 
-from acs_chem_svg.cdxml_writer import spec_cdxml, to_cdxml  # noqa: E402
+from acs_chem_svg.cdxml_writer import to_cdxml  # noqa: E402
+from acs_chem_svg.figure import spec_cdxml  # noqa: E402
 from acs_chem_svg.draw_mol import Drawer  # noqa: E402
 from acs_chem_svg.geometry import add, dot, length, sub, unit  # noqa: E402
 from acs_chem_svg.layout import build_scheme  # noqa: E402

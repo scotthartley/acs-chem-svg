@@ -467,6 +467,3 @@ def check_cycle(lay: CycleLayout) -> list[str]:
                   f"({t.text or t.species}): {t.clash}; shorten its text (tails never move the species)"
                   for t in lay.tails if t.clash]
 
-
-def render_cycle(spec: Spec, base_dir: FsPath, name: str) -> Group:
-    return build_cycle(spec, base_dir, name).root

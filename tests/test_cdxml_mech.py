@@ -9,7 +9,8 @@ from lxml import etree
 from rdkit import Chem
 
 import measure_refs as mr
-from acs_chem_svg.cdxml_writer import spec_cdxml, to_cdxml
+from acs_chem_svg.cdxml_writer import to_cdxml
+from acs_chem_svg.figure import spec_cdxml
 from acs_chem_svg.geometry import sub
 from acs_chem_svg.preset import load_preset
 

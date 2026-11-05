@@ -131,8 +131,8 @@ with the stored label boxes and each dot center plus cdxml.lone_pair_box_reach /
 electron_box_reach, as ChemDraw's; the root's also covers the captions, arrows, brackets and
 curves' ink.
 Coordinates are in the caller's frame: each species' offset is added to its atom positions, and
-CdxScheme.offset to the arrows, captions, curves and brackets (render.py passes to_svg's offset, so the
-file lines up with the SVG).
+CdxScheme.offset to the arrows, captions, curves and brackets (figure.Figure.cdxml passes to_svg's offset,
+so the file lines up with the SVG).
 Numbers are written with two decimals, as ChemDraw writes them. CreationProgram names this
 package, and the page grows by whole pages to fit the drawing.
 """
@@ -143,6 +143,7 @@ import math
 import sys
 from collections.abc import Callable
 from functools import lru_cache
+from typing import TYPE_CHECKING
 from importlib.metadata import version
 from dataclasses import dataclass, field
 
@@ -154,16 +155,17 @@ from .arrows import ARROW_TYPES, arc_step_arrow
 from .brackets import square_bracket
 from .abbrev import LabelInfo
 from .chem import Molecule
-from .cycle import CycleLayout, build_cycle
 from .draw_mol import Drawer, label_info
 from .geometry import Point, add, arc_point, arc_segments, mul, sub, union_box, unit
-from .layout import SchemeLayout, build_scheme, m1_placed
 from .placed import Placed
 from .mechanism import curved_arrow, fishhook_side
 from .preset import PRESET_DIR, load_preset
 from .scene import Group, Path, TextRun
-from .spec import ResonanceStep, Spec, load_spec
-from .svg_writer import to_svg
+from .spec import ResonanceStep, Spec
+
+if TYPE_CHECKING:
+    from .cycle import CycleLayout
+    from .layout import SchemeLayout
 
 HEADER_DIR = PRESET_DIR / "cdxml"
 ARC_TOOLS = (90, 120, 180, 270)  # ChemDraw's arc tools: the legacy <graphic>'s AngularSize (arcs_x*, arcs_eq_x*)
@@ -916,12 +918,12 @@ def _origin(ln: richtext.Line, preset) -> Point:
     return r.x, r.y - richtext.run_metrics(ln.parts[0], preset.text.caption_size, preset)[1]
 
 
-def _stderr(msg: str) -> None:
+def warn_stderr(msg: str) -> None:
     print(f"warning: {msg}", file=sys.stderr)
 
 
 def to_cdxml(scheme: CdxScheme | list[tuple[Molecule, Drawer, Point]], preset_name: str, name: str = "",
-             warn: Callable[[str], None] = _stderr) -> str:
+             warn: Callable[[str], None] = warn_stderr) -> str:
     """CDXML text for a CdxScheme, or for a list of species: (molecule, its Drawer, the offset
     added to its coordinates). The Drawer's labels must be in molecule coordinates (Drawer.draw
     leaves them so)."""
@@ -1003,11 +1005,10 @@ def to_cdxml(scheme: CdxScheme | list[tuple[Molecule, Drawer, Point]], preset_na
                           pretty_print=True).decode()
 
 
-def placed_cdxml(placed: list[Placed], svg_offset: Point, preset_name: str, name: str = "",
-                 warn: Callable[[str], None] = _stderr) -> str:
-    """CDXML for laid-out species (layout.m1_placed), in the frame of the SVG that to_svg wrote
-    with `svg_offset`."""
-    return to_cdxml([(p.mol, p.drawer, add(p.offset, svg_offset)) for p in placed], preset_name, name, warn)
+def species_records(placed: list[Placed], svg_offset: Point = (0.0, 0.0)) -> CdxScheme:
+    """The CdxScheme of laid-out species (each Placed's molecule, Drawer and offset), in the frame
+    of the SVG that to_svg wrote with `svg_offset`."""
+    return CdxScheme([(p.mol, p.drawer, add(p.offset, svg_offset)) for p in placed], offset=svg_offset)
 
 
 def _line(runs: list[TextRun], parts: list[richtext.Run]) -> richtext.Line:
@@ -1020,7 +1021,7 @@ def scheme_records(lay: SchemeLayout, spec: Spec, svg_offset: Point = (0.0, 0.0)
     """The CdxScheme of a laid-out scheme, in the frame of the SVG that to_svg wrote with
     `svg_offset`. No layout here: positions are the layout's records."""
     names = list(lay.species)
-    out = CdxScheme([(p.mol, p.drawer, add(p.offset, svg_offset)) for p in lay.species.values()], offset=svg_offset)
+    out = species_records(list(lay.species.values()), svg_offset)
     for run in lay.pluses:
         out.texts.append(CdxText([_line([run], [richtext.Run("+")])]))
     by_n = {st.n: st for st in lay.steps}
@@ -1066,7 +1067,7 @@ def cycle_records(cyc: CycleLayout, spec: Spec, svg_offset: Point = (0.0, 0.0)) 
     equilibrium arrow, arcs_eq_x*) and tails, captions for its labels, center text, tail texts and
     numbers, and one <scheme> with a <step> per arrow."""
     names = list(cyc.species)
-    out = CdxScheme([(p.mol, p.drawer, add(p.offset, svg_offset)) for p in cyc.species.values()], offset=svg_offset)
+    out = species_records(list(cyc.species.values()), svg_offset)
     steps = spec.cycle.ordered_steps()
     out.schemes.append([])
     for st, arc in zip(steps, cyc.arcs):
@@ -1096,23 +1097,6 @@ def cycle_records(cyc: CycleLayout, spec: Spec, svg_offset: Point = (0.0, 0.0)) 
     for n, runs in cyc.numbers.items():
         out.texts.append(CdxText([_line(runs, richtext.parse(str(spec.numbers[n]), "bold"))]))
     return out
-
-
-def spec_cdxml(spec_path, warn: Callable[[str], None] = _stderr) -> str:
-    """What render.py --cdxml writes for a spec: M1 species, an M2 scheme or M3 mechanism, or a
-    catalytic cycle."""
-    spec = load_spec(spec_path)
-    if spec.cycle is not None:
-        cyc = build_cycle(spec, spec_path.parent, spec_path.stem)
-        _, offset = to_svg(cyc.root)
-        return to_cdxml(cycle_records(cyc, spec, offset), spec.preset, f"{spec_path.stem}.cdxml", warn)
-    if spec.steps:
-        lay = build_scheme(spec, spec_path.parent, spec_path.stem)
-        _, offset = to_svg(lay.root)
-        return to_cdxml(scheme_records(lay, spec, offset), spec.preset, f"{spec_path.stem}.cdxml", warn)
-    placed = m1_placed(spec, spec_path.parent)
-    _, offset = to_svg(Group(spec_path.stem, [p.group for p in placed]))
-    return placed_cdxml(placed, offset, spec.preset, f"{spec_path.stem}.cdxml", warn)
 
 
 def z_order(mol, d) -> dict[int, int]:

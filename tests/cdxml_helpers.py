@@ -18,7 +18,8 @@ from rdkit import Chem, RDLogger
 from rdkit.Chem import rdChemReactions
 
 import measure_refs as mr
-from acs_chem_svg.cdxml_writer import spec_cdxml, to_cdxml
+from acs_chem_svg.cdxml_writer import to_cdxml
+from acs_chem_svg.figure import spec_cdxml
 from acs_chem_svg.chem import ABBREVIATIONS
 from acs_chem_svg.draw_mol import Drawer
 from acs_chem_svg.geometry import sub

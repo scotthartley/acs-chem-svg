@@ -19,7 +19,8 @@ from rdkit import Chem
 
 import measure_refs as mr
 from acs_chem_svg import chem, richtext
-from acs_chem_svg.cdxml_writer import CdxArc, CdxScheme, load_nicknames, spec_cdxml, to_cdxml
+from acs_chem_svg.cdxml_writer import CdxArc, CdxScheme, load_nicknames, to_cdxml
+from acs_chem_svg.figure import spec_cdxml
 from acs_chem_svg.cycle import build_cycle, tail_items
 from acs_chem_svg.arrows import arc_step_arrow
 from acs_chem_svg.geometry import arc_segments, length, sub

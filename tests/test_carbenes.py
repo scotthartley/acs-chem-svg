@@ -10,7 +10,7 @@ from lxml import etree
 from pydantic import ValidationError
 
 from acs_chem_svg import chem, electrons
-from acs_chem_svg.cdxml_writer import spec_cdxml
+from acs_chem_svg.figure import spec_cdxml
 from acs_chem_svg.draw_mol import Drawer
 from acs_chem_svg.geometry import dot, sub, unit
 from acs_chem_svg.preset import load_preset

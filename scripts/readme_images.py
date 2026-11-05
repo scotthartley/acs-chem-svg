@@ -12,7 +12,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from acs_chem_svg.layout import render_spec
+from acs_chem_svg.figure import render_spec
 from acs_chem_svg.preview import rasterize
 from acs_chem_svg.svg_writer import to_svg
 
