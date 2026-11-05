@@ -26,6 +26,10 @@ class Placed:
 
     def translate(self, dx: float, dy: float) -> None:
         self.group.translate(dx, dy)
+        self.shift(dx, dy)
+
+    def shift(self, dx: float, dy: float) -> None:
+        """Move the records (not the group: the layout moves groups with their row)."""
         self.ring_centers = [(x + dx, y + dy) for x, y in self.ring_centers]
         self.offset = (self.offset[0] + dx, self.offset[1] + dy)
 

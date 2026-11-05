@@ -62,6 +62,10 @@ class StepLayout:
     kind: str = "forward"  # spec arrow_type
     variant: str | None = None  # head variant (spec arrow_head; None: the preset's default)
 
+    def shift(self, dx: float, dy: float) -> None:
+        """Move the records (not the group: the layout moves groups with their row)."""
+        self.tail, self.head = add(self.tail, (dx, dy)), add(self.head, (dx, dy))
+
     def shaft_offset(self, preset: Preset) -> float:
         """How far the outer shafts sit off the axis (0 for a forward arrow)."""
         return 0.0 if self.kind == "forward" else preset.equilibrium.shaft_spacing / 2
@@ -80,6 +84,12 @@ class ResonanceLayout:
     bar_y: tuple[float, float] = (0.0, 0.0)  # their lips' stroke centers (top, bottom); set with the brackets
     arrows: list[tuple[Point, Point, Group]] = field(default_factory=list)  # double-headed: tail tip, head tip
     group: Group | None = None  # bracket-step-<n>, with -left and -right
+
+    def shift(self, dx: float, dy: float) -> None:
+        """Move the records (not the groups: the layout moves groups with their row)."""
+        self.arrows = [(add(t, (dx, dy)), add(h, (dx, dy)), g) for t, h, g in self.arrows]
+        self.bar_x = (self.bar_x[0] + dx, self.bar_x[1] + dx)
+        self.bar_y = (self.bar_y[0] + dy, self.bar_y[1] + dy)
 
 
 @dataclass
@@ -493,19 +503,9 @@ def _arrow_parts(g: Group) -> Parts:
 
 def _shift_row_records(out: SchemeLayout, r: int, names: list[str], curved: list[MechArrow], dy: float) -> None:
     """After a row's group moved down by dy: move the records that hold coordinates."""
-    for n in names:
-        p = out.species[n]
-        p.offset = (p.offset[0], p.offset[1] + dy)
-        p.ring_centers = [(x, y + dy) for x, y in p.ring_centers]
-    for st in out.steps:
-        if st.row == r:
-            st.tail, st.head = (st.tail[0], st.tail[1] + dy), (st.head[0], st.head[1] + dy)
-    for res in out.resonance:
-        if res.row == r:
-            res.arrows = [((t[0], t[1] + dy), (h[0], h[1] + dy), g) for t, h, g in res.arrows]
-            res.bar_y = (res.bar_y[0] + dy, res.bar_y[1] + dy)
-    for a in curved:
-        a.shift(0.0, dy)
+    for rec in ([out.species[n] for n in names] + [st for st in out.steps if st.row == r]
+                + [res for res in out.resonance if res.row == r] + curved):
+        rec.shift(0.0, dy)
 
 
 def tail_directions(spec: Spec, mols: dict[str, Molecule]) -> dict[str, dict[int, dict[str, Point]]]:
