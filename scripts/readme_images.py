@@ -22,6 +22,7 @@ SPECS = {
     "synthesis": "examples/m2/m2_sequence_x1.0.yaml",
     "nitration": "examples/benchmarks/nitration_accepted.yaml",
     "chairs": "examples/m1/m1_chair_x1.0.yaml",
+    "suzuki_cycle": "examples/m6/m6_suzuki_cycle_x1.0.yaml",
 }
 
 

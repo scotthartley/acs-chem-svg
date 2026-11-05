@@ -1,8 +1,8 @@
 # acs-chem-svg
 
 A [Claude Code](https://code.claude.com) skill that draws chemical structures, reaction
-schemes, and arrow-pushing mechanisms in ACS style (ChemDraw's *ACS Document 1996*) as
-editable **SVG**.
+schemes, arrow-pushing mechanisms, and catalytic cycles in ACS style (ChemDraw's *ACS Document
+1996*) as editable **SVG**, with a **CDXML** copy to open in ChemDraw.
 
 Ask in plain language:
 
@@ -11,8 +11,8 @@ Ask in plain language:
 > complex, and deprotonation to nitrobenzene.
 
 and Claude writes a short YAML spec, validates the chemistry and the electron bookkeeping,
-renders it, looks at the rendered image, fixes what it sees, and hands back `.svg`, `.yaml`
-and `.png` files:
+renders it, looks at the rendered image, fixes what it sees, and hands back `.svg`, `.cdxml`,
+`.yaml` and `.png` files:
 
 ![Nitration of benzene: mechanism with curved arrows, lone pairs and a bracketed set of resonance structures](docs/images/nitration.png)
 
@@ -21,7 +21,10 @@ and `.png` files:
 ## What it draws
 
 - **Structures** from SMILES: rings, double and triple bonds, wedges and hashes, heteroatom
-  labels with H counts and charges, abbreviations (OMe, OBn, CO₂Me, NO₂, Ph, …).
+  labels with H counts and charges.
+- **Abbreviations:** groups (Ph, Bn, Boc, Ts, TBS, …), formulas (OMe, CO₂Me, NO₂, Bpin, …),
+  ligands (PPh₃, PCy₃, …; other ligand text such as dppf as a label) and your own definitions.
+  Labels reverse when the bond leaves to the right (MeO, MeO₂C).
 - **Chairs:** a cyclohexane, pyranose or piperidine ring drawn as a chair, with axial and
   equatorial groups from the SMILES stereo and the bulkier groups equatorial; where bonds
   cross, the rear one gets a gap, as in ChemDraw.
@@ -31,11 +34,16 @@ and `.png` files:
   and bonds as shared dot pairs, or as electrons assigned to atoms by formal charge or
   oxidation state.
 - **Schemes:** reaction and equilibrium arrows (balanced or favoring one side) with conditions
-  above and below (true subscripts and superscripts, italics), multistep arrows, plus signs, bold compound numbers, products
-  aligned to their reactants, rows wrapped to a page width.
-- **Mechanisms:** two-electron and fishhook curved arrows, lone pairs, radicals, charges
-  (plain or circled ⊕/⊖, multiple charges such as 2+, display texts such as +3), and
-  resonance structures in brackets joined by ↔.
+  above and below (true subscripts and superscripts, italics), multistep arrows, plus signs,
+  bold compound numbers, products aligned to their reactants, rows wrapped to a page width.
+- **Mechanisms:** two-electron and fishhook curved arrows, lone pairs, radicals, carbenes and
+  nitrenes (singlet by default, triplet on request), charges (plain or circled ⊕/⊖, multiple
+  charges such as 2+, display texts such as +3), and resonance structures in brackets joined
+  by ↔.
+- **Catalytic cycles:** species around a circle joined by arc arrows (reaction or equilibrium),
+  with reagents and products entering and leaving on tails, step labels and center text.
+
+  ![Suzuki coupling as a catalytic cycle: oxidative addition, transmetalation and reductive elimination around Pd(0)](docs/images/suzuki_cycle.png)
 - **Three sizes:** the ACS 1996 preset at 100 %, 80 % and 60 %. Bond lengths, line widths,
   double-bond spacing and label clearance are measured from ChemDraw exports and match them
   within 0.1 pt.
@@ -46,9 +54,13 @@ when you edit the curve. Affinity needs a different encoding: render with `--aff
 writes the heads as separate shapes (Affinity drops markers on import) and names the bold and
 italic faces the way Affinity reads them (Inkscape and Chrome can't).
 
-The output is a drawing, not ChemDraw-editable chemistry. Validation checks that every step's
-curved arrows turn its reactants into its products exactly; it does not check that the
-mechanism is the right one. Review research-level mechanisms yourself.
+Each render also writes a `.cdxml` that opens in ChemDraw. It is built to look the same there,
+which takes priority over ChemDraw's chemical reading of the labels: for example, ChemDraw reads
+IPr as iodopropyl and drops a charge written as text (2+, +3). Check formulas and masses before
+relying on them.
+
+Validation checks that every step's curved arrows turn its reactants into its products exactly;
+it does not check that the mechanism is the right one. Review research-level mechanisms yourself.
 
 ## Installation
 
@@ -116,9 +128,11 @@ When something goes wrong, Claude appends a note to `issues/inbox.md` in the rep
 
 ## Limits
 
-- Not yet supported: explicit CH₂/CH labels on internal carbons.
+- Not yet supported: explicit CH₂/CH labels on internal carbons, condensed labels that aren't
+  abbreviations (CH₃Cl as text), and aromatic circles.
 - Lewis structures: no rings, no atoms with more than four neighbors (PCl₅), and not inside
   schemes yet.
+- Chairs: no fused or spiro rings (decalins, steroids), no sp² ring atoms, and no boats.
 - Curved-arrow placement is automatic with a few semantic overrides (bow side, curvature);
   crowded mechanisms can need a nudge in a vector editor.
 

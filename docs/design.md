@@ -12,7 +12,7 @@ Target usage: in any Claude Code session, the user asks in plain language, e.g.
 
 Claude writes a declarative scheme spec (YAML), runs the scripts in this repo to validate and render it, **looks at the rendered PNG**, iterates until it is right, and returns `.svg` + `.yaml` (+ `.png` preview).
 
-**Why SVG only.** Claude can rasterize SVG and inspect the result itself, which closes the visual feedback loop. CDXML output cannot be visually verified without ChemDraw. The cost is that output is not ChemDraw-editable chemistry. The internal layout model is kept backend-agnostic so that a CDXML writer could be added later, but that is out of scope.
+**Why SVG first.** Claude can rasterize SVG and inspect the result itself, which closes the visual feedback loop. CDXML output cannot be visually verified without ChemDraw. SVG is therefore what Claude checks, and it remains the primary output. A CDXML writer was added later from the same layout model (`references/acs-style.md` §13); it was checked through ChemDraw re-saves and aims for visual consistency, not ChemDraw's chemical reading of every label.
 
 Items marked **[VERIFY]** are assumptions that have not been confirmed and must be checked (against reference renders or by measurement) before code depends on them.
 
@@ -340,7 +340,8 @@ axial/equatorial from the SMILES stereo and the flip from A-values (`chair.py`);
 are drawn ChemDraw-style in every species, the front bond whole and the rear one cut with
 oblique ends margin_width beyond it (`draw_mol.Drawer.crossings`). Both match ChemDraw within
 0.1 pt on the reference's templates. The CDXML export writes bond Z rear-first; its ChemDraw gate
-(`cdxml_gate.py --phase 5`) is pending. Not yet: fused chairs (decalins, steroids), boats.
+(`cdxml_gate.py --phase 5`) passed (re-saves of 2026-10-29; closed by the user 2026-11-05;
+details in acs-style.md §14.2). Not yet: fused chairs (decalins, steroids), boats.
 ---
 
 ## 11. Sources

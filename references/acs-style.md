@@ -1206,8 +1206,11 @@ strip is dropped); an offset double or a triple in front (its outermost line cen
 side). `geometry_checks.check_labels` reports bond lines of unrelated bonds that touch without
 a gap. CDXML: bonds get Z in depth order, rear first (`cdxml_writer.z_order`), no
 CrossingBonds written; our export of chair_x1.0's templates has the same front bond as
-ChemDraw's file at all 10 crossings. Gate (`cdxml_gate.py --phase 5`): pending the user's
-ChemDraw re-saves. A chair's CDXML has no wedges (ChemDraw's own chairs have none either), so
+ChemDraw's file at all 10 crossings. Gate (`cdxml_gate.py --phase 5`): passed (re-saves of
+2026-10-29 in `reference_renders/resaves/phase5/`; closed by the user 2026-11-05). chair_x1.0 pairs
+all 83 nodes and has the same front bond at all 10 crossings. The m1_chair_x1.0 re-save does not
+line up with the current export (cause not traced): menthol is in a different chair pose and the other species sit
+0.3–0.6 pt away, so its diff pairs 3 of 41 nodes and compares no crossings. A chair's CDXML has no wedges (ChemDraw's own chairs have none either), so
 ChemDraw reads its ring stereocenters as undefined.
 
 | Check | Worst | Test |
