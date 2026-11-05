@@ -231,13 +231,17 @@ def _place(spec: Spec, out: SchemeLayout, breaks: set[tuple[str, int]], rings: d
                 x = 0.0 if new_row else -lead  # a continuation row starts at 0 with its first ink
         units.append(Unit(kind, step, row, x, lead, new_row=new_row, glue=glue))
 
-    def plus() -> None:
-        nonlocal x
-        run, right = _plus(x + s.plus_gap, 0.0, preset, len(out.pluses) + 1)
+    def add_plus(px: float, axis_y: float) -> float:
+        """A '+' with its ink left at px (_plus), in the current unit; its ink right."""
+        run, right = _plus(px, axis_y, preset, len(out.pluses) + 1)
         out.pluses.append(run)
         units[-1].pluses.append(run)
         units[-1].items.append(Group(f"plus-{len(out.pluses)}", [run]))
-        x = right + s.plus_gap
+        return right
+
+    def plus() -> None:
+        nonlocal x
+        x = add_plus(x + s.plus_gap, 0.0) + s.plus_gap
 
     def put(nm: str, own: ArrowSet | None = None) -> None:
         """Species nm from x. A resonance contributor's own curved arrows (`own`, planned on it
@@ -296,11 +300,7 @@ def _place(spec: Spec, out: SchemeLayout, breaks: set[tuple[str, int]], rings: d
         mid_y = base - max(b[3] - b[1] for b in boxes) / 2
         for k, (n, b) in enumerate(zip(names, boxes)):
             if k:
-                run, right = _plus(cx + s.plus_gap, mid_y + s.center_above_axis, preset, len(out.pluses) + 1)
-                out.pluses.append(run)
-                units[-1].pluses.append(run)
-                units[-1].items.append(Group(f"plus-{len(out.pluses)}", [run]))
-                cx = right + s.plus_gap
+                cx = add_plus(cx + s.plus_gap, mid_y + s.center_above_axis) + s.plus_gap
             p = out.species[n]
             p.translate(cx - b[0], base - b[3])
             units[-1].items.append(p.group)
