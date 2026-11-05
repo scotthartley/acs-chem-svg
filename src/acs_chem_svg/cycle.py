@@ -41,7 +41,7 @@ from pathlib import Path as FsPath
 
 from . import richtext
 from .arrows import arc_arrow, arc_step_arrow
-from .geometry import Point, add, arc_point, arc_segments, mul, point_box_dist, union_box
+from .geometry import Point, add, arc_point, arc_segments, cubic_point, mul, point_box_dist, union_box
 from .geometry_checks import check_labels
 from .placed import Placed, number_line, place
 from .preset import Preset, load_preset
@@ -276,11 +276,7 @@ def _samples(path: Path, n: int = 8) -> list[Point]:
     out, cur = [], None
     for seg in path.segments:
         if seg[0] == "C":
-            c1, c2, p3 = seg[1:]
-            for k in range(1, n + 1):
-                t, s = k / n, 1 - k / n
-                out.append(tuple(s ** 3 * cur[j] + 3 * s * s * t * c1[j] + 3 * s * t * t * c2[j] + t ** 3 * p3[j]
-                                 for j in range(2)))
+            out += [cubic_point(cur, *seg[1:], k / n) for k in range(1, n + 1)]
         else:
             out.append(seg[1])
         cur = seg[-1]
@@ -305,12 +301,6 @@ def _number(spec: Spec, p: Placed, preset: Preset) -> list[TextRun]:
     return ln.runs
 
 
-def _shift_runs(runs: list[TextRun], dx: float, dy: float) -> None:
-    for r in runs:
-        r.x += dx
-        r.y += dy
-
-
 def build_cycle(spec: Spec, base_dir: FsPath, name: str = "cycle") -> CycleLayout:
     cyc = spec.cycle
     preset = load_preset(spec.preset)
@@ -327,7 +317,7 @@ def build_cycle(spec: Spec, base_dir: FsPath, name: str = "cycle") -> CycleLayou
         b = union_box([p.group.ink_bbox()] + [r.bbox() for r in numbers[n]])
         dx, dy = -(b[0] + b[2]) / 2, -(b[1] + b[3]) / 2
         p.translate(dx, dy)
-        _shift_runs(numbers[n], dx, dy)
+        Group("", numbers[n]).translate(dx, dy)
         halves.append(((b[2] - b[0]) / 2, (b[3] - b[1]) / 2))
 
     center_line = None
@@ -346,7 +336,7 @@ def build_cycle(spec: Spec, base_dir: FsPath, name: str = "cycle") -> CycleLayou
         p = placed[n]
         x, y = arc_point(CENTER, R, t)
         p.translate(x, y)
-        _shift_runs(numbers[n], x, y)
+        Group("", numbers[n]).translate(x, y)
         out.species[n], out.theta[n] = p, t
         out.root.children.append(p.group)
         boxes[n] = union_box([p.group.ink_bbox()] + [r.bbox() for r in numbers[n]])

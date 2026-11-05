@@ -41,7 +41,7 @@ from .arrows import conditions_mid, heads_along, resonance_arrow, step_arrow
 from .brackets import bracket_pair, bracket_ys
 from .chem import Molecule
 from .draw_mol import DotSet, Drawer
-from .geometry import Point, add, sub, union_box, unit
+from .geometry import Point, add, shift_box, sub, union_box, unit
 from .mechanism import AtomRef, MechArrow, Parts, plan_step, species_parts
 from .placed import Placed, drawer, number_line, place
 from .preset import Preset, load_preset
@@ -550,7 +550,7 @@ def curved_arrows(lay: SchemeLayout, spec: Spec, aset: ArrowSet, row: list[str] 
             box = None
             if a.idx in d.labels:
                 b = d.labels[a.idx].elem_ink_box()
-                box = (b[0] + off[0], b[1] + off[1], b[2] + off[0], b[3] + off[1])
+                box = shift_box(b, off)
             atoms[a.map] = AtomRef(n, a.idx, add(a.p, off), box, [_moved(ds, off) for ds in sets.get(a.idx, [])])
         for b in mol.bonds:
             ma, mb = mol.atoms[b.a].map, mol.atoms[b.b].map

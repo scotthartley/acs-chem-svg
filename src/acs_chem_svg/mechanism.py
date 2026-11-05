@@ -79,8 +79,8 @@ import itertools
 import math
 from dataclasses import dataclass, field
 
-from .geometry import (Point, add, angle_deg, dot, length, mul, perp, point_box_dist, ray_box_exit, rotate,
-                       seg_point_dist, segment_box_dist, segment_distance, sub, unit)
+from .geometry import (Point, add, angle_deg, cubic_point, dot, length, mul, perp, point_box_dist, ray_box_exit,
+                       rotate, seg_point_dist, segment_box_dist, segment_distance, shift_box, sub, unit)
 from .preset import Preset
 from .draw_mol import DotSet
 from .scene import Circle, Group, Marker, Path, Polygon, Polyline, TextRun
@@ -115,12 +115,6 @@ SLID_REACH = 0.45  # a slid arc's handles: at least this × bond_length (user ch
 SLID_RANK = 100  # excursions rank after every slid arc
 EXCURSION_RANK = 10  # added to an excursion's flip count: it ranks after every default candidate, flipped or not
 MIN_STROKE = 2.0  # a stroke showing less than this × head_length beyond its head costs like a miss (user decision 2026-10-29; unmeasured)
-
-
-def bezier(p0: Point, c1: Point, c2: Point, p3: Point, t: float) -> Point:
-    s = 1 - t
-    return (s ** 3 * p0[0] + 3 * s * s * t * c1[0] + 3 * s * t * t * c2[0] + t ** 3 * p3[0],
-            s ** 3 * p0[1] + 3 * s * s * t * c1[1] + 3 * s * t * t * c2[1] + t ** 3 * p3[1])
 
 
 def fishhook_side(c1: Point, c2: Point, p3: Point) -> float:
@@ -197,7 +191,7 @@ class MechArrow:
         return self.head[-1]
 
     def polyline(self, n: int = SAMPLES) -> list[Point]:
-        return [bezier(self.p0, self.c1, self.c2, self.p3, k / n) for k in range(n + 1)]
+        return [cubic_point(self.p0, self.c1, self.c2, self.p3, k / n) for k in range(n + 1)]
 
     def shift(self, dx: float, dy: float) -> None:
         """Move the arrow's records (not its group: the layout moves groups with their row)."""
@@ -208,8 +202,7 @@ class MechArrow:
         self.target_dots = [mv(p) for p in self.target_dots]
         self.crosses = tuple(tuple(mv(p) for p in seg) for seg in self.crosses)
         if self.target and self.target[0] == "box":
-            b = self.target[1]
-            self.target = ("box", (b[0] + dx, b[1] + dy, b[2] + dx, b[3] + dy))
+            self.target = ("box", shift_box(self.target[1], (dx, dy)))
         elif self.target:
             self.target = (self.target[0], *(mv(p) for p in self.target[1:]))
 
@@ -797,7 +790,7 @@ def hook_controls(tail: Point, t0: Point, end: Point, t1: Point, soft: float = 1
 
 def apex(p0: Point, c1: Point, c2: Point, p3: Point, n: int = 24) -> float:
     """The curve's farthest distance from its chord p0 -> p3 (sampled)."""
-    return max(seg_point_dist(bezier(p0, c1, c2, p3, k / n), p0, p3) for k in range(n + 1))
+    return max(seg_point_dist(cubic_point(p0, c1, c2, p3, k / n), p0, p3) for k in range(n + 1))
 
 
 def excursion_controls(tail: Point, d: Point, end: Point, t1: Point, reach: float) -> tuple[Point, Point]:

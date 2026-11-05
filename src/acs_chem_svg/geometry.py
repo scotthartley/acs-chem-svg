@@ -169,6 +169,22 @@ def bbox(points):
     return (min(xs), min(ys), max(xs), max(ys))
 
 
+def shift_box(b, d):
+    """Box b moved by d."""
+    return (b[0] + d[0], b[1] + d[1], b[2] + d[0], b[3] + d[1])
+
+
+def pad_box(b, m):
+    """Box b grown by m on every side."""
+    return (b[0] - m, b[1] - m, b[2] + m, b[3] + m)
+
+
+def cubic_point(p0, c1, c2, p3, t):
+    """The point at t on the cubic Bézier p0, c1, c2, p3."""
+    s = 1 - t
+    return tuple(s ** 3 * p0[k] + 3 * s * s * t * c1[k] + 3 * s * t * t * c2[k] + t ** 3 * p3[k] for k in range(2))
+
+
 def union_box(boxes):
     boxes = [b for b in boxes if b]
     if not boxes:

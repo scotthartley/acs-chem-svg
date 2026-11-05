@@ -13,7 +13,7 @@ from typing import Iterator, Union
 import math
 
 from .fontmetrics import FontFace
-from .geometry import Point, add, bbox, dot, length, mul, perp, sub, union_box, unit
+from .geometry import Point, add, bbox, cubic_point, dot, length, mul, perp, sub, union_box, unit
 
 
 @dataclass(frozen=True)
@@ -173,18 +173,13 @@ class Path:
                     if abs(a) >= 1e-12 and b * b - 4 * a * c >= 0:
                         r = math.sqrt(b * b - 4 * a * c)
                         ts = [(-b + r) / (2 * a), (-b - r) / (2 * a)]
-                    pts += [_cubic(cur, c1, c2, p3, t) for t in ts if 0 < t < 1]
+                    pts += [cubic_point(cur, c1, c2, p3, t) for t in ts if 0 < t < 1]
             else:
                 pts.append(seg[1])
             cur = seg[-1]
         pad = (self.stroke or 0.0) / 2
         b = bbox(pts)
         return _with_heads((b[0] - pad, b[1] - pad, b[2] + pad, b[3] + pad), self.head_leaves(), ink=True)
-
-
-def _cubic(p0: Point, c1: Point, c2: Point, p3: Point, t: float) -> Point:
-    s = 1 - t
-    return tuple(s ** 3 * p0[k] + 3 * s * s * t * c1[k] + 3 * s * t * t * c2[k] + t ** 3 * p3[k] for k in range(2))
 
 
 @dataclass

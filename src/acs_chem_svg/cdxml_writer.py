@@ -156,7 +156,7 @@ from .brackets import square_bracket
 from .abbrev import LabelInfo
 from .chem import Molecule
 from .draw_mol import Drawer, label_info
-from .geometry import Point, add, arc_point, arc_segments, mul, sub, union_box, unit
+from .geometry import Point, add, arc_point, arc_segments, mul, shift_box, sub, union_box, unit
 from .placed import Placed
 from .mechanism import curved_arrow, fishhook_side
 from .preset import PRESET_DIR, load_preset
@@ -514,7 +514,7 @@ class _Writer:
         drawn = Group("ink", [g for g in d.draw(mol.name).children
                               if not g.id.endswith(("-labels", "-lone-pairs", "-radicals", "-bonding-pairs", "-bond-electrons"))])
         b = drawn.ink_bbox()
-        box = union_box(([(b[0] + off[0], b[1] + off[1], b[2] + off[0], b[3] + off[1])] if b else [])
+        box = union_box(([shift_box(b, off)] if b else [])
                         + label_boxes + dot_boxes)
         frag.set("BoundingBox", pts(*box))
         frag.set("Z", self.ids.next_z())
@@ -746,7 +746,7 @@ class _Writer:
             for ln in text.lines:
                 if ln.parts and ln.parts[-1].script == "base":
                     box[2] = max(box[2], _origin(ln, self.preset)[0] + ln.advance)
-        box = (box[0] + off[0], box[1] + off[1], box[2] + off[0], box[3] + off[1])
+        box = shift_box(box, off)
         tid = self.ids.new()
         attrs = {"id": tid, "p": pts(x + off[0], base + off[1]), "BoundingBox": pts(*box), "Z": self.ids.next_z()}
         if text.justify == "Center":

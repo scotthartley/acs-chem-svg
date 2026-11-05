@@ -38,7 +38,7 @@ from pathlib import Path
 from acs_chem_svg.cdxml_writer import CdxmlUnsupported
 from acs_chem_svg.cycle import CycleLayout
 from acs_chem_svg.figure import build_figure
-from acs_chem_svg.geometry import arc_point, union_box
+from acs_chem_svg.geometry import arc_point, pad_box, shift_box, union_box
 from acs_chem_svg.layout import SchemeLayout
 from acs_chem_svg.preview import crops, rasterize, rasterize_file
 from acs_chem_svg.svg_writer import FONT_FAMILY, PADDING, faces_used, num, to_svg
@@ -50,10 +50,8 @@ def crop_boxes(lay: SchemeLayout, offset: tuple[float, float]) -> dict[str, tupl
     """name -> box in the SVG frame: each curved arrow, each labeled atom with a charge or dots
     (the union of its label runs, charge bars and dots), each resonance arrow, each end of an
     equilibrium arrow (12 pt long) and each bracket corner (6 pt around it)."""
-    dx, dy = offset
-
     def moved(b):
-        return (b[0] + dx, b[1] + dy, b[2] + dx, b[3] + dy)
+        return shift_box(b, offset)
     out = {f"arrow-{a.step}-{a.index}": moved(a.group.bbox()) for a in lay.curved}
     for name, p in lay.species.items():
         dots = p.drawer.dot_sets()
@@ -75,23 +73,21 @@ def crop_boxes(lay: SchemeLayout, offset: tuple[float, float]) -> dict[str, tupl
         for g in res.group.children:
             pts = g.children[0].points
             for corner, (x, y) in (("top", pts[1]), ("bottom", pts[2])):
-                out[f"bracket-{res.n}-{g.id.rsplit('-', 1)[-1]}-{corner}"] = moved((x - 6, y - 6, x + 6, y + 6))
+                out[f"bracket-{res.n}-{g.id.rsplit('-', 1)[-1]}-{corner}"] = moved(pad_box((x, y, x, y), 6))
     return out
 
 
 def cycle_crop_boxes(cyc: CycleLayout, offset: tuple[float, float]) -> dict[str, tuple]:
     """name -> box in the SVG frame: 12 pt round each arc arrow's tip (and an equilibrium arc's
     tail too, where its back shaft's head is), and each tail (its path, without its item)."""
-    dx, dy = offset
     out = {}
     for a in cyc.arcs:
         ends = [("head", a.a1)] + ([("tail", a.a0)] if a.kind != "forward" else [])
         for end, ang in ends:
             x, y = arc_point(cyc.center, cyc.radius, ang)
-            out[f"cycle-arc-{a.n}-{end}"] = (x - 6 + dx, y - 6 + dy, x + 6 + dx, y + 6 + dy)
+            out[f"cycle-arc-{a.n}-{end}"] = shift_box(pad_box((x, y, x, y), 6), offset)
     for t in cyc.tails:
-        b = t.group.children[0].bbox()
-        out[f"cycle-{t.side}-{t.n}-{t.index}"] = (b[0] - 2 + dx, b[1] - 2 + dy, b[2] + 2 + dx, b[3] + 2 + dy)
+        out[f"cycle-{t.side}-{t.n}-{t.index}"] = shift_box(pad_box(t.group.children[0].bbox(), 2), offset)
     return out
 
 
