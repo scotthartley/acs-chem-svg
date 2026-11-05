@@ -43,24 +43,10 @@ from .chem import Molecule
 from .draw_mol import DotSet, Drawer
 from .geometry import Point, add, sub, union_box, unit
 from .mechanism import AtomRef, MechArrow, Parts, plan_step, species_parts
+from .placed import Placed, drawer, place
 from .preset import Preset, load_preset
 from .scene import Group, Polyline, TextRun
 from .spec import ArrowSet, ResonanceStep, Spec, load_spec, molecules, scheme_molecules
-
-
-@dataclass
-class Placed:
-    name: str
-    group: Group
-    mol: Molecule
-    ring_centers: list[Point]
-    offset: Point = (0.0, 0.0)  # added to mol atom coordinates by the layout
-    drawer: Drawer | None = None  # labels and dots, in mol coordinates
-
-    def translate(self, dx: float, dy: float) -> None:
-        self.group.translate(dx, dy)
-        self.ring_centers = [(x + dx, y + dy) for x, y in self.ring_centers]
-        self.offset = (self.offset[0] + dx, self.offset[1] + dy)
 
 
 @dataclass
@@ -138,10 +124,9 @@ class SchemeLayout:
 
 
 def m1_drawers(spec: Spec, base_dir: Path) -> list[Drawer]:
-    """M1: one Drawer per species, in spec order."""
+    """M1: one Drawer per species, in spec order (not drawn yet)."""
     preset = load_preset(spec.preset)
-    return [Drawer(mol, preset, show_lone_pairs={a.idx for a in mol.atoms if a.map in sp.show_lone_pairs})
-            for sp, mol in zip(spec.species.values(), molecules(spec, base_dir))]
+    return [drawer(mol, preset, sp.show_lone_pairs) for sp, mol in zip(spec.species.values(), molecules(spec, base_dir))]
 
 
 def m1_placed(spec: Spec, base_dir: Path) -> list[Placed]:
@@ -149,8 +134,8 @@ def m1_placed(spec: Spec, base_dir: Path) -> list[Placed]:
     its offset and Drawer (cdxml_writer reads them)."""
     preset = load_preset(spec.preset)
     out, x = [], 0.0
-    for name, d in zip(spec.species, m1_drawers(spec, base_dir)):
-        p = Placed(name, d.draw(d.mol.name), d.mol, _ring_centers(d.mol), drawer=d)
+    for (name, sp), mol in zip(spec.species.items(), molecules(spec, base_dir)):
+        p = place(name, mol, preset, sp.show_lone_pairs)
         x0, y0, x1, y1 = p.group.bbox()
         p.translate(x - x0, -(y0 + y1) / 2)
         x += (x1 - x0) + preset.scheme.plus_gap
@@ -161,10 +146,6 @@ def m1_placed(spec: Spec, base_dir: Path) -> list[Placed]:
 def m1_row(spec: Spec, base_dir: Path, name: str) -> Group:
     """M1: the m1_placed species in one group."""
     return Group(name, [p.group for p in m1_placed(spec, base_dir)])
-
-
-def _ring_centers(mol: Molecule) -> list[Point]:
-    return [(sum(mol.atoms[i].x for i in r) / len(r), sum(mol.atoms[i].y for i in r) / len(r)) for r in mol.rings]
 
 
 def _anchor_y(p: Placed, use_rings: bool) -> float:
@@ -432,8 +413,7 @@ def build_scheme(spec: Spec, base_dir: Path, name: str = "scheme") -> SchemeLayo
     show = electrons.lone_pair_atoms(spec, out.checks)
     tails = tail_directions(spec, mols)
     for n, mol in mols.items():
-        d = Drawer(mol, preset, show_lone_pairs={a.idx for a in mol.atoms if a.map in show[n]}, tails=tails[n])
-        out.species[n] = Placed(n, d.draw(n), mol, _ring_centers(mol), drawer=d)
+        out.species[n] = place(n, mol, preset, show[n], tails[n])
 
     # pass 1 measures the units on unbroken rows; pass 2 places them on the wrapped rows
     width = spec.layout.width or s.wrap_width

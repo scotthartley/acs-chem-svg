@@ -157,7 +157,8 @@ from .chem import Molecule
 from .cycle import CycleLayout, build_cycle
 from .draw_mol import Drawer, label_info
 from .geometry import Point, add, arc_point, arc_segments, mul, sub, union_box, unit
-from .layout import Placed, SchemeLayout, build_scheme, m1_placed
+from .layout import SchemeLayout, build_scheme, m1_placed
+from .placed import Placed
 from .mechanism import curved_arrow, fishhook_side
 from .preset import PRESET_DIR, load_preset
 from .scene import Group, Path, TextRun

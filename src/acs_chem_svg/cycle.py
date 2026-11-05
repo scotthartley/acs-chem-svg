@@ -41,10 +41,9 @@ from pathlib import Path as FsPath
 
 from . import richtext
 from .arrows import arc_arrow, arc_step_arrow
-from .draw_mol import Drawer
 from .geometry import Point, add, arc_point, arc_segments, mul, point_box_dist, union_box
 from .geometry_checks import check_labels
-from .layout import Placed, _ring_centers
+from .placed import Placed, place
 from .preset import Preset, load_preset
 from .scene import Group, Path, TextRun
 from .spec import CycleStep, Spec, scheme_molecules
@@ -292,12 +291,8 @@ def _samples(path: Path, n: int = 8) -> list[Point]:
 
 
 def _drawers(spec: Spec, base_dir: FsPath, preset: Preset) -> dict[str, Placed]:
-    out = {}
-    for n, mol in scheme_molecules(spec, base_dir).items():
-        sp = spec.species[n]
-        d = Drawer(mol, preset, show_lone_pairs={a.idx for a in mol.atoms if a.map in sp.show_lone_pairs})
-        out[n] = Placed(n, d.draw(n), mol, _ring_centers(mol), drawer=d)
-    return out
+    return {n: place(n, mol, preset, spec.species[n].show_lone_pairs)
+            for n, mol in scheme_molecules(spec, base_dir).items()}
 
 
 def _number(spec: Spec, p: Placed, preset: Preset) -> list[TextRun]:
