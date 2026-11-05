@@ -412,6 +412,7 @@ class _Writer:
         self.preset = load_preset(preset_name)
         self.warn = warn
         self.warn_maps = True
+        self.maps_warned: set[str] = set()
         self.ids = Ids()
         font_name = self.preset.font_family
         font = next((f for f in self.root.iter("font") if f.get("name") == font_name), None)
@@ -427,8 +428,10 @@ class _Writer:
         self.digit_texts: list[etree._Element] = []  # charge digits' <t>s, written after the fragments
 
     def check(self, mol: Molecule) -> None:
-        if self.warn_maps and any(a.map for a in mol.atoms):
-            self.warn(f"{mol.name}: atom maps not written")
+        msg = f"{mol.name.split('~')[0]}: atom maps not written"
+        if self.warn_maps and msg not in self.maps_warned and any(a.map for a in mol.atoms):
+            self.maps_warned.add(msg)  # once per species, not per drawn copy
+            self.warn(msg)
 
     def fragment(self, page, mol: Molecule, d: Drawer, off: Point) -> tuple:
         self.check(mol)

@@ -71,11 +71,12 @@ they disagree, `acs-style.md` (the ChemDraw references) wins.
   resonance_x* (with `examples/m4/m4_resonance_x*.yaml`) and scheme_wrap_x* (`examples/m4/m4_wrap_x*.yaml`) add
   bracket and row items. resonance_x* also gets our ↔ arrows and brackets on ChemDraw's. Arrows take the head
   variant of their CDXML HeadSize; equilibrium_x* and arrows_large_x* draw our arrows and captions only.
-- `uv run python scripts/render.py spec.yaml [--out DIR] [--crops] [--maps] [--cdxml]` renders a spec: an M2–M4 scheme
+- `uv run python scripts/render.py spec.yaml [--out DIR] [--crops] [--maps] [--no-cdxml]` renders a spec: an M2–M4 scheme
   (`examples/m2/m2_*.yaml` … `examples/m4/m4_*.yaml`), a catalytic cycle (`examples/m6/m6_*_cycle_*.yaml`) or M1 species (`examples/m1/m1_smiles_x*.yaml`). `--crops` adds
   16 px/pt crops of curved arrows, charged or dotted labels, ↔ arrows, equilibrium arrow ends and bracket corners; `--maps` adds
   `<stem>_maps.png` with map numbers beside the atoms (preview only). It prints each curved arrow's bow.
-  `--cdxml` (every spec kind) adds `<stem>.cdxml` for ChemDraw (`cdxml_writer`, acs-style.md §13).
+  It also writes `<stem>.cdxml` for ChemDraw (every spec kind; `cdxml_writer`, acs-style.md §13); `--no-cdxml` skips it, and a spec it can't export
+  gets a `warning: no CDXML:` line instead.
 - `uv run python scripts/cdxml_headers.py` regenerates the CDXML header templates `presets/cdxml/` from m1_set_x* (caption fonts from scheme_multi_x1.0)
   and the nickname templates `presets/cdxml/<preset>.nicknames.xml` from abbrev_x*, abbrev_2_x*, ligands_x* and metals_x*.
 - `uv run python scripts/measure_refs.py --cdxml-symbols` prints the charge-symbol boxes per reference (acs-style.md §13),

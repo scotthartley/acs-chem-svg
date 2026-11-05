@@ -93,14 +93,13 @@ reactants. The approved result is `examples/m4/m4_nitration_x1.0.yaml` (written 
 copies; reusing the names gives the same drawing). At acs1996 it takes three rows (504 pt);
 that is expected.
 
-## Common mistakes (M5 trials)
+## Common mistakes
 
-- **Changing the preset to make rows fit.** Use the preset the user asked for (default
-  acs1996). Rows wrap at 504 pt; a long mechanism takes three rows, and the products alone on
-  the last row are fine. Raise `layout.width` only if the user wants a wider figure.
+- **Changing the preset to make rows fit.** Rows wrap at 504 pt; a long mechanism takes three
+  rows, and the products alone on the last row are fine.
 - **Brute-force override loops.** `render.py` prints each arrow's `bow`; try the other side
-  once, then `tail_side`, then turn a species. At most 3 tries per curved arrow and 5 render
-  rounds overall; then deliver and report the arrow, rather than looping.
+  once, then `tail_side`, then turn a species. Past the retry budget (SKILL.md, Adjust), deliver
+  and report the arrow.
 - **Unmapped atoms in a product that an arrow changed.** Map every atom an arrow touches, on
   both sides; the mismatch message lists the map numbers found on one side only.
 - **A carbanion or other carbon with lone pairs drawn without a label** (C≡N⁻): its dots sit
@@ -112,12 +111,8 @@ that is expected.
   face each other, and check with `--maps`.
 - **A product that disappears.** A product the next step doesn't take (water, HSO4⁻, AcOH)
   drawn and never used again leaves the reader looking for it, and the next step's curved
-  arrows have to reach across it. Omit it (`omit: [water]`) and, if the loss matters, write it
-  on the arrow (`above: "−H2O"`; never below ⇌, where it reads as the reverse direction). The
-  conjugate acid/base of a reagent over the arrow, and the acid or base regenerated in the last
-  step (`sulfuric` after the deprotonation), are omitted without text. If a later step uses an
-  omitted product, name it there: it is added as a reactant (above that step's arrow). An acid
-  or base that only gives or takes a proton goes `over:` the arrow, not inline with "+".
+  arrows have to reach across it. Omit it as SKILL.md "Mechanisms" step 5 says. A loss written
+  below ⇌ reads as the reverse direction.
 - **Pasting a suggestion that looks wrong.** The suggestions are what the arrows give. If
   they show odd charges (`[OH+:1]`, `[CH3-:2]`), the arrows are wrong, not the products: a
   new bond is `to: between(a,b)`, while `to: atom(b)` makes a lone pair on b.

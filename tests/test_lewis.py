@@ -266,7 +266,7 @@ def test_spec_lewis_rotate_and_flip_ok():
 
 
 def test_spec_lewis_not_in_schemes():
-    with pytest.raises(ValueError, match="lewis species are M1-only for now"):
+    with pytest.raises(ValueError, match="lewis species are drawn only as single species"):
         Spec.model_validate(yaml.safe_load("""
 species:
   a: {smiles: "O", lewis: true}

@@ -1,4 +1,4 @@
-"""Render a spec to SVG + PNG: an M2/M3 scheme (steps), or M1 species side by side.
+"""Render a spec to SVG + PNG + CDXML: a scheme (steps), a catalytic cycle, or species side by side.
 
 Layout is acs_chem_svg.layout.render_spec, shared with scripts/gallery.py. Writes
 <stem>.svg and <stem>.png (4 px/pt) next to the spec, or in --out, and prints the drawing width.
@@ -17,14 +17,15 @@ a copy of the SVG text, never into <stem>.svg.
 <marker> (Affinity drops markers on import), and bold/italic text as a bare face name
 ("Helvetica Bold"), which Affinity needs and Inkscape and Chrome can't resolve. The default
 output is for Inkscape and browsers; its markers follow edits.
---cdxml also writes <stem>.cdxml for ChemDraw (acs_chem_svg.cdxml_writer, acs-style.md §13), in the
-SVG's coordinates, from the same layout as the SVG: M1 species, or an M2-M4 scheme (arrows,
-conditions, plus signs, numbers and <scheme><step>, §13.1; curved arrows and dots, §13.2;
-abbreviations, resonance arrows and brackets, §13.3), or a catalytic cycle (arc arrows and tails
-as ChemDraw arc arrows, §15.1). Lewis structures are refused; what it
-writes as plain chemistry (circled signs, 2+ / 2-, charge_labels, atom maps) is listed on stderr.
+<stem>.cdxml for ChemDraw is written too (acs_chem_svg.cdxml_writer, acs-style.md §13), in the
+SVG's coordinates, from the same layout as the SVG: single species (Lewis structures included), or
+a scheme (arrows, conditions, plus signs, numbers and <scheme><step>, §13.1; curved arrows and
+dots, §13.2; abbreviations, resonance arrows and brackets, §13.3), or a catalytic cycle (arc arrows
+and tails as ChemDraw arc arrows, §15.1). What it can't write is a "warning: no CDXML:" line on
+stderr (the SVG and PNG are still written); what it writes as plain chemistry (atom maps) is
+listed on stderr. --no-cdxml skips it (--cdxml is accepted and does nothing).
 
-Usage: uv run python scripts/render.py spec.yaml [--out DIR] [--px-per-pt 4] [--crops] [--maps] [--affinity] [--cdxml]
+Usage: uv run python scripts/render.py spec.yaml [--out DIR] [--px-per-pt 4] [--crops] [--maps] [--affinity] [--no-cdxml]
 """
 
 from __future__ import annotations
@@ -137,7 +138,7 @@ def maps_svg(lay: SchemeLayout) -> str:
 
 def render(spec_path: Path, out_dir: Path | None = None, px_per_pt: float = 4.0,
            with_crops: bool = False, with_maps: bool = False, affinity: bool = False,
-           with_cdxml: bool = False) -> list[Path]:
+           with_cdxml: bool = True) -> list[Path]:
     spec = load_spec(spec_path)
     cyc = build_cycle(spec, spec_path.parent, spec_path.stem) if spec.cycle is not None else None
     lay = build_scheme(spec, spec_path.parent, spec_path.stem) if spec.steps else None
@@ -148,9 +149,12 @@ def render(spec_path: Path, out_dir: Path | None = None, px_per_pt: float = 4.0,
     cdxml = None
     if with_cdxml:
         name = f"{spec_path.stem}.cdxml"
-        cdxml = (to_cdxml(cycle_records(cyc, spec, offset), spec.preset, name) if cyc
-                 else to_cdxml(scheme_records(lay, spec, offset), spec.preset, name) if lay
-                 else placed_cdxml(placed, offset, spec.preset, name))
+        try:
+            cdxml = (to_cdxml(cycle_records(cyc, spec, offset), spec.preset, name) if cyc
+                     else to_cdxml(scheme_records(lay, spec, offset), spec.preset, name) if lay
+                     else placed_cdxml(placed, offset, spec.preset, name))
+        except CdxmlUnsupported as e:
+            print(f"warning: no CDXML: {e}", file=sys.stderr)
     out_dir = out_dir or spec_path.parent
     out_dir.mkdir(parents=True, exist_ok=True)
     svg_path = out_dir / f"{spec_path.stem}.svg"
@@ -197,13 +201,10 @@ def main(argv=None) -> int:
                     help="also write <stem>_maps.png with each mapped atom's map number (preview only)")
     ap.add_argument("--affinity", action="store_true",
                     help="write for Affinity: arrowheads as separate shapes (it drops SVG markers), bold/italic as face names")
-    ap.add_argument("--cdxml", action="store_true", help="also write <stem>.cdxml for ChemDraw (any spec but Lewis structures)")
+    ap.add_argument("--no-cdxml", dest="cdxml", action="store_false", help="don't write <stem>.cdxml for ChemDraw")
+    ap.add_argument("--cdxml", dest="cdxml_legacy", action="store_true", help=argparse.SUPPRESS)  # the default; kept for old commands
     args = ap.parse_args(argv)
-    try:
-        paths = render(args.spec, args.out, args.px_per_pt, args.crops, args.maps, args.affinity, args.cdxml)
-    except CdxmlUnsupported as e:
-        print(f"error: {e}", file=sys.stderr)
-        return 1
+    paths = render(args.spec, args.out, args.px_per_pt, args.crops, args.maps, args.affinity, args.cdxml)
     for p in paths:
         print(p)
     return 0

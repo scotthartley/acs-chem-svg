@@ -636,7 +636,7 @@ class Spec(BaseModel):
         if self.cycle is not None:
             return self._check_cycle(names, lewis)
         if self.steps and lewis:
-            raise ValueError(f"lewis species are M1-only for now (a spec without steps): {', '.join(lewis)}")
+            raise ValueError(f"lewis species are drawn only as single species (a spec without steps), not in schemes: {', '.join(lewis)}")
         if not self.steps:
             if self.numbers:
                 raise ValueError("numbers need steps (a scheme)")
@@ -726,7 +726,7 @@ class Spec(BaseModel):
         if self.steps:
             raise ValueError("give either steps (a scheme) or cycle, not both")
         if lewis:
-            raise ValueError(f"lewis species are M1-only for now (a spec without steps): {', '.join(lewis)}")
+            raise ValueError(f"lewis species are drawn only as single species (a spec without steps), not in schemes: {', '.join(lewis)}")
         if self.overrides.arrows:
             raise ValueError("overrides.arrows need steps with arrows; a cycle has no curved arrows")
         for k, st in enumerate(c.steps, 1):

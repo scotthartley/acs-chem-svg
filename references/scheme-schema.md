@@ -2,8 +2,9 @@
 
 Validated by `src/acs_chem_svg/spec.py` (pydantic). Unknown keys are errors. Sections: schemes
 (one row of species, plus signs, reaction arrows with conditions, compound numbers); mechanisms
-(curved arrows, lone pairs, radicals); resonance, sequences and rows; single species (a spec
-without `steps`: its species are drawn side by side), with Lewis structures.
+(curved arrows, lone pairs, radicals); resonance, sequences and rows; catalytic cycles; single
+species (a spec without `steps`: its species are drawn side by side), with Lewis structures and
+chairs; drawn conventions.
 
 ## Schemes
 
@@ -27,7 +28,7 @@ align: auto                # or false: every species on its own layout
 |---|---|---|
 | `steps[].from` | name or list | Reactants. Required in the first step; later steps default to the previous step's `to`. It starts with the previous step's first drawn product (then any more of its drawn products, in order). Further names are added reactants (`[alcohol, X]` draws "+ X" before the arrow; above the arrow in a mechanism step). A product the next step doesn't take should be omitted (`omit`), not left drawn. |
 | `steps[].to` | name or list | Products (a list gets plus signs). |
-| `steps[].omit` | list of names | Products of `to` that the electron bookkeeping uses but the drawing leaves out (water lost, the conjugate acid/base of a reagent drawn over the arrow, the acid/base regenerated in the last step). At least one product stays drawn; no `numbers:` on them. Write a loss on the arrow yourself if it matters (`above: "−H2O"`; `below: "−AcO−"` under a → arrow with a reagent drawn above it). Never below an equilibrium arrow: text there reads as the reverse direction (the validator notes it). The conjugate of an `over` reagent needs no text: reagents over the arrow aren't balanced. A later step that names an omitted product adds it as a reactant (drawn there for the first time). |
+| `steps[].omit` | list of names | Products of `to` that the electron bookkeeping uses but the drawing leaves out (water lost, the conjugate acid/base of a reagent drawn over the arrow, the acid/base regenerated in the last step). At least one product stays drawn; no `numbers:` on them. See "Omitted products" below the table. |
 | `steps[].above` / `below` | string or list | Conditions, one string per line, centered on the arrow. |
 | `steps[].stages` | list of ≥ 1 strings | Numbered stages, left-justified: the first ⌈n/2⌉ above, the rest below (2 → "1." / "2."; 3 → "1.", "2." / "3."). Exclusive with above/below. |
 | `steps[].arrow_type` | `forward` (default) \| `equilibrium` \| `equilibrium_products` \| `equilibrium_reactants` | The step's arrow: → , balanced ⇌, or unbalanced ⇌ with the long shaft pointing to the favored side (products: right; reactants: left). Equilibrium conditions sit above and below the outer shafts, centered on the arrow (acs-style.md §3.6). Not on resonance steps. Works with `stages` and curved `arrows` (a reversible proton transfer). |
@@ -39,6 +40,12 @@ align: auto                # or false: every species on its own layout
 | `abbreviations` | map: key → `{smiles, kind, text, reversed, nickname}` | The spec's own abbreviations, added to the registry (same key: replaces it). `smiles` has one `*` (the bond to the rest); none for a text label. `kind`: `group` (merges into a heteroatom's label: O + Xyz → OXyz), `formula` (default with smiles) or `text` (default without). `text`: richtext markup (`*t*-Bu`, `L_*n*`); `reversed`: the right-justified text where the token rule is wrong (a key with a part that is neither a group nor an element must give it, or the validator fails). `nickname: true` writes it as a ChemDraw Nickname. Example: `examples/m1/m1_abbrev2_x1.0.yaml`. |
 | `align` | `auto` \| `false` | `false` turns alignment off for the whole scheme. |
 | `labels` | map number → symbol | Draw a generic atom (X, Y, R, Nu, R′ as `R'`): `labels: {9: X}` draws atom 9 as X in every species. Write a real element with the same bonds, H count and electrons as its stand-in in the SMILES (`[Cl:9]` for a radical X·, `[H:6][Cl:9]` for HX); the electron bookkeeping uses the stand-in. Each map number must be on some atom. A registry **text** label (L, Ln → Lₙ, dppf, XPhos, IPr, Ar; or one the spec defines without SMILES) on an atom without H is drawn as an abbreviation with no chemistry: `[*:1][Pd]...` with `labels: {1: dppf}`. |
+
+**Omitted products.** Write a loss on the arrow yourself if it matters (`above: "−H2O"`;
+`below: "−AcO−"` under a → arrow with a reagent drawn above it), never below an equilibrium
+arrow, where it reads as the reverse direction (the validator notes it). The conjugate of an
+`over` reagent needs no text: reagents over the arrow aren't balanced. A later step that names
+an omitted product adds it as a reactant (drawn there for the first time).
 
 An aligned species can't also set `orientation` (set `align: false` to orient it yourself). A
 species named again is drawn again as a copy (see "repeated names" under Resonance, sequences, rows).
@@ -63,23 +70,9 @@ chemistry, and overlaps.
 
 ## Mechanisms
 
-```yaml
-preset: acs1996
-species:
-  hydroxide: {smiles: "[H][O-:1]"}
-  mebr:      {smiles: "[CH3:2][Br:3]", show_carbons: terminal}
-  methanol:  {smiles: "[OH:1][CH3:2]", show_carbons: terminal}
-  bromide:   {smiles: "[Br-:3]"}
-steps:
-  - from: [hydroxide, mebr]
-    to: [methanol, bromide]
-    arrows:
-      - {type: two_electron, from: "lp(1)", to: "between(1,2)"}
-      - {from: "bond(2-3)", to: "atom(3)"}
-overrides:
-  arrows:
-    - {step: 1, index: 0, bow: left, curvature: 0.6, tail_side: top}
-```
+A step's `arrows:` list its curved arrows, drawn on the step's reactants; the worked SN2 example
+is in SKILL.md ("Mechanisms"), a full mechanism in `examples/m4/m4_nitration_x1.0.yaml`.
+`overrides.arrows` (below) adjusts one arrow: `{step: 1, index: 0, bow: left, curvature: 0.6, tail_side: top}`.
 
 | Key | Type | Meaning |
 |---|---|---|
@@ -253,7 +246,7 @@ Drawing (acs-style.md §15): species centered on a circle, the first at 12 o'clo
 every arrow between neighbours is the same length; arc arrows with the measured head on the
 chord; tails as small arcs tangent to the circle from outside. A tail that would touch
 something tries other shapes, never moving the species; one still crowded is a `validate.py`
-problem. `--cdxml` writes every arrow and tail as a ChemDraw arc arrow and one `<scheme>` with a
+problem. The `.cdxml` has every arrow and tail as a ChemDraw arc arrow and one `<scheme>` with a
 `<step>` per arrow (acs-style.md §15.3).
 Groups: `species-<name>`, `numbers`, `cycle-arc-<n>`, `cycle-in-<n>-<i>`, `cycle-out-<n>-<i>`,
 `cycle-label-<n>`, `cycle-center`.

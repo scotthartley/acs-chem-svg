@@ -30,12 +30,11 @@ If the Read tool refuses `<repo>` files (outside the working directory, symlink 
      the arrow unless the user wants it drawn and numbered.
    - Several lines: `above: [line1, line2]`. Multistep arrows: `stages: ["*n*-BuLi, THF, −78 °C", "H3O+"]`.
    - Reversible steps: `arrow_type: equilibrium` (⇌), `equilibrium_products` / `equilibrium_reactants`
-     (unbalanced). `arrow_head: standard` (top level) gives ChemDraw's smaller default head at ×1.0.
+     (unbalanced). Top-level `arrow_head: standard` swaps the default `large` head at ×1.0 for ChemDraw's smaller one.
    - Products are aligned to the species they come from. Orient only the first species of each
      sequence (and separate reactants) with `orientation: {rotate: …, flip_h: …}`; `align: false` opts out.
    - Without `steps`, the species are drawn side by side (single structures).
-   - `kekule: ["1=2", ...]` (atom maps) chooses the Kekulé form; `show_carbons: terminal`
-     labels CH₃; a molfile from `templates/` keeps its layout.
+   - `show_carbons: terminal` labels CH₃. Kekulé forms (`kekule:`) and molfile species: see the schema.
    - Lewis structures (every atom labeled, bonds as dot pairs): `lewis: true`, `lewis: {bonds: lines}`
      (bond lines), or `lewis: {electrons: formal_charge | oxidation_state}`; see `references/scheme-schema.md`.
    - Chairs: `chair: true` draws a single six-membered sp³ ring as a chair, axial/equatorial from the SMILES
@@ -44,14 +43,13 @@ If the Read tool refuses `<repo>` files (outside the working directory, symlink 
      `charge_labels: {1: "+3"}` (species, by atom map) draws a text, display only.
    - Abbreviations: `abbreviate: [OTf, Boc, t-Bu, TBS, …]` (registry `src/acs_chem_svg/data/abbreviations.yaml`);
      a group on a heteroatom merges (TBS on O → OTBS, Ts on ring N → NTs). Define others under `abbreviations:`;
-     ligand text (L, Lₙ, dppf, XPhos) goes on a `[*:n]` atom via `labels:`. See `references/scheme-schema.md`.
+     ligand text (L, Lₙ, dppf, XPhos) goes on a `[*:n]` atom via top-level `labels:`. See `references/scheme-schema.md`.
 2. **Validate:** `scripts/validate.py spec.yaml`. Fix the spec until it prints OK (schema,
    RDKit chemistry, abbreviations, electron bookkeeping, overlaps, curved arrows crossing
    bonds or labels, dots on bonds, conditions wider than their arrow).
-3. **Render:** `scripts/render.py spec.yaml --out DIR [--crops] [--maps]` writes `spec.svg` and
-   `spec.png` (4 px/pt; `--px-per-pt 10` for close inspection) and prints the drawing size.
-   `--crops` adds 16 px/pt crops of curved arrows, charged or dotted labels, ↔ arrows,
-   equilibrium arrow ends and bracket corners.
+3. **Render:** `scripts/render.py spec.yaml --out DIR [--crops] [--maps]` writes `spec.svg`,
+   `spec.png` (4 px/pt; `--px-per-pt 10` for close inspection) and `spec.cdxml`; `--crops` adds
+   close-ups of arrows, charged labels and bracket corners.
 4. **Inspect** the PNG (and crops): orientation of the first species, label sides, double-bond
    sides, wedges, charges, conditions centered on their arrows, numbers on one line; for
    mechanisms, that each arrow leaves its lone pair or bond and points at its target.
@@ -59,9 +57,9 @@ If the Read tool refuses `<repo>` files (outside the working directory, symlink 
    never the SVG. At most 3 tries per curved arrow and 5 render rounds overall; then deliver
    and report what is left.
 6. **Deliver** `.svg` (editable text, named groups; `--affinity` writes for Affinity: separate
-   arrowhead shapes, bold/italic face names), `.yaml`, `.png`. Mention a fallback-font warning.
-   For ChemDraw, `--cdxml` also writes `.cdxml` for every spec kind (M1–M4, Lewis structures,
-   abbreviations, charges). Report its stderr warnings (atom maps are not written).
+   arrowhead shapes, bold/italic face names), `.yaml`, `.png`, and `.cdxml` for ChemDraw (every spec
+   kind, cycles and Lewis structures included; `--no-cdxml` skips it). Report stderr warnings
+   (fallback font; `warning: no CDXML:` means that spec has no `.cdxml`).
 
 ## Mechanisms (curved arrows)
 
@@ -74,18 +72,15 @@ Worked example and common mistakes: `references/workflow.md`.
 4. Write rough products, run `validate.py --suggest`, and paste the `suggested:` lines. Every
    step's arrows must turn its reactants into its products exactly (charges, radicals, bond
    orders, H moved); the validator's message names the arrow and the atom.
-5. **Account for every product:**
-   - An acid/base that only gives or takes a proton goes `over:` the arrow; its conjugate
-     (AcOH from AcO−) and the acid/base regenerated last are `omit:`ted, without text.
-   - Omit other products the next step doesn't use; note a loss that matters on the arrow
-     (`above: "−H2O"`, or `below:` a → with a structure over it).
-   - Never write text below ⇌ (it reads as the reverse direction).
+5. **Account for every product:** an acid/base that only moves a proton goes `over:` the arrow
+   (its conjugate and the one regenerated last are `omit:`ted, without text); omit other products
+   the next step doesn't use, noting a loss that matters on the arrow (`above: "−H2O"`; never a
+   loss below ⇌). Why: `references/workflow.md` ("A product that disappears").
 6. Render with `--maps` (map numbers beside the atoms, preview only): it shows which end of
    each species faces its partner.
 7. Orient, render, inspect. `render.py` prints each arrow's default `bow`; if an arrow crosses
    something, try `overrides` (the other `bow`, then `tail_side`, `curvature`), or turn a species
    (`orientation`) or swap the reactants (`from: [mebr, hydroxide]`) so the atoms face each other.
-   Keep the user's preset (default acs1996); three rows is fine.
 
 ```yaml
 species:
@@ -132,7 +127,7 @@ steps:
 `cycle:` in place of `steps:`: `steps` of `{from, to, label, in, out, arrow_type}` round the
 circle (the last back to the first), `start` at 12 o'clock, `direction`, `center` text; `in` /
 `out` take text or `{species: name}`. Schema, example and limits (metal–ligand bonds):
-`references/scheme-schema.md` (Catalytic cycles). `--cdxml` writes ChemDraw arc arrows.
+`references/scheme-schema.md` (Catalytic cycles).
 
 ## Known limits (raise errors rather than guess)
 
@@ -144,6 +139,7 @@ circle (the last back to the first), `start` at 12 o'clock, `direction`, `center
 ## Rules
 
 - Never edit `src/`, `scripts/`, `presets/`, or `references/` from a use session.
+- Keep the user's preset (default acs1996), even when rows wrap; raise `layout.width` only on request.
 - Problems and workarounds go to `<repo>/issues/inbox.md` (create it if missing), appended, with:
   - the date,
   - a spec excerpt,
