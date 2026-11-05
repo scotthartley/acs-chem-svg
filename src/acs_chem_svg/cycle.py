@@ -43,7 +43,7 @@ from . import richtext
 from .arrows import arc_arrow, arc_step_arrow
 from .geometry import Point, add, arc_point, arc_segments, mul, point_box_dist, union_box
 from .geometry_checks import check_labels
-from .placed import Placed, place
+from .placed import Placed, number_line, place
 from .preset import Preset, load_preset
 from .scene import Group, Path, TextRun
 from .spec import CycleStep, Spec, scheme_molecules
@@ -299,8 +299,7 @@ def _number(spec: Spec, p: Placed, preset: Preset) -> list[TextRun]:
     """The species' bold compound number, ink-centered under its ink, number_gap below."""
     if p.name not in (spec.numbers or {}):
         return []
-    ln = richtext.layout_line(str(spec.numbers[p.name]), 0.0, 0.0, preset.text.caption_size, preset,
-                              f"number:{p.name}", style="bold")
+    ln = number_line(spec, p.name, preset)
     b, ink = p.group.ink_bbox(), ln.ink()
     ln.shift((b[0] + b[2]) / 2 - (ink[0] + ink[2]) / 2, b[3] + preset.scheme.number_gap - ink[1])
     return ln.runs

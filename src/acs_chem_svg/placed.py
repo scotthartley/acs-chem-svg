@@ -1,16 +1,18 @@
 """A species drawn and placed by a layout (layout.py, cycle.py): its group, molecule, Drawer
-and the offset the layout added to its atom coordinates."""
+and the offset the layout added to its atom coordinates; and its compound number's line."""
 
 from __future__ import annotations
 
 from collections.abc import Collection
 from dataclasses import dataclass
 
+from . import richtext
 from .chem import Molecule
 from .draw_mol import Drawer
 from .geometry import Point
 from .preset import Preset
 from .scene import Group
+from .spec import Spec
 
 
 @dataclass
@@ -43,3 +45,9 @@ def place(name: str, mol: Molecule, preset: Preset, lone_pair_maps: Collection[i
     """The species drawn (group `name`) at its own coordinates."""
     d = drawer(mol, preset, lone_pair_maps, tails)
     return Placed(name, d.draw(name), mol, ring_centers(mol), drawer=d)
+
+
+def number_line(spec: Spec, name: str, preset: Preset) -> richtext.Line:
+    """The species' compound number (bold, caption size) at the origin; each layout places it."""
+    return richtext.layout_line(str(spec.numbers[name]), 0.0, 0.0, preset.text.caption_size, preset,
+                                f"number:{name}", style="bold")

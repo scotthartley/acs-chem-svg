@@ -43,7 +43,7 @@ from .chem import Molecule
 from .draw_mol import DotSet, Drawer
 from .geometry import Point, add, sub, union_box, unit
 from .mechanism import AtomRef, MechArrow, Parts, plan_step, species_parts
-from .placed import Placed, drawer, place
+from .placed import Placed, drawer, number_line, place
 from .preset import Preset, load_preset
 from .scene import Group, Polyline, TextRun
 from .spec import ArrowSet, ResonanceStep, Spec, molecules, scheme_molecules
@@ -458,11 +458,8 @@ def _finish_row(spec: Spec, out: SchemeLayout, units: list[Unit], r: int, nrows:
                                                 res.bar_x[1] - preset.bracket.gap_x, box[3]),
                                                preset, f"bracket-step-{res.n}"))
         res.bar_y = bracket_ys(box, preset)
-    numbered = {n: str(spec.numbers[n]) for n in names if n in (spec.numbers or {})}
-    if numbered:
-        size = preset.text.caption_size
-        lines = {n: richtext.layout_line(t, 0.0, 0.0, size, preset, f"number:{n}", style="bold")
-                 for n, t in numbered.items()}
+    lines = {n: number_line(spec, n, preset) for n in names if n in (spec.numbers or {})}
+    if lines:
         bottom = max([out.species[n].group.ink_bbox()[3] for n in names]
                      + [res.group.ink_bbox()[3] for res in out.resonance if res.row == r])
         rise = max(-ln.ink()[1] for ln in lines.values())  # tallest ink above the baseline

@@ -1017,6 +1017,11 @@ def _line(runs: list[TextRun], parts: list[richtext.Run]) -> richtext.Line:
                          richtext.has_sub(parts), "".join(p.text for p in parts), parts)
 
 
+def _number_text(runs: list[TextRun], spec: Spec, n: str) -> CdxText:
+    """Species n's compound number, as its layout placed it (placed.number_line)."""
+    return CdxText([_line(runs, richtext.parse(str(spec.numbers[n]), "bold"))])
+
+
 def scheme_records(lay: SchemeLayout, spec: Spec, svg_offset: Point = (0.0, 0.0)) -> CdxScheme:
     """The CdxScheme of a laid-out scheme, in the frame of the SVG that to_svg wrote with
     `svg_offset`. No layout here: positions are the layout's records."""
@@ -1054,8 +1059,7 @@ def scheme_records(lay: SchemeLayout, spec: Spec, svg_offset: Point = (0.0, 0.0)
             src, dst = dst, src
         out.schemes[-1].append(CdxStep(src, dst, len(out.arrows) - 1, *sides,
                                        above_species=[names.index(n) for n in over if n in lay.species]))
-    for n, runs in lay.numbers.items():
-        out.texts.append(CdxText([_line(runs, richtext.parse(str(spec.numbers[n]), "bold"))]))
+    out.texts += [_number_text(runs, spec, n) for n, runs in lay.numbers.items()]
     out.curves = [CdxCurve(m.p0, m.c1, m.c2, m.p3, m.spec.type) for m in lay.curved]
     out.warn_maps = not lay.curved
     return out
@@ -1094,8 +1098,7 @@ def cycle_records(cyc: CycleLayout, spec: Spec, svg_offset: Point = (0.0, 0.0)) 
         out.schemes[-1].append(CdxStep(src, dst, None, above, arcs=main))
     if cyc.center_text:
         out.texts.append(CdxText([_line(cyc.center_text, richtext.parse(spec.cycle.center))]))
-    for n, runs in cyc.numbers.items():
-        out.texts.append(CdxText([_line(runs, richtext.parse(str(spec.numbers[n]), "bold"))]))
+    out.texts += [_number_text(runs, spec, n) for n, runs in cyc.numbers.items()]
     return out
 
 
