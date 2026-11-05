@@ -15,9 +15,12 @@ M2:
 M3 (check_mechanism). Each curved arrow is sampled into a polyline (mechanism.SAMPLES
 segments), and these must hold:
 - the arrow does not cross or touch a bond, a label, a charge, another curved arrow, a
-  reaction or resonance arrow, a bracket, conditions or a number. Plus signs are allowed:
+  reaction or resonance arrow (its real shaft and head, not its box, which is as tall as the
+  head along the whole shaft), a bracket, conditions or a number. Plus signs are allowed:
   mech_basic's 2e⁻ arrow passes over its '+'. The step right after a resonance bracket may
-  cross that bracket (its arrows reach the last contributor from outside);
+  cross that bracket (its arrows reach the last contributor from outside). An arrow to or from
+  a reagent over the reaction arrow may cross that arrow: a target below the axis leaves no
+  other route (user decision 2026-11-05), though the planner still avoids it when it can;
 - its head and tail stay at least margin_width from label glyph boxes (each text run's ink box);
 - lone-pair and radical dots do not overlap bonds, labels, charges or other dots, and no bond
   runs between the two dots of a pair;
@@ -39,7 +42,7 @@ import math
 from .chem import OVERLAID_PER_BOND, Molecule
 from .draw_mol import Drawer
 from .geometry import point_box_dist, seg_point_dist, segment_box_dist, segment_distance, segments_cross, union_box
-from .layout import SchemeLayout
+from .layout import SchemeLayout, arrow_parts
 from .mechanism import clashes, species_parts
 from .scene import Group, Polyline
 
@@ -179,13 +182,22 @@ def check_mechanism(lay: SchemeLayout) -> list[str]:
     parts = {n: species_parts(p.group) for n, p in lay.species.items()}
     problems = []
     sw = lay.preset.curved_arrow.stroke_width
-    scheme_boxes = [(n, b) for n, b in elements(lay) if not n.startswith(("species-", "plus-"))]
+    scheme_boxes = [(n, b) for n, b in elements(lay)
+                    if not n.startswith(("species-", "plus-", "arrow-step-", "resonance-arrow-"))]
+    arrow_lines = {g.id: arrow_parts(g) for g in [st.group for st in lay.steps]
+                   + [g for res in lay.resonance for _, _, g in res.arrows]}
     for k, a in enumerate(lay.curved):
         problems += [f"{a.group.id} {c}" for c in clashes(a, parts, [o for o in lay.curved[:k] if o.step == a.step], lay.preset)]
         for el, box in scheme_boxes:
             if el.startswith(f"bracket-step-{a.step - 1}-"):
                 continue  # the step after a bracket reaches into it
             if any(segment_box_dist(p, q, box) < sw / 2 for p, q in zip(a.polyline(), a.polyline()[1:])):
+                problems.append(f"{a.group.id} crosses {el}")
+        segs = list(zip(a.polyline(), a.polyline()[1:])) + list(zip(a.head, a.head[1:] + a.head[:1]))
+        for el, pt in arrow_lines.items():
+            if el == f"arrow-step-{a.step}" and _touches_over(lay, a):
+                continue
+            if any(segment_distance(p, q, c, d) < hw + sw / 2 for p, q in segs for c, d, hw, _ in pt.bonds):
                 problems.append(f"{a.group.id} crosses {el}")
     for sp, pt in parts.items():
         for k, (c, kind) in enumerate(pt.dots):
@@ -211,6 +223,13 @@ def check_mechanism(lay: SchemeLayout) -> list[str]:
         if p.drawer is not None:
             problems += check_line_end_dots(sp, p.drawer)
     return list(dict.fromkeys(problems))
+
+
+def _touches_over(lay: SchemeLayout, a) -> bool:
+    """Whether the curved arrow starts or ends on a reagent drawn above its step's arrow."""
+    st = next(s for s in lay.steps if s.n == a.step)
+    maps = {x.map for n in st.over for x in lay.species[n].mol.atoms}
+    return not maps.isdisjoint((*a.spec.source.atoms, *a.spec.target.atoms))
 
 
 def check_line_end_dots(name: str, d) -> list[str]:

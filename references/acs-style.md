@@ -798,7 +798,7 @@ Module `src/acs_chem_svg/draw_mol.py` unless noted.
 | Lone pairs and radicals: which atoms, sides, gaps, exact dots | §4 | `draw_mol.Drawer.dot_sets` → `label_dots` (sides of the element ink box; tail sets face their target) / `bisector_dots`; `electrons.lone_pair_atoms`; `scene.Circle` |
 | Curved arrows: stroke, full head, fishhook half head with its offset spine | §4.1 | `mechanism.curved_arrow`, `mechanism.head_polygon`; `tests/test_mech_vs_chemdraw.py` (exact, 0.1 pt) |
 | Tails, heads, bow, arc, loop and hook shapes; clash-scored choice | §4.2 | `mechanism.Planner` (`ARC_HANDLES`, `LOOP_HANDLES`; `hook`, `hook_controls`, `HOOK_SCAN`, `HOOK_REACH`; `SLID_REACH`, `excursion_controls`, `EXCURSION_REACH`, `stroke_shown`, `MIN_STROKE`: short hooks; `swept`: the ring bonds a chair hook may cross; `ring_center`, `RING_SLIDE`: ring hooks inside the ring; `bond_mid`: bond tails at the drawn bond's midpoint), `mechanism.solve_end` (end tangent through the target), `mechanism.plan_step` (bow combinations), `layout.curved_arrows`, `layout.tail_directions` |
-| Heads clear the target's label and dots and aim into it | §4.2 | `mechanism.clear_along`, `aims`, `solve_end` (roots, then aiming ends), `FARTHER`, `SOFTER`, `MISS_DEG` (unlabeled targets), `MISS_LABEL_DEG` (labeled targets) |
+| Heads clear the target's label and dots and aim into it | §4.2 | `mechanism.clear_along`, `aims`, `solve_end` (roots, then aiming ends), `FARTHER`, `SOFTER`, `FLATTER`, `MISS_DEG` (unlabeled targets), `MISS_LABEL_DEG` (labeled targets) |
 | Electron bookkeeping | design.md §6.3 | `electrons.check_step` / `check_spec`; `tests/test_electrons.py`, `tests/broken/` |
 | Carbenes / nitrenes: two RDKit radicals are a singlet's lone pair, always drawn and an `lp(n)` source, unless the species lists the atom in `triplet:` (two radicals); arrows that form one leave a singlet; placement reuses the lone-pair rules (`label_dots`, `bisector_dots` at `radical.distance`); a skeletal triplet's second dot goes in the bond gap opposite the first (Ph₂C: one below the bonds, one between them); unmeasured (Open 23) | §4 | `chem.nonbonding`, `Drawer._opposite_gap`, `Atom.singlet`, `spec.mark_triplets` / `with_spin`, `electrons.spin_problems`; `tests/test_carbenes.py` |
 | Mechanism checks | design.md §6.4 | `geometry_checks.check_mechanism` (`mechanism.clashes`) |
@@ -814,8 +814,8 @@ Module `src/acs_chem_svg/draw_mol.py` unless noted.
 | Resonance placement: ↔ length and gaps, bracket gaps | §4.3 | `layout._place` (`put_bracket`), `layout._finish_row`; `scripts/compare.py resonance_x* --spec examples/m4/m4_resonance_x*.yaml` |
 | Resonance bookkeeping | design.md §6.3 | `electrons.check_resonance` (`skeleton`, `check_step` per list) |
 | Rows: units, greedy breaks, continuation rows start with an arrow, row gap, per-row numbers and vertical rule | §3.4 | `layout._place` (`Unit`), `layout._breaks`, `layout.build_scheme`, `layout._shift_row_records`; `scripts/compare.py scheme_wrap_x* --spec examples/m4/m4_wrap_x*.yaml` |
-| Curved arrows avoid reaction and ↔ arrows; a bond target may take its far side (ring bonds) | §4.2 | `layout._arrow_parts`, `mechanism.Planner.build(far=…)` |
-| Checks: ↔ arrows and bracket segments join the overlap checks; the step after a bracket may cross it | design.md §6.4 | `geometry_checks.elements`, `check_mechanism` |
+| Curved arrows avoid reaction and ↔ arrows; a bond target may take its far side (ring bonds) | §4.2 | `layout.arrow_parts`, `mechanism.Planner.build(far=…)` |
+| Checks: ↔ arrows and bracket segments join the overlap checks; the step after a bracket may cross it; an arrow on a reagent over the reaction arrow may cross that arrow (user decision 2026-11-05) | design.md §6.4 | `geometry_checks.elements`, `check_mechanism` |
 
 ## 12. Implemented as (Lewis)
 

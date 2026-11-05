@@ -9,10 +9,11 @@ from validate import validate
 
 from acs_chem_svg import chem
 from acs_chem_svg.draw_mol import Drawer
-from acs_chem_svg.geometry import add, angle_deg, dot, length, mul, perp, point_box_dist, sub, unit
+from acs_chem_svg.geometry import (add, angle_deg, dot, length, mul, perp, point_box_dist, segment_box_dist,
+                                   segment_distance, sub, unit)
 from acs_chem_svg.geometry_checks import check_mechanism
-from acs_chem_svg.layout import build_scheme
-from acs_chem_svg.mechanism import ARC_HANDLES, FARTHER, MISS_DEG, aims, miss, species_parts
+from acs_chem_svg.layout import arrow_parts, build_scheme
+from acs_chem_svg.mechanism import ARC_HANDLES, FARTHER, MISS_DEG, aims, miss, species_parts, stroke_clear
 from acs_chem_svg.preset import load_preset
 from acs_chem_svg.scene import Circle
 from acs_chem_svg.spec import Spec, load_spec
@@ -452,3 +453,67 @@ def test_two_fishhooks_from_a_ring_double_bond(bow, tmp_path):
         assert dot(sub(two.p0, mid), u) == pytest.approx(gap)
     else:  # the inner tail is past the inner line, not at bond_tail_gap
         assert max(abs(v) for v in off) > gap + 1.0
+
+
+FISCHER = Path(__file__).parent / "specs" / "fischer_over_x1.0.yaml"
+
+
+def _fischer():
+    return build_scheme(load_spec(FISCHER), FISCHER.parent, FISCHER.stem)
+
+
+def _arrow(lay, step, index=0):
+    return next(a for a in lay.curved if a.step == step and a.index == index)
+
+
+def _reaches(lay, a) -> float:
+    """Clearance between the curved arrow's stroke and its step's reaction arrow."""
+    pl = a.polyline()
+    st = next(s for s in lay.steps if s.n == a.step)
+    return min(segment_distance(p, q, c, d) - hw for p, q in zip(pl, pl[1:]) for c, d, hw, _ in arrow_parts(st.group).bonds)
+
+
+def test_fischer_validates():
+    assert validate(FISCHER) == []
+
+
+def test_flat_arc_reaches_a_carbonyl_carbon_from_the_side():
+    """No SOFTER arc reaches C from MeOH over the arrow: above it goes through the C=O, below it
+    through the reaction arrow. A FLATTER arc passes between them, from the pair facing the target."""
+    lay = _fischer()
+    a = _arrow(lay, 2)
+    p = lay.species["prot"]
+    c, o = (add(next(x for x in p.mol.atoms if x.map == m).p, p.offset) for m in (1, 2))
+    meoh = lay.species["meoh"]
+    o_me = add(next(x for x in meoh.mol.atoms if x.map == 6).p, meoh.offset)
+    assert a.p0[1] > o_me[1]  # the lower lone pair
+    assert a.p3[0] > c[0] and a.p3[1] > o[1]  # lands from the right, below the carbonyl O
+    assert stroke_clear(a, {n: species_parts(lay.species[n].group) for n in ("prot", "meoh")}, lay.preset)
+    assert _reaches(lay, a) >= lay.preset.lengths.margin_width
+
+
+def test_passing_near_an_arrows_tail_is_not_a_crossing():
+    """The arrow's box is as tall as its head along the whole shaft; the check uses the real lines."""
+    lay = _fischer()
+    a = _arrow(lay, 4)
+    st = next(s for s in lay.steps if s.n == 4)
+    pl = a.polyline()
+    sw = lay.preset.curved_arrow.stroke_width
+    assert min(segment_box_dist(p, q, st.group.bbox()) for p, q in zip(pl, pl[1:])) < sw / 2  # the box says hit
+    assert _reaches(lay, a) > sw / 2
+    assert not [p for p in check_mechanism(lay) if "arrow-step-4" in p]
+
+
+def test_arrow_from_a_reagent_over_the_arrow_may_cross_it():
+    lay = _fischer()
+    assert _reaches(lay, _arrow(lay, 3)) < lay.preset.curved_arrow.stroke_width / 2
+    assert not [p for p in check_mechanism(lay) if "arrow-step-3" in p]
+
+
+def test_arrow_within_the_substrate_may_not_cross_its_reaction_arrow():
+    lay = _fischer()
+    a = _arrow(lay, 5)  # no reagent over step 5
+    st = next(s for s in lay.steps if s.n == 5)
+    mid = a.polyline()[len(a.polyline()) // 2]
+    a.shift((st.tail[0] + st.head[0]) / 2 - mid[0], st.tail[1] - mid[1])
+    assert any("curved-arrow-step-5-0 crosses arrow-step-5" in p for p in check_mechanism(lay))

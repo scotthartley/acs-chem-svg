@@ -139,12 +139,14 @@ starts from the default (`bow: left` when it already bows left changes nothing).
   there, just past it, and the fishhooks that meet there share a side. Arrows bow away from
   their species, or upward over the row. Chords shorter than a bond curl into loops. Each arrow
   tries both bow sides, every lone pair, each solution for its end, a flatter curve and a tip
-  stopped farther out, and the step keeps the combination that crosses the least. Two arrows from one bond go to opposite
+  stopped farther out, and the step keeps the combination that crosses the least. If all of those
+  clash, it tries nearly straight arcs (so an arrow can reach a carbonyl carbon from the side). Two arrows from one bond go to opposite
   sides.
 - **Groups:** `species-<name>-lone-pairs`, `species-<name>-radicals` (SVG `<circle>`s),
   `curved-arrows-step-<n>` with `curved-arrow-step-<n>-<index>` (a stroked path and a head).
 - **Checks** (`validate.py`): curved arrows crossing bonds, labels, charges, dots, other curved
-  arrows, reaction arrows, conditions or numbers (not plus signs); heads and tails closer than
+  arrows, reaction arrows, conditions or numbers (not plus signs; an arrow on a reagent over the
+  reaction arrow may cross that arrow when its target is below the axis); heads and tails closer than
   `margin_width` to a label; dots overlapping bonds, labels, charges or each other, or a pair
   straddling a bond.
 

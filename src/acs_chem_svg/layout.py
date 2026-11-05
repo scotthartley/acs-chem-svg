@@ -61,6 +61,7 @@ class StepLayout:
     group: Group | None = None  # arrow-step-<n>
     kind: str = "forward"  # spec arrow_type
     variant: str | None = None  # head variant (spec arrow_head; None: the preset's default)
+    over: list[str] = field(default_factory=list)  # reactants drawn above the arrow
 
     def shift(self, dx: float, dy: float) -> None:
         """Move the records (not the group: the layout moves groups with their row)."""
@@ -351,7 +352,7 @@ def _place(spec: Spec, out: SchemeLayout, breaks: set[tuple[str, int]], rings: d
         tail = (x + s.arrow_gap, 0.0)
         head = (tail[0] + length, 0.0)
         g = step_arrow(st.arrow_type, tail, head, preset, f"arrow-step-{i}", spec.arrow_head)
-        step = StepLayout(i, tail, head, above, below, staged, row, g, st.arrow_type, spec.arrow_head)
+        step = StepLayout(i, tail, head, above, below, staged, row, g, st.arrow_type, spec.arrow_head, list(over))
         _place_conditions(step, preset)
         out.steps.append(step)
         units[-1].items.append(g)
@@ -456,7 +457,7 @@ def _finish_row(spec: Spec, out: SchemeLayout, units: list[Unit], r: int, nrows:
     names = [n for u in units for n in u.species + u.over]
     pluses = [p for u in units for p in u.pluses]
     items = [it for u in units for it in u.items]
-    obstacles = {g.id: _arrow_parts(g) for g in items if g.id.startswith(("arrow-step-", "resonance-arrow-step-"))}
+    obstacles = {g.id: arrow_parts(g) for g in items if g.id.startswith(("arrow-step-", "resonance-arrow-step-"))}
     curved: dict[int, list[MechArrow]] = {}
     for aset in spec.arrow_sets():
         if aset.sources[0] in names:
@@ -488,7 +489,7 @@ def _finish_row(spec: Spec, out: SchemeLayout, units: list[Unit], r: int, nrows:
     return Group(f"row-{r + 1}", items), [a for arrows in curved.values() for a in arrows]
 
 
-def _arrow_parts(g: Group) -> Parts:
+def arrow_parts(g: Group) -> Parts:
     """A reaction or resonance arrow as an obstacle for curved arrows: its shaft and the
     outlines of its heads."""
     out = Parts()

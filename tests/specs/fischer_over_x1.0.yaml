@@ -1,0 +1,50 @@
+# Fischer esterification with water and hydronium over the arrows (issues/inbox.md, 2026-11-04).
+# Step 2: an arrow that only a nearly straight arc can bring to the carbonyl carbon. Step 3: a target
+# below the axis, so its arrow crosses the reaction arrow (accepted). Step 4: passes near an arrow's tail.
+preset: acs1996
+species:
+  acid:   {smiles: "[CH3:5][C:1](=[O:2])[OH:3]"}
+  h3o:    {smiles: "[H:13][OH2+:10]"}
+  w1:     {smiles: "[OH2:10]"}
+  prot:   {smiles: "[CH3:5][C:1](=[O+:2][H:13])[OH:3]"}
+  meoh:   {smiles: "[CH3:7][O:6][H:8]"}
+  tet:    {smiles: "[CH3:5][C:1]([O:2][H:13])([OH:3])[O+:6]([H:8])[CH3:7]"}
+  w2:     {smiles: "[OH2:20]"}
+  h2:     {smiles: "[H:8][OH2+:20]"}
+  neut:   {smiles: "[CH3:5][C:1]([O:2][H:13])([OH:3])[O:6][CH3:7]"}
+  h3:     {smiles: "[H:30][OH2+:31]"}
+  w3:     {smiles: "[OH2:31]"}
+  oxon:   {smiles: "[CH3:5][C:1]([O:2][H:13])([OH+:3][H:30])[O:6][CH3:7]"}
+  pe:     {smiles: "[CH3:5][C:1](=[O+:2][H:13])[O:6][CH3:7]"}
+  w4:     {smiles: "[OH:3][H:30]"}
+  w5:     {smiles: "[OH2:40]"}
+  h5:     {smiles: "[H:13][OH2+:40]"}
+  ester:  {smiles: "[CH3:5][C:1](=[O:2])[O:6][CH3:7]"}
+steps:
+  - from: [acid, h3o]
+    over: [h3o]
+    to: [prot, w1]
+    omit: [w1]
+    arrows: [{from: "lp(2)", to: "between(2,13)"}, {from: "bond(10-13)", to: "atom(10)"}]
+  - from: [prot, meoh]
+    to: tet
+    arrows: [{from: "lp(6)", to: "between(6,1)"}, {from: "bond(1=2)", to: "atom(2)"}]
+  - from: [tet, w2]
+    over: [w2]
+    to: [neut, h2]
+    omit: [h2]
+    arrows: [{from: "lp(20)", to: "between(20,8)"}, {from: "bond(6-8)", to: "atom(6)"}]
+  - from: [neut, h3]
+    over: [h3]
+    to: [oxon, w3]
+    omit: [w3]
+    arrows: [{from: "lp(3)", to: "between(3,30)"}, {from: "bond(31-30)", to: "atom(31)"}]
+  - from: oxon
+    to: [pe, w4]
+    omit: [w4]
+    arrows: [{from: "lp(2)", to: "between(2,1)"}, {from: "bond(1-3)", to: "atom(3)"}]
+  - from: [pe, w5]
+    over: [w5]
+    to: [ester, h5]
+    omit: [h5]
+    arrows: [{from: "lp(40)", to: "between(40,13)"}, {from: "bond(2-13)", to: "atom(2)"}]

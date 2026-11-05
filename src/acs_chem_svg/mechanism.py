@@ -66,7 +66,11 @@ Hand-placed (§4.2, round placement defaults):
   Every arrow whose stroke shows less than MIN_STROKE head lengths outside its head
   (stroke_shown) costs like a miss; ring hooks are exempt (RING_SLIDE is their rule).
   When the default clashes, the planner also tries h (a hook: its handles) × 0.75 and × 0.5
-  (SOFTER), and tips FARTHER out. A head that doesn't aim (aims: into a labeled target's ink
+  (SOFTER), and tips FARTHER out. When every one of those arcs still clashes, it tries flatter
+  arcs (FLATTER), ranked after every other candidate, flipped or not, so an arrow can reach an
+  atom between two substituents in a nearly straight line. Their strokes must stay margin_width
+  from every bond and reaction arrow (stroke_clear): a nearly straight line through a gap reads
+  as touching what it grazes. Loops stay loops. A head that doesn't aim (aims: into a labeled target's ink
   box past its dots and within MISS_LABEL_DEG of its center, else within MISS_DEG of the
   center) costs half a clash plus its miss / 360: less than a clash, and the closest miss first. For an arc or loop
   onto an atom the tip, stroke end and controls are solved together (solve_end), since the end
@@ -98,6 +102,7 @@ FARTHER = (0.0, 1.5, 3.0)  # tip distances beyond head_gap the planner tries, so
 MISS_DEG = 10.0  # a head pointing farther than this off an unlabeled target's center counts as a clash
 MISS_LABEL_DEG = 20.0  # the same for a labeled target's ink-box center (its head must also enter the box)
 SOFTER = (1.0, 0.75, 0.5)  # curvature multipliers the planner tries (flatter loops and arcs), in rank order
+FLATTER = (0.4, 0.3, 0.2, 0.1)  # a last resort for arcs, after SOFTER: curvature 0.2 down to 0.05 (user request 2026-11-05; unmeasured)
 SAMPLES = 48  # Bézier segments for geometric checks
 HOOK_SCAN = (0.0, 10.0, -10.0, 20.0, -20.0)  # a hook onto a bond: landing directions, degrees off the bond's normal, in rank order
 HOOK_REACH = 0.35  # a hook's handles are at least this × bond_length, so a short hook still stands off its bond
@@ -594,6 +599,20 @@ class Planner:
                                                 SLID_RANK + rank_b + rank_s + rank_g + rank_d + pick + far))
                         if best[0][0] == 0:
                             break
+        if not hook and best[0][0] > 0 and o.curvature is None:  # no clean arc: a flatter one through the gap
+            for rank_b, bow in enumerate(bows):  # nearly straight: the tail set facing the target first
+                for rank_s, ds in enumerate(sorted(sets, key=lambda d: 0.0 if d is None else -dot(d.direction, u0))):
+                    for rank_f, soft in enumerate(FLATTER):
+                        for rank_x, extra in enumerate(FARTHER):
+                            ends = {}
+                            for pick in range(ROOTS):
+                                cand = self.build(step, index, arr, o, name, bow, ds, s0, p_anchor, pick, soft, extra, 0,
+                                                  same, ends)
+                                if cand is None:
+                                    break
+                                if stroke_clear(cand, self.parts, self.preset):
+                                    consider(cand, (flip + 2 * (same and not o.bow) + EXCURSION_RANK,
+                                                    rank_b + rank_s + rank_f + rank_x + pick))
         score, arrow, bow, ds = best
         arrow.bow = "right" if dot(bow, perp(u0)) >= 0 else "left"
         if key is not None:
@@ -695,6 +714,8 @@ class Planner:
             target = ("box", tdata.box) if tdata.box else ("point", tdata.p)
         dots = [q for d in (tdata.dots if tkind == "atom" else []) for q in d.dots]
         loop = length(sub(p_anchor, tail)) < P.lengths.bond_length
+        if loop and soft < SOFTER[-1]:  # FLATTER is for arcs
+            return None
         handles = LOOP_HANDLES if loop else ARC_HANDLES
         h = o.curvature or soft * (ca.loop_curvature if loop else ca.curvature)
 
@@ -808,6 +829,14 @@ def excursion_controls(tail: Point, d: Point, end: Point, t1: Point, reach: floa
         mid = (lo + hi) / 2
         lo, hi = (lo, mid) if apex(tail, *at(mid), end) >= reach else (mid, hi)
     return at(hi)
+
+
+def stroke_clear(arrow: MechArrow, parts: dict[str, Parts], preset: Preset) -> bool:
+    """Whether the stroke stays margin_width from every bond and reaction arrow line."""
+    limit = preset.lengths.margin_width + preset.curved_arrow.stroke_width / 2
+    stroke = _segments(arrow.polyline())
+    return not any(segment_distance(p, q, c, d) < limit + hw
+                   for pt in parts.values() for c, d, hw, _ in pt.bonds for p, q in stroke)
 
 
 def stroke_shown(arrow: MechArrow) -> float:

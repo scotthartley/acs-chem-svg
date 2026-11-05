@@ -714,3 +714,26 @@ removed renders pixel-identical to the approved `m4_nitration_x1.0`. Inbox triag
   arrow with numbered `stages` (the ACS convention); not a missing feature (user decision).
 - **The Read tool can refuse `<repo>` files** under `permissions.blockReadsOutsideWorkingDirectories`,
   through the project's symlink too. SKILL.md says to read them with `cat` / `sed`.
+
+## 2026-11-05 (inbox: curved arrows from reagents over the reaction arrow)
+
+- **Triaged from issues/inbox.md** (a use session's long proton-shuttle mechanism; reproduced with
+  a Fischer esterification, tests/specs/fischer_over_x1.0.yaml, because the session's spec wasn't
+  in the report). `crosses arrow-step-N` turned out to be two things.
+- **A false alarm:** `check_mechanism` tested the reaction arrow's bounding box, as tall as the
+  head along the whole shaft, so an arrow passing 1.7 pt from a thin tail counted as crossing,
+  while the planner, on the real lines, saw no clash. The check now uses `layout.arrow_parts` too.
+- **A real crossing, accepted** (user decision): with the reagent above the arrow and the target
+  below the axis, the arrow has no other route. Flipping needs `align: false` on every later
+  species and made the drawing worse; a reagent below the arrow was offered and declined. An arrow
+  to or from a reagent over its own reaction arrow may now cross it. The planner still counts it
+  as a clash, so it avoids the crossing when it can. Other arrows are still reported.
+- **The bigger problem was the nucleophile** (user review): MeOH over the arrow attacked the carbonyl
+  carbon by going over the top and down through C=O. The clean route, from the right between the
+  O-H and the reaction arrow, needs curvature near 0.1, and `SOFTER` stopped at 0.25.
+  `FLATTER` runs only when every other candidate clashes, so clean drawings don't change.
+- **Passing the clash test isn't enough for a flat arc.** The first version grazed MeOH's methyl
+  line at 0.12 pt and read as touching (seen only at 16 px/pt), so these arcs must keep
+  margin_width from bonds and reaction arrows. It also took the top lone pair (`ranked` favors
+  the bow side), starting the arrow above the O; with no real bow, they take the pair facing the target.
+
