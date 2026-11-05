@@ -858,17 +858,15 @@ def parsed_species(spec: Spec, base_dir: Path) -> dict[str, Chem.Mol]:
     return {n: _parsed(sp, base_dir, n)[0] for n, sp in spec.species.items()}
 
 
-def check_labels(spec: Spec, base_dir: Path) -> None:
-    """Every `labels` map number must be on an atom of some species."""
-    maps = {a.GetAtomMapNum() for m in parsed_species(spec, base_dir).values() for a in m.GetAtoms()}
+def check_maps(spec: Spec, base_dir: Path) -> None:
+    """Every `labels` map number must be on an atom of some species, and every species'
+    charge_labels map number on one of its atoms."""
+    parsed = parsed_species(spec, base_dir)
+    maps = {a.GetAtomMapNum() for m in parsed.values() for a in m.GetAtoms()}
     unknown = sorted(set(spec.labels) - maps)
     if unknown:
         raise ValueError(f"labels: no atom has map number {', '.join(map(str, unknown))}")
-
-
-def check_charge_labels(spec: Spec, base_dir: Path) -> None:
-    """Every species' charge_labels map number must be on one of its atoms."""
-    for name, mol in parsed_species(spec, base_dir).items():
+    for name, mol in parsed.items():
         unknown = sorted(set(spec.species[name].charge_labels) - {a.GetAtomMapNum() for a in mol.GetAtoms()})
         if unknown:
             raise ValueError(f"species {name}: charge_labels: no atom has map number {', '.join(map(str, unknown))}")
@@ -911,6 +909,16 @@ def relabel(spec: Spec, mol: chem.Molecule) -> chem.Molecule:
     return replace(mol, atoms=[one(a) if a.map in spec.labels else a for a in mol.atoms])
 
 
+def _for_display(spec: Spec, name: str, mol: chem.Molecule, lewis: bool = False) -> chem.Molecule:
+    """A built species decorated for drawing: show_carbons, labels, charges, triplet, front bonds
+    (a Lewis structure: labels, charges and triplet only)."""
+    if lewis:
+        return with_spin(spec, name, with_charges(spec, name, relabel(spec, mol)))
+    sp = spec.species[name]
+    return with_front(name, sp, with_spin(spec, name, with_charges(
+        spec, name, relabel(spec, chem.show_carbons(mol, sp.show_carbons)))))
+
+
 def molecules(spec: Spec, base_dir: Path) -> list[chem.Molecule]:
     """M1: every species laid out on its own."""
     preset = load_preset(spec.preset)
@@ -925,7 +933,7 @@ def molecules(spec: Spec, base_dir: Path) -> list[chem.Molecule]:
                                        lewis_lines=sp.lewis.bonds == "lines")
             except ValueError as e:
                 raise ValueError(f"species {name}: {e}") from None
-            out.append(with_spin(spec, name, with_charges(spec, name, relabel(spec, mol))))
+            out.append(_for_display(spec, name, mol, lewis=True))
             continue
         if sp.smiles is not None:
             rot = "auto" if o.rotate is None else o.rotate
@@ -938,10 +946,8 @@ def molecules(spec: Spec, base_dir: Path) -> list[chem.Molecule]:
             rot = 0.0 if o.rotate is None else o.rotate
             mol = chem.from_molfile(resolve_molfile(sp.molfile, base_dir), name, bl, sp.kekule,
                                     rot, o.flip_h, o.flip_v, sp.abbreviate, registry=spec.registry)
-        out.append(with_front(name, sp, with_spin(spec, name, with_charges(
-            spec, name, relabel(spec, chem.show_carbons(mol, sp.show_carbons))))))
-    check_labels(spec, base_dir)
-    check_charge_labels(spec, base_dir)
+        out.append(_for_display(spec, name, mol))
+    check_maps(spec, base_dir)
     return out
 
 
@@ -991,11 +997,8 @@ def scheme_prepared(spec: Spec, base_dir: Path) -> dict[str, chem.Prepared]:
 
 
 def scheme_molecules(spec: Spec, base_dir: Path) -> dict[str, chem.Molecule]:
-    check_labels(spec, base_dir)
-    check_charge_labels(spec, base_dir)
-    return {n: with_front(n, spec.species[n], with_spin(spec, n, with_charges(spec, n, relabel(
-                spec, chem.show_carbons(p.molecule(), spec.species[n].show_carbons)))))
-            for n, p in scheme_prepared(spec, base_dir).items()}
+    check_maps(spec, base_dir)
+    return {n: _for_display(spec, n, p.molecule()) for n, p in scheme_prepared(spec, base_dir).items()}
 
 
 def chair_spec(sp: Species, preset) -> chem.ChairSpec | None:
