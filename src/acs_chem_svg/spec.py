@@ -179,6 +179,13 @@ class ArrowOverride(BaseModel):
     bow: Literal["left", "right"] | None = None  # side of the tail -> head direction the curve bulges to
     curvature: float | None = Field(None, gt=0, le=3)  # control offset / chord
     tail_side: Literal["top", "right", "bottom", "left"] | None = None  # which lone pair (lp tails)
+    shape: Literal["arc", "tangent"] | None = None  # force an arc, or a curve set by its end directions (a C or an S)
+
+    @model_validator(mode="after")
+    def _shape_vs_curvature(self):
+        if self.shape == "tangent" and self.curvature is not None:
+            raise ValueError("overrides.arrows: curvature applies to arcs, not shape: tangent")
+        return self
 
 
 class Overrides(BaseModel):

@@ -32,7 +32,7 @@ reactant, and retype a condition (does it stay in the step?). --diff then report
 Phase 3 (--phase 3, acs-style.md §13.2; files in build/cdxml_gate/phase3/): mech_basic_x1.0 /
 x0.6 round trips (compare.reference_cdx_scheme) and render.py --cdxml's output for M3 specs
 (two-electron arrows, fishhooks with HalfRight and HalfLeft barbs, an added reactant above its
-arrow). By hand in ChemDraw, besides the re-saves (CDXML and SVG): drag an atom with dots (do they
+arrow, an S-shaped tangent arrows: m3_carbonyl_addition step 1 and, a fishhook, m3_radical_propagation step 1). By hand in ChemDraw, besides the re-saves (CDXML and SVG): drag an atom with dots (do they
 follow?), move a curve, and run Clean Structure on a copy. --diff reports, besides phase 2's items:
 5. the curves: CurveType, ArrowheadHead and CurvePoints kept or rewritten;
 6. the LonePair / Electron symbols per atom: boxes and <represent> kept;

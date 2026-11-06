@@ -154,7 +154,8 @@ def render(spec_path: Path, out_dir: Path | None = None, px_per_pt: float = 4.0,
     b = root.bbox()
     print(f"{spec_path.stem}: {b[2] - b[0]:.1f} x {b[3] - b[1]:.1f} pt (ink)", file=sys.stderr)
     for a in lay.curved if lay else []:
-        print(f"  curved arrow step {a.step} index {a.index} ({a.spec.from_} -> {a.spec.to}): bow {a.bow}",
+        print(f"  curved arrow step {a.step} index {a.index} ({a.spec.from_} -> {a.spec.to}): bow {a.bow}"
+              + (", shape tangent (S)" if a.tangent and a.s_shape else ", shape tangent" if a.tangent else ""),
               file=sys.stderr)
     if cyc:
         print(f"  cycle: radius {cyc.radius:.2f} pt, free arc {cyc.free:.2f} pt", file=sys.stderr)

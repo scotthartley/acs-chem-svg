@@ -737,3 +737,34 @@ removed renders pixel-identical to the approved `m4_nitration_x1.0`. Inbox triag
   margin_width from bonds and reaction arrows. It also took the top lone pair (`ranked` favors
   the bow side), starting the arrow above the O; with no real bow, they take the pair facing the target.
 
+## 2026-11-05 (curved arrows set by their end directions)
+
+- **An exit is a separate choice from a head's aim.** `solve_end` makes heads aim, but nothing
+  controlled the exit: long arcs left their pair a median 31° off square, 13 of 33 by over 60°. A
+  cubic set by both end directions fixes that where room allows, as a C or an S.
+- **Clash-free isn't enough for a new shape.** The first pass ran S arrows through reaction plus signs:
+  `clashes` doesn't check plus signs, and today's arcs only miss them because they bulge around. It
+  also preferred near-straight lines, which don't read as curved arrows. Tangent arrows now avoid plus
+  signs and bonds and must turn at least 35°. Arcs are still not checked against plus signs.
+- **Estimates from a filter script run high.** The planning estimate was 19 of 22 bad exits fixable; the
+  planner, with plus signs and the fishhook side rule, at first fixed 7 of 17 (the counts' bases differ too).
+- **Replace only bad exits** (user review): making every long arrow tangent turned good SN2 and E2 arcs
+  into flat-topped curves.
+- **Clearance has to cover labels too** (user review, 2026-11-06): the first clearance check, on bonds only, let Perkin
+  step 2 pass 0.33 pt from an H. Labels now get 2 × margin_width. Doubling it from bonds or plus signs as well
+  added nothing there and lost the carbonyl addition S the user had just approved, so those keep 1 ×.
+- **A square exit can point straight at an obstacle** (user review, 2026-11-06): benzene's and cyclohexene's normals aim at
+  the plus sign, so those arrows fell back to arcs 65-74° off. Near-square exits (up to 30°) and longer handles
+  (0.6) fix them and put Perkin step 3 on the bottom lone pair.
+- **Longer handles need a limit.** Unchecked, they replaced fischer_over's reviewed flat arc with a loop around the
+  carbonyl, and its accepted arrow crossing with a swing around the reaction arrow. Stroke length ÷ chord can't
+  separate the first from Perkin step 3 (1.56 and 1.55), so clean flat arcs stay and a limit of 1.6 stops the second.
+- **A printed `bow` must round-trip.** On a tangent arrow `bow` is the side it leaves toward, and a `bow`
+  override steers the curve instead of forcing an arc, so `render.py`'s `bow` changes nothing when passed back.
+- **A fixture must keep its chemistry right** (user review, 2026-11-06): to get an S fishhook I aimed a forming bond's arrows at
+  `atom(2)`, and the arrows no longer showed the C-Br bond forming. The S was blocked by my own rule that meeting fishhooks stay Cs,
+  which was stricter than sharing a side needs. With the rule relaxed (they land from the shared side, a C bows to it),
+  `m3_radical_propagation` step 1 is an S with correct targets, and its exit improves from about 83° to about 30° off square.
+- **ChemDraw keeps an S** (gate, phase 3, 2026-11-06, ChemDraw 26.1): re-saves of m3_carbonyl_addition and m3_radical_propagation
+  return every CurvePoints value and ArrowheadHead unchanged, so a 2e⁻ S and a fishhook S export as they are. Drawn head tips are
+  within 0.014 pt of ours.

@@ -75,6 +75,14 @@ Hand-placed (§4.2, round placement defaults):
   center) costs half a clash plus its miss / 360: less than a clash, and the closest miss first. For an arc or loop
   onto an atom the tip, stroke end and controls are solved together (solve_end), since the end
   tangent decides where the tip stops.
+- Tangent arrows (user decision 2026-11-05; acs-style.md §4.2): set by their end directions, not by
+  fixed handle ratios. An arc or loop of at least TANGENT_MIN_CHORD bond lengths whose exit is more
+  than TANGENT_OFF off square, or which clashes, gives way to the smoothest clean cubic that leaves
+  square (the pair's direction, a bond's normal), or as near as TANGENT_TURNS gets, and lands exactly
+  on its aim (Planner.tangent_pass). A clean FLATTER arc stays (its route is the point), and a tangent
+  stroke longer than TANGENT_MAX_LENGTH × chord is a detour.
+  It comes out a C or an S by geometry; its handles are TANGENT_HANDLES × chord, the first that
+  gives a clean curve with margin_width from bonds and plus signs and TANGENT_CLEAR_LABEL × that from labels.
 """
 
 from __future__ import annotations
@@ -84,7 +92,7 @@ import math
 from dataclasses import dataclass, field
 
 from .geometry import (Point, add, angle_deg, cubic_point, dot, length, mul, perp, point_box_dist, ray_box_exit,
-                       rotate, seg_point_dist, segment_box_dist, segment_distance, shift_box, sub, unit)
+                       rotate, seg_point_dist, segment_box_dist, segment_distance, segments_cross, shift_box, sub, unit)
 from .preset import Preset
 from .draw_mol import DotSet
 from .scene import Circle, Group, Marker, Path, Polygon, Polyline, TextRun
@@ -119,6 +127,16 @@ EXCURSION_LP_SCAN = (0.0,)  # a lone pair's excursion leaves along the pair's di
 SLID_REACH = 0.45  # a slid arc's handles: at least this × bond_length (user choice 2026-10-29; unmeasured)
 SLID_RANK = 100  # excursions rank after every slid arc
 EXCURSION_RANK = 10  # added to an excursion's flip count: it ranks after every default candidate, flipped or not
+TANGENT_HANDLES = (1 / 3, 0.45, 0.25, 0.6)  # a tangent arrow's handles, × chord, in rank order: 1/3 unless it can't clear (user decisions 2026-11-05, 2026-11-06; unmeasured)
+TANGENT_TURNS = (0.0, 10.0, -10.0, 20.0, -20.0, 30.0, -30.0)  # degrees off a square exit, in rank order: within TANGENT_OFF, when square has no clean curve (user review 2026-11-06; unmeasured)
+TANGENT_CLEAR_LABEL = 2.0  # × margin_width: a tangent stroke's clearance from labels; from bonds and plus signs, 1 × (user decision 2026-11-06; unmeasured)
+TANGENT_MIN_CHORD = 1.2  # × bond_length: shorter arrows keep their arc or loop (measured on the example specs' exits, not on ChemDraw)
+TANGENT_OFF = 30.0  # degrees: an arc whose exit is off square by no more than this stays (user decision 2026-11-05; unmeasured)
+TANGENT_MIN_RADIUS = 0.3  # × bond_length: a tangent arrow bending tighter is a kink (user decision 2026-11-05; unmeasured)
+TANGENT_MAX_LENGTH = 1.6  # a tangent stroke's length ÷ chord: longer is a detour (fischer_over's 1.79; arcs are 1.27; unmeasured)
+TANGENT_MIN_TURN = 35.0  # degrees of total turning: less doesn't read as a curved arrow (unmeasured)
+TANGENT_MIN_BEND = 0.05  # a tangent fishhook's end bend (c1 off the end tangent) ÷ chord: less leaves its barb's side to noise (unmeasured)
+TANGENT_SCAN = 36  # approach directions tried for an atom target
 MIN_STROKE = 2.0  # a stroke showing less than this × head_length beyond its head costs like a miss (user decision 2026-10-29; unmeasured)
 
 
@@ -190,6 +208,13 @@ class MechArrow:
     target_dots: list = field(default_factory=list)  # that atom's dot centers
     bow: str = ""  # the side chosen, "left" | "right" of tail -> head (as overrides.arrows write it)
     crosses: tuple = ()  # ((a, b), ...): bonds a cramped hook passes through (not a clash): a pass-through's target bond first
+    tangent: bool = False  # set by its end directions (Planner.tangent_pass), not an arc, loop or hook
+
+    @property
+    def s_shape(self) -> bool:
+        """Whether the curve changes side of its chord: its controls lie on opposite sides."""
+        n = perp(unit(sub(self.p3, self.p0)))
+        return dot(sub(self.c1, self.p0), n) * dot(sub(self.c2, self.p0), n) < 0
 
     @property
     def tip(self) -> Point:
@@ -613,8 +638,14 @@ class Planner:
                                 if stroke_clear(cand, self.parts, self.preset):
                                     consider(cand, (flip + 2 * (same and not o.bow) + EXCURSION_RANK,
                                                     rank_b + rank_s + rank_f + rank_x + pick))
+        forced = o.shape == "tangent"
+        if forced or (o.shape is None and o.curvature is None and not hook):
+            best = self.tangent_pass(arr, o, name, step, index, bows, ranked, s0, p_anchor, same, meet, best,
+                                     (flip + 2 * (same and not o.bow), 0)) or best
         score, arrow, bow, ds = best
-        arrow.bow = "right" if dot(bow, perp(u0)) >= 0 else "left"
+        # a tangent arrow's bow is the side it leaves toward: an S ends on the other side
+        side = sub(arrow.c1, arrow.p0) if arrow.tangent else bow
+        arrow.bow = "right" if dot(side, perp(u0)) >= 0 else "left"
         if key is not None:
             self.bond_sides.setdefault(key, 1.0 if dot(self.bond_normal(src), bow) >= 0 else -1.0)
         if meet is not None:
@@ -623,6 +654,83 @@ class Planner:
             self.used_sets.add(id(ds))
         self.done.append(arrow)
         return arrow, score
+
+    def exit_direction(self, src, ds, bow: Point) -> Point:
+        """Where a square exit points: the tail pair's direction, or a bond's normal on the bow side."""
+        return self.bond_normal(src, bow) if ds is None else ds.direction
+
+    def tangent_pass(self, arr, o, name, step, index, bows, ranked, s0, p_anchor, same, meet, best, rest):
+        """A tangent arrow (module docstring) in place of the arc `best`: the smoothest (curve_shape's
+        bending energy) that is clean, or has fewer clashes than the arc. None when the arc stays: its
+        exit is square enough and it is clean, it is short, or no candidate beats it. `shape: tangent`
+        (o) skips those tests and takes the fewest clashes, near bonds and plus signs last. With a `bow`
+        it leaves toward that side. A bad shape is ruled out either way."""
+        P, r = self.preset, self.preset.lone_pair.dot_radius
+        arc_score, arc, arc_bow, arc_ds = best
+        L, ca = P.lengths.bond_length, P.curved_arrow
+        forced = o.shape == "tangent"
+        if not forced:
+            if length(sub(arc.p3, arc.p0)) < TANGENT_MIN_CHORD * L:
+                return None
+            off = angle_deg(unit(sub(arc.c1, arc.p0)), self.exit_direction(arr.source, arc_ds, arc_bow))
+            if off <= TANGENT_OFF and arc_score[0] == 0:
+                return None
+            if arc_score[0] == 0 and arc_score[1] >= EXCURSION_RANK:
+                return None  # a clean FLATTER arc: the route was chosen through a gap (user review 2026-11-05)
+        if self.target(arr)[0] == "bond":
+            landings = [(None, pick, far) for pick in range(len(HOOK_SCAN)) for far in (0, 1)]
+        else:
+            landings = [((math.cos(a), math.sin(a)), 0, 0)
+                        for a in (2 * math.pi * k / TANGENT_SCAN for k in range(TANGENT_SCAN))]
+        right = perp(unit(sub(p_anchor, s0)))
+        wanted = None if not o.bow else right if o.bow == "right" else mul(right, -1)
+        limit, found = (math.inf if forced else arc_score[0]), None
+        if arc_score[0] > 0:  # standing in for an arc that clashes: after a flipped arc through a gap (FLATTER), whose route was chosen
+            rest = (rest[0] + 2 * EXCURSION_RANK, rest[1])
+
+        def candidates(turn: float, handle: float) -> list:
+            out = []
+            for bow in bows:
+                meet_side = None if meet is None else meet[1] if dot(meet[1], bow) >= 0 else mul(meet[1], -1)
+                for ds in ranked(bow):
+                    for land, pick, far in landings:
+                        if meet_side is not None and land is not None and dot(land, meet_side) >= 0:
+                            continue  # fishhooks meet on the bow side: come in from there
+                        c = self.build(step, index, arr, o, name, bow, ds, s0, p_anchor, pick, 1.0, 0.0, far, same,
+                                       tangent=(land, handle, turn))
+                        if c is None or not aims(c, r) or stroke_shown(c) < MIN_STROKE * ca.head_length:
+                            continue
+                        tight, total, energy, loops = curve_shape(c.p0, c.c1, c.c2, c.p3)
+                        if tight < TANGENT_MIN_RADIUS * L or total < TANGENT_MIN_TURN or loops:
+                            continue
+                        if not forced and stroke_length(c) > TANGENT_MAX_LENGTH * length(sub(c.p3, c.p0)):
+                            continue
+                        if wanted is not None and dot(sub(c.c1, c.p0), wanted) < 0:
+                            continue
+                        if arr.type == "fishhook" and not tangent_barb_stable(c):
+                            continue
+                        if meet_side is not None and not c.s_shape and dot(sub(c.c1, c.p0), meet_side) < 0:
+                            continue  # a meeting C bows to the side they share; an S lands from it (above)
+                        near = (meet is None and self.over_plus(c)) or not tangent_clear(c, self.parts, P)
+                        if near and not forced:
+                            continue
+                        out.append((near, energy, len(out), c, bow, ds))
+            return sorted(out, key=lambda x: x[:3])
+
+        for turn, handle in itertools.product(TANGENT_TURNS, TANGENT_HANDLES):
+            for near, _, _, c, bow, ds in candidates(turn, handle):
+                n = len(clashes(c, self.parts, self.done, P))
+                if n < limit or (n == 0 and found is None):
+                    limit, found = n, ((float(n), *rest), c, bow, ds)
+                if n == 0 and not near:
+                    return found
+        return found
+
+    def over_plus(self, arrow: MechArrow) -> bool:
+        """Whether the arrow's stroke or head runs within margin_width of a plus sign."""
+        limit = self.preset.lengths.margin_width + self.preset.curved_arrow.stroke_width / 2
+        segs = _segments(arrow.polyline()) + _segments(arrow.head, True)
+        return any(segment_box_dist(p, q, box) < limit for box in self.pluses for p, q in segs)
 
     def meeting(self, arr: CurvedArrow) -> tuple[frozenset, Point] | None:
         """For an arrow aimed at the midpoint of two unbonded atoms: its key and the unit normal
@@ -663,7 +771,7 @@ class Planner:
 
     def build(self, step, index, arr, o, name, bow, ds, s0, p_anchor, pick=0, soft=1.0,
               extra=0.0, far=0, same=False, ends: dict | None = None, slid: bool = False,
-              exc: tuple | None = None) -> MechArrow | None:
+              exc: tuple | None = None, tangent: tuple | None = None) -> MechArrow | None:
         """The arrow for one bow, tail set and solve_end root (`pick`; a hook: its ranked
         landing direction), its curvature times `soft` and its tip `extra` beyond head_gap;
         None past the last root. A bond target's tip goes on the tail's side of the bond, or
@@ -674,7 +782,8 @@ class Planner:
         hook): its tip slides RING_SLIDE along the target bond away from the shared atom and its
         handles are at least SLID_REACH. `exc` (a hook's excursion: exit turn in degrees, reach
         in bond lengths) leaves along the natural exit turned that far and stands that far off
-        its chord (excursion_controls); its landing is EXCURSION_LAND[pick]."""
+        its chord (excursion_controls); its landing is EXCURSION_LAND[pick]. `tangent` (travel direction at the tip, None for a
+        bond target's HOOK_SCAN[pick]; handles × chord; degrees off a square exit) leaves and lands exactly so."""
         P = self.preset
         ca, r = P.curved_arrow, P.lone_pair.dot_radius
         src = arr.source
@@ -696,7 +805,7 @@ class Planner:
             a, b = tdata
             m = add(self.bond_mid(*arr.target.atoms), slide)
             nb = perp(unit(sub(b.p, a.p)))
-            if self.hook(arr, o) and not slid and exc is None and self.cramped(arr, tail):  # 0: through and back, 1: the tail's side, 2: the far side
+            if self.hook(arr, o) and not slid and exc is None and tangent is None and self.cramped(arr, tail):  # 0: through and back, 1: the tail's side, 2: the far side
                 cross, near, far = far == 0, far == 1, far == 2
             nb = nb if (dot(nb, sub(tail, m)) >= 0) != (bool(far) or cross) else mul(nb, -1)
             if near or slid:  # out along the target bond, away from the shared atom (a chair: where the angle to the ring bond opens)
@@ -727,7 +836,11 @@ class Planner:
             return add(c, mul(t, -clear_along(c, mul(t, -1), box, dots, r, ca.head_gap + extra)))
 
         c1 = c2 = None
-        if self.hook(arr, o):  # leave the source square (bond normal on the bow side, or the pair's direction), land square on the bond
+        if tangent is not None:
+            t1 = tangent[0] or rotate(unit(sub(m, fixed_tip)), HOOK_SCAN[pick])
+            end = sub(fixed_tip or tip_for(t1), mul(t1, ca.head_inset))
+            c1, c2 = tangent_controls(tail, rotate(self.exit_direction(src, ds, bow), tangent[2]), end, t1, tangent[1])
+        elif self.hook(arr, o):  # leave the source square (bond normal on the bow side, or the pair's direction), land square on the bond
             if pick >= len(HOOK_SCAN):
                 return None
             if src.kind == "bond":
@@ -787,6 +900,7 @@ class Planner:
             out.crosses = ((tdata[0].p, tdata[1].p), *self.swept(arr))
         elif tkind == "bond" and near:  # a chair: across the ring bond onto the near side
             out.crosses = tuple(self.swept(arr))
+        out.tangent = tangent is not None
         return out
 
 
@@ -809,6 +923,49 @@ def hook_controls(tail: Point, t0: Point, end: Point, t1: Point, soft: float = 1
     return add(tail, mul(t0, k)), sub(end, mul(t1, k))
 
 
+def tangent_controls(tail: Point, t0: Point, end: Point, t1: Point, handle: float) -> tuple[Point, Point]:
+    """Controls that leave `tail` along unit t0 and reach `end` along unit t1, both handles
+    `handle` × chord. A C or an S, whichever those directions make."""
+    k = handle * length(sub(end, tail))
+    return add(tail, mul(t0, k)), sub(end, mul(t1, k))
+
+
+def stroke_length(arrow: MechArrow) -> float:
+    """The stroke's length (sampled)."""
+    pts = arrow.polyline()
+    return sum(length(sub(b, a)) for a, b in zip(pts, pts[1:]))
+
+
+def tangent_barb_stable(arrow: MechArrow) -> bool:
+    """Whether a fishhook's end bends clearly enough for fishhook_side: c1 stands off the end
+    tangent by at least TANGENT_MIN_BEND × chord (an S can have it almost on that line)."""
+    t = unit(sub(arrow.p3, arrow.c2))
+    return abs(dot(perp(t), sub(arrow.c1, arrow.c2))) >= TANGENT_MIN_BEND * length(sub(arrow.p3, arrow.p0))
+
+
+def curve_shape(p0: Point, c1: Point, c2: Point, p3: Point, n: int = SAMPLES) -> tuple[float, float, float, bool]:
+    """(tightest radius, total turning in degrees, bending energy ∫κ²ds × chord, whether the curve
+    crosses itself), sampled."""
+    tight = turn = energy = 0.0
+    pts = [cubic_point(p0, c1, c2, p3, k / n) for k in range(n + 1)]
+    prev = None
+    for k in range(n + 1):
+        t = k / n
+        u = 1 - t
+        d1 = add(add(mul(sub(c1, p0), 3 * u * u), mul(sub(c2, c1), 6 * u * t)), mul(sub(p3, c2), 3 * t * t))
+        d2 = add(mul(add(sub(c2, mul(c1, 2)), p0), 6 * u), mul(add(sub(p3, mul(c2, 2)), c1), 6 * t))
+        v = length(d1)
+        kappa = abs(d1[0] * d2[1] - d1[1] * d2[0]) / v ** 3 if v > 1e-9 else math.inf
+        tight = max(tight, kappa)
+        energy += kappa * kappa * v / n if kappa < math.inf else math.inf
+        if prev is not None and v > 1e-9:
+            turn += angle_deg(prev, d1)
+        prev = d1 if v > 1e-9 else prev
+    segs = _segments(pts)  # a curve turning less than a half circle can't cross itself
+    loops = turn > 180.0 and any(segments_cross(*segs[i], *segs[j]) for i in range(len(segs)) for j in range(i + 2, len(segs)))
+    return (1 / tight if tight else math.inf), turn, energy * length(sub(p3, p0)), loops
+
+
 def apex(p0: Point, c1: Point, c2: Point, p3: Point, n: int = 24) -> float:
     """The curve's farthest distance from its chord p0 -> p3 (sampled)."""
     return max(seg_point_dist(cubic_point(p0, c1, c2, p3, k / n), p0, p3) for k in range(n + 1))
@@ -829,6 +986,29 @@ def excursion_controls(tail: Point, d: Point, end: Point, t1: Point, reach: floa
         mid = (lo + hi) / 2
         lo, hi = (lo, mid) if apex(tail, *at(mid), end) >= reach else (mid, hi)
     return at(hi)
+
+
+def tangent_clear(arrow: MechArrow, parts: dict[str, Parts], preset: Preset) -> bool:
+    """Whether a tangent stroke stays margin_width from every bond and reaction arrow line and
+    TANGENT_CLEAR_LABEL × that from every label, leaving out what lies within head_length of its
+    ends (a tail beside its own atom, a tip at its target)."""
+    margin, half = preset.lengths.margin_width, preset.curved_arrow.stroke_width / 2
+    ends = preset.curved_arrow.head_length
+    pts = [q for q in arrow.polyline() if length(sub(q, arrow.p0)) >= ends and length(sub(q, arrow.p3)) >= ends]
+    stroke = [(p, q, _seg_box(p, q)) for p, q in _segments(pts)]
+    if not stroke:
+        return True
+    whole = (min(x[0] for x in pts), min(x[1] for x in pts), max(x[0] for x in pts), max(x[1] for x in pts))
+    for pt in parts.values():
+        for c, d, hw, _ in pt.bonds:
+            limit, box = margin + half + hw, _seg_box(c, d)
+            if _box_gap(whole, box) < limit and any(_box_gap(b, box) < limit and segment_distance(p, q, c, d) < limit for p, q, b in stroke):
+                return False
+        limit = TANGENT_CLEAR_LABEL * margin + half
+        for box, _, _ in pt.labels:
+            if _box_gap(whole, box) < limit and any(_box_gap(b, box) < limit and segment_box_dist(p, q, box) < limit for p, q, b in stroke):
+                return False
+    return True
 
 
 def stroke_clear(arrow: MechArrow, parts: dict[str, Parts], preset: Preset) -> bool:
@@ -1037,4 +1217,8 @@ def plan_step(step: int, arrows: list[CurvedArrow], overrides: list[ArrowOverrid
     for strict in (True, False):
         if best is None:
             search(Planner(preset, atoms, bonds, centroids, parts, pluses, strict), 0, [], (0, 0, 0))
+    for a, o in zip(best[1], overrides):
+        if o.shape == "tangent" and not a.tangent:
+            raise ValueError(f"step {step} arrows[{a.index}]: shape tangent: no such curve from {a.spec.from_} to "
+                             f"{a.spec.to} (kinked, too short or nearly straight); try tail_side or shape: arc")
     return best[1]

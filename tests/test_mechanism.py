@@ -1,6 +1,7 @@
 """Mechanism layout (draw_mol dots, mechanism.py arrows, acs-style.md §4.2) and checks."""
 
 import math
+from dataclasses import replace
 from functools import lru_cache
 from pathlib import Path
 
@@ -13,7 +14,9 @@ from acs_chem_svg.geometry import (add, angle_deg, dot, length, mul, perp, point
                                    segment_distance, sub, unit)
 from acs_chem_svg.geometry_checks import check_mechanism
 from acs_chem_svg.layout import arrow_parts, build_scheme
-from acs_chem_svg.mechanism import ARC_HANDLES, FARTHER, MISS_DEG, aims, miss, species_parts, stroke_clear
+from acs_chem_svg.mechanism import (ARC_HANDLES, FARTHER, MISS_DEG, TANGENT_CLEAR_LABEL, TANGENT_MAX_LENGTH, TANGENT_MIN_TURN, aims,
+                                    curve_shape, fishhook_side, miss, species_parts, stroke_clear, stroke_length,
+                                    tangent_barb_stable, tangent_clear)
 from acs_chem_svg.preset import load_preset
 from acs_chem_svg.scene import Circle
 from acs_chem_svg.spec import Spec, load_spec
@@ -494,7 +497,10 @@ def test_flat_arc_reaches_a_carbonyl_carbon_from_the_side():
 
 def test_passing_near_an_arrows_tail_is_not_a_crossing():
     """The arrow's box is as tall as its head along the whole shaft; the check uses the real lines."""
-    lay = _fischer()
+    import yaml
+    raw = yaml.safe_load(FISCHER.read_text())
+    raw["overrides"] = {"arrows": [{"step": 4, "index": 0, "shape": "arc"}]}  # the arc is what passes near the tail
+    lay = build_scheme(Spec.model_validate(raw), FISCHER.parent, FISCHER.stem)
     a = _arrow(lay, 4)
     st = next(s for s in lay.steps if s.n == 4)
     pl = a.polyline()
@@ -517,3 +523,151 @@ def test_arrow_within_the_substrate_may_not_cross_its_reaction_arrow():
     mid = a.polyline()[len(a.polyline()) // 2]
     a.shift((st.tail[0] + st.head[0]) / 2 - mid[0], st.tail[1] - mid[1])
     assert any("curved-arrow-step-5-0 crosses arrow-step-5" in p for p in check_mechanism(lay))
+
+
+# --- tangent arrows: set by their end directions, a C or an S (acs-style.md §4.2) ---
+
+
+def _curved(stem, step, index=0):
+    return next(a for a in scheme(stem).curved if (a.step, a.index) == (step, index))
+
+
+def _pair_exit_off(lay, a):
+    """Degrees between the arrow's exit and its tail pair's direction."""
+    m = int(a.spec.from_[3:-1])
+    for p in lay.species.values():
+        for atom in p.mol.atoms:
+            if atom.map != m:
+                continue
+            for d in p.drawer.dot_sets().get(atom.idx, []):
+                centre = add(d.center, p.offset)
+                if abs(length(sub(a.p0, centre)) - (P.lone_pair.dot_radius + P.curved_arrow.tail_gap)) < 1e-6:
+                    return angle_deg(sub(a.c1, a.p0), d.direction)
+    raise AssertionError(f"no pair behind {a.spec.from_}")
+
+
+@pytest.mark.parametrize("stem, step, s_shape", [("m4_perkin_x1.0", 1, True), ("m4_nitration_x1.0", 5, False)])
+def test_a_bad_exit_becomes_tangent_square_and_aimed(stem, step, s_shape):
+    a = _curved(stem, step)
+    assert a.tangent and a.s_shape == s_shape
+    assert _pair_exit_off(scheme(stem), a) < 0.01
+    assert miss(a) < 0.01
+    assert not [p for p in check_mechanism(scheme(stem)) if f"step-{step}-0" in p]
+
+
+@pytest.mark.parametrize("stem", ["m3_sn2_x1.0", "m3_e2_x1.0"])
+def test_a_good_arc_stays_an_arc(stem):
+    assert not _curved(stem, 1).tangent
+
+
+@pytest.mark.parametrize("stem, step", [("m4_nitration_x1.0", 3), ("m4_cyclopropanation_x1.0", 3)])
+def test_a_square_exit_blocked_by_a_plus_sign_leaves_nearly_square_and_misses_it(stem, step):
+    lay = scheme(stem)
+    a = next(a for a in lay.curved if (a.step, a.index) == (step, 0))  # the ring bond's normal points at the plus
+    ends = [[add(at.p, s.offset) for n in a.spec.source.atoms for at in s.mol.atoms if at.map == n] for s in lay.species.values()]
+    x, y = min((e for e in ends if len(e) == 2), key=lambda e: length(sub(mul(add(e[0], e[1]), 0.5), a.p0)))  # the reactant's bond
+    normal = perp(unit(sub(y, x)))
+    assert a.tangent and min(angle_deg(sub(a.c1, a.p0), normal), angle_deg(sub(a.c1, a.p0), mul(normal, -1))) <= 30.01
+    pl = a.polyline()
+    limit = P.lengths.margin_width + P.curved_arrow.stroke_width / 2
+    assert all(segment_box_dist(p, q, r.bbox()) >= limit for r in lay.pluses for p, q in zip(pl, pl[1:]))
+
+
+def test_curve_shape_flags_kinks_flat_curves_and_self_crossings():
+    tight, _, _, loops = curve_shape((0, 0), (30, 20), (0, 20), (30, 0))  # a cusp
+    assert tight < 0.01 and not loops
+    assert curve_shape((0, 0), (10, 0.1), (20, -0.1), (30, 0))[1] < TANGENT_MIN_TURN  # nearly straight
+    assert curve_shape((0, 0), (30, 20), (-10, 20), (20, 0))[3]  # crosses itself
+    assert not curve_shape((0, 0), (0, 10), (20, 10), (20, 0))[3]  # a plain C doesn't
+
+
+def test_a_fishhook_barb_needs_a_clear_end_bend():
+    lay = scheme("m3_radical_propagation_2_x1.0")
+    a = lay.curved[0]
+    assert a.tangent and a.spec.type == "fishhook" and tangent_barb_stable(a)
+    p0, p3 = a.p0, a.p3
+    straight_end = replace(a, c1=mul(add(p0, p3), 0.5), c2=add(mul(p0, 0.25), mul(p3, 0.75)))  # c1 on the end tangent
+    assert not tangent_barb_stable(straight_end)
+
+
+@pytest.mark.parametrize("stem,shapes", [("m3_radical_propagation_2_x1.0", (False, False)),
+                                         ("m3_radical_propagation_x1.0", (True, False))])
+def test_fishhooks_that_meet_share_a_side_c_or_s(stem, shapes):
+    arrows = [a for a in scheme(stem).curved if a.spec.to.startswith("between")]
+    assert tuple(a.s_shape for a in arrows) == shapes
+    assert all(tangent_barb_stable(a) for a in arrows if a.tangent)
+    # side is relative to travel, and they travel toward each other: the barbs point the same way on the page
+    barbs = [mul(perp(unit(sub(a.p3, a.c2))), fishhook_side(a.c1, a.c2, a.p3)) for a in arrows]
+    assert dot(barbs[0], barbs[1]) > 0
+
+
+def _with_override(stem, **o):
+    import yaml
+    path = EX / stem[:2] / f"{stem}.yaml"
+    raw = yaml.safe_load(path.read_text())
+    raw.setdefault("overrides", {})["arrows"] = [{"step": 1, "index": 0, **o}]
+    return build_scheme(Spec.model_validate(raw), path.parent, stem)
+
+
+def test_shape_override_forces_either_way():
+    assert not _with_override("m4_perkin_x1.0", shape="arc").curved[0].tangent
+    forced = _with_override("m3_sn2_x1.0", shape="tangent").curved[0]
+    assert forced.tangent and _pair_exit_off(_with_override("m3_sn2_x1.0", shape="tangent"), forced) < 0.01
+    assert not _with_override("m3_sn2_x1.0", curvature=0.6).curved[0].tangent
+
+
+def test_shape_tangent_rules_out_curvature():
+    with pytest.raises(ValueError, match="curvature"):
+        _with_override("m3_sn2_x1.0", shape="tangent", curvature=0.6)
+
+
+def test_shape_tangent_without_a_curve_says_so(monkeypatch):
+    monkeypatch.setattr("acs_chem_svg.mechanism.TANGENT_MIN_RADIUS", 1e6)
+    with pytest.raises(ValueError, match="shape tangent"):
+        _with_override("m3_sn2_x1.0", shape="tangent")
+
+
+def test_bow_steers_a_tangent_arrow_to_the_side_it_leaves_toward():
+    a = _curved("m4_perkin_x1.0", 1)
+    other = "left" if a.bow == "right" else "right"
+    b = _with_override("m4_perkin_x1.0", bow=other).curved[0]
+    assert b.bow == other
+    assert _with_override("m4_perkin_x1.0", bow=a.bow).curved[0].p3 == a.p3
+
+
+def test_a_forced_fishhook_to_a_forming_bond_keeps_a_barb():
+    a = _with_override("m3_radical_propagation_2_x1.0", shape="tangent").curved[0]
+    assert a.spec.to == "between(3,7)" and a.tangent and tangent_barb_stable(a)
+
+
+def test_a_tangent_stroke_keeps_its_clearance_from_labels():
+    lay = scheme("m4_perkin_x1.0")
+    a = next(a for a in lay.curved if (a.step, a.index) == (2, 1))  # the C=C -> C=O arrow, over the vinyl H
+    assert a.tangent
+    ends = P.curved_arrow.head_length
+    pts = [q for q in a.polyline() if length(sub(q, a.p0)) >= ends and length(sub(q, a.p3)) >= ends]
+    near = min(segment_box_dist(p, q, box) for n in lay.species for box, _, _ in species_parts(lay.species[n].group).labels
+               for p, q in zip(pts, pts[1:]))
+    assert near >= TANGENT_CLEAR_LABEL * P.lengths.margin_width
+    assert tangent_clear(a, {n: species_parts(lay.species[n].group) for n in lay.species}, P)
+
+
+def test_perkin_step_3_starts_from_the_lone_pair_facing_its_route():
+    lay = scheme("m4_perkin_x1.0")
+    a = next(a for a in lay.curved if (a.step, a.index) == (3, 0))
+    assert a.tangent and _pair_exit_off(lay, a) < 0.01
+
+
+def test_a_detour_keeps_the_arc():
+    a = _arrow(_fischer(), 3)  # a square exit would swing round the reaction arrow, 1.79 × its chord
+    assert not a.tangent
+    assert stroke_length(_curved("m4_perkin_x1.0", 3)) <= TANGENT_MAX_LENGTH * length(sub(_curved("m4_perkin_x1.0", 3).p3, _curved("m4_perkin_x1.0", 3).p0))
+
+
+def test_a_clean_flat_arc_keeps_its_route():
+    assert not _arrow(_fischer(), 2).tangent
+
+
+def test_the_cyanide_s_keeps_its_shape():
+    a = _curved("m3_carbonyl_addition_x1.0", 1)  # user-approved 2026-11-06: 1 × margin_width from bonds and plus signs lets it stay an S
+    assert a.tangent and a.s_shape

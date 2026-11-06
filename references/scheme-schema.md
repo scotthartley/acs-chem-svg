@@ -81,7 +81,7 @@ is in SKILL.md ("Mechanisms"), a full mechanism in `examples/m4/m4_nitration_x1.
 | `steps[].arrows[].to` | endpoint | `atom(n)`: the electrons become nonbonding on n. `between(a,b)`: a new bond, or one order more. |
 | `species.<name>.show_lone_pairs` | list of map numbers | Also draw these atoms' lone pairs (all of them). |
 | `species.<name>.triplet` | list of atom ids (map number, else 1-based index) | Carbenes / nitrenes kept as triplets: two unpaired electrons (two dots, `electron(n)`). Each must be written with two unpaired electrons (`[C]`, `[CH2]`, `[N]`). Unlisted ones are singlets. |
-| `overrides.arrows[]` | `{step, index, …}` | Adjust arrow `index` (0-based) of step `step` (1-based): `bow: left\|right` (the side of the tail → head direction it bulges to), `curvature` (control offset ÷ chord; default 0.5, short loops 1.3), `tail_side: top\|right\|bottom\|left` (which lone pair or radical the tail leaves). No coordinates. |
+| `overrides.arrows[]` | `{step, index, …}` | Adjust arrow `index` (0-based) of step `step` (1-based): `bow: left\|right` (the side of the tail → head direction it bulges to), `curvature` (control offset ÷ chord; default 0.5, short loops 1.3), `tail_side: top\|right\|bottom\|left` (which lone pair or radical the tail leaves), `shape: arc\|tangent` (force an arc, or a curve set by its end directions; `curvature` applies to arcs only). No coordinates. |
 
 Map numbers are atom identities. They must be unique among a step's reactants (and among its
 products) and keep the same atom across steps. H atoms that move must be atoms in the SMILES
@@ -116,7 +116,8 @@ products is: write the reactants and arrows, put rough products, and paste the s
 `render.py --maps` writes `<stem>_maps.png`: the drawing with each mapped atom's number beside
 it in red, to check which atom is which before choosing arrows, `orientation` and overrides. It
 never changes the SVG. `render.py` also prints the `bow` each curved arrow got, so an override
-starts from the default (`bow: left` when it already bows left changes nothing).
+starts from the default (`bow: left` when it already bows left changes nothing). It adds `shape tangent`, or `shape tangent (S)`, to an
+arrow set by its end directions; its `bow` is the side it leaves toward, since an S ends on the other side.
 
 ### Drawing (automatic, acs-style.md §4)
 
@@ -141,7 +142,9 @@ starts from the default (`bow: left` when it already bows left changes nothing).
   tries both bow sides, every lone pair, each solution for its end, a flatter curve and a tip
   stopped farther out, and the step keeps the combination that crosses the least. If all of those
   clash, it tries nearly straight arcs (so an arrow can reach a carbonyl carbon from the side). Two arrows from one bond go to opposite
-  sides.
+  sides. An arrow of at least 1.2 bond lengths whose exit is over 30° off square, or which clashes, becomes a
+  curve set by its end directions when a clean one exists: it leaves square (or up to 30° off, when square has no clean curve) and lands exactly on its aim, as a C or an S.
+  Those keep clear of bonds, labels and plus signs. Fishhooks that meet land from their shared side, as a C or an S.
 - **Groups:** `species-<name>-lone-pairs`, `species-<name>-radicals` (SVG `<circle>`s),
   `curved-arrows-step-<n>` with `curved-arrow-step-<n>-<index>` (a stroked path and a head).
 - **Checks** (`validate.py`): curved arrows crossing bonds, labels, charges, dots, other curved

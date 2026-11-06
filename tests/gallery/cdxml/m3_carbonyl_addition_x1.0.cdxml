@@ -173,7 +173,7 @@
     </t>
     <graphic id="66" SupersededBy="67" BoundingBox="141.74 57.97 101.74 57.97" Z="65" GraphicType="Line" ArrowType="FullHead" HeadSize="1500"/>
     <graphic id="68" SupersededBy="69" BoundingBox="236.50 57.97 192.98 57.97" Z="66" GraphicType="Line" ArrowType="FullHead" HeadSize="1500"/>
-    <curve id="70" Z="67" CurveType="8" ArrowheadHead="Full" ArrowheadType="Solid" CurvePoints="22.09 34.75 28.61 59.10 35.13 83.44 63.40 84.73 72.77 68.97 82.14 53.21"/>
+    <curve id="70" Z="67" CurveType="8" ArrowheadHead="Full" ArrowheadType="Solid" CurvePoints="13.49 59.10 28.61 59.10 43.72 59.10 65.29 82.10 72.84 69.01 80.40 55.93"/>
     <curve id="71" Z="68" CurveType="8" ArrowheadHead="Full" ArrowheadType="Solid" CurvePoints="83.82 53.05 73.62 58.85 63.43 64.65 62.87 60.74 67.29 56.80 71.71 52.87"/>
     <curve id="72" Z="69" CurveType="8" ArrowheadHead="Full" ArrowheadType="Solid" CurvePoints="154.01 54.41 167.36 28.35 180.71 2.30 213.14 7.74 219.93 27.92 226.72 48.10"/>
     <curve id="73" Z="70" CurveType="8" ArrowheadHead="Full" ArrowheadType="Solid" CurvePoints="210.56 36.05 218.00 43.74 225.44 51.44 223.95 53.98 220.09 51.36 216.23 48.74"/>

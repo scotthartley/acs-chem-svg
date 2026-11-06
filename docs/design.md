@@ -139,7 +139,7 @@ These are the rules ChemDraw normally applies. Several are **[VERIFY]**: measure
 - Lone pairs: two dots placed in the largest angular gap around the atom, clear of the label. Radical: one dot.
 - Two-electron curved arrows: cubic Bézier, full arrowhead. One-electron: fishhook (half arrowhead).
 - The tail starts at the electrons (lone-pair dots or bond midpoint). The head ends at an atom (new lone pair or charge) or at the midpoint between two atoms (new bond), stopping short of labels.
-- Arrows bow away from the molecule's centroid unless the spec overrides; curvature is consistent across a mechanism.
+- Arrows bow away from the molecule's centroid unless the spec overrides; arcs share one curvature across a mechanism, and an arc with a poor exit gives way to a curve set by its end directions (a C or an S; `references/acs-style.md` §4.2).
 
 ---
 

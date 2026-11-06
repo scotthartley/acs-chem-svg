@@ -79,7 +79,7 @@ Worked example and common mistakes: `references/workflow.md`.
 6. Render with `--maps` (map numbers beside the atoms, preview only): it shows which end of
    each species faces its partner.
 7. Orient, render, inspect. `render.py` prints each arrow's default `bow`; if an arrow crosses
-   something, try `overrides` (the other `bow`, then `tail_side`, `curvature`), or turn a species
+   something, try `overrides` (the other `bow`, then `tail_side`, `curvature`, `shape: arc|tangent`), or turn a species
    (`orientation`) or swap the reactants (`from: [mebr, hydroxide]`) so the atoms face each other.
 
 ```yaml
