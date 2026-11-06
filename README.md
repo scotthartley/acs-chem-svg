@@ -133,7 +133,7 @@ When something goes wrong, Claude appends a note to `issues/inbox.md` in the rep
 - Lewis structures: no rings, no atoms with more than four neighbors (PCl₅), and not inside
   schemes yet.
 - Chairs: no fused or spiro rings (decalins, steroids), no sp² ring atoms, and no boats.
-- Curved-arrow placement is automatic with a few semantic overrides (bow side, curvature);
+- Curved-arrow placement is automatic with a few semantic overrides (bow side, curvature, shape);
   crowded mechanisms can need a nudge in a vector editor.
 
 ## Documentation
