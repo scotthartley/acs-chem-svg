@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import math
 import statistics
+from pathlib import Path
 
 from lxml import etree
 
@@ -16,10 +17,10 @@ from .core import Doc, REF_DIR, angle_between, assign, frame, load, neighbors, s
 CHAIR_REFS = ["chair_x1.0", "chair_x0.8", "chair_x0.6"]
 
 
-def _bond_z(name: str) -> tuple[dict, set]:
+def _bond_z(name: str, ref_dir: Path = REF_DIR) -> tuple[dict, set]:
     """CDXML bond id -> Z, and the CrossingBonds pairs ChemDraw stores (frozensets of bond ids), for
     drawn bonds (a nickname's internal bonds cross each other: scheme_multi_x*)."""
-    root = etree.parse(str(REF_DIR / f"{name}.cdxml")).getroot()
+    root = etree.parse(str(ref_dir / f"{name}.cdxml")).getroot()
     drawn = [b for b in root.iter("b") if b.getparent().getparent().tag != "n"]  # not nickname internals (OBn)
     z = {b.get("id"): int(b.get("Z")) for b in drawn}
     pairs = {frozenset((b.get("id"), c)) for b in drawn for c in (b.get("CrossingBonds") or "").split() if c in z}
@@ -30,7 +31,7 @@ def _poly_dist(p, pts) -> float:
     return min(seg_point_dist(p, a, b) for a, b in zip(pts, pts[1:] + pts[:1]))
 
 
-def crossing_summary(name: str, doc: Doc | None = None) -> dict:
+def crossing_summary(name: str, doc: Doc | None = None, ref_dir: Path = REF_DIR) -> dict:
     """Bond crossings (§14.2). Every CrossingBonds pair: the bond with the higher Z is drawn whole
     (front), the other (rear) is cut. Per side of the front bond's axis, the rear polygon corners
     nearest the axis (the cut ends; unclaimed slivers in the rear's band count, so the stub left
@@ -45,9 +46,9 @@ def crossing_summary(name: str, doc: Doc | None = None) -> dict:
         for sh in doc.shapes:
             sh.owner = None
     else:
-        doc = load(name)
+        doc = load(name, ref_dir)
     asg = assign(doc)
-    z, pairs = _bond_z(name)
+    z, pairs = _bond_z(name, ref_dir)
     bonds = {b.id: b for b in doc.bonds}
     lw, m = float(doc.settings["LineWidth"]), float(doc.settings["MarginWidth"])
     spacing = float(doc.settings["BondLength"]) * float(doc.settings["BondSpacing"]) / 100
@@ -117,7 +118,7 @@ def _ring6(doc, frag: str) -> list[str] | None:
     return order
 
 
-def chair_summary(name: str) -> dict:
+def chair_summary(name: str, ref_dir: Path = REF_DIR) -> dict:
     """Chairs (§14.1). Fragments of chair_x* in CDXML order: two bare chairs (ChemDraw's
     Conformers templates: `chair` and `flipped`), axial methyls on all six atoms, equatorial methyls
     on all six, β-D-glucopyranose, an axial OAc, then the crossing cases (crossing_summary).
@@ -126,8 +127,8 @@ def chair_summary(name: str) -> dict:
     counterclockwise from +x, y up) and length, and for equatorials the angle to the ring bond one
     removed (the bonds parallel to it in a textbook chair). Crossing bonds in the chairs: which is
     in front (higher Z) and the mean screen y of each (larger y = lower on the page)."""
-    doc = load(name)
-    z, pairs = _bond_z(name)
+    doc = load(name, ref_dir)
+    z, pairs = _bond_z(name, ref_dir)
     bl = float(doc.settings["BondLength"])
     chairs = [(fid, r) for fid in doc.fragments for r in [_ring6(doc, fid)] if r]
     templates = {}

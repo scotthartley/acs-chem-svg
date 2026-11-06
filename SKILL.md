@@ -13,7 +13,7 @@ If the Read tool refuses `<repo>` files (outside the working directory, symlink 
 
 1. **Write a spec** (full schema: `references/scheme-schema.md`):
    ```yaml
-   preset: acs1996          # or acs1996_x0.8, acs1996_x0.6
+   preset: acs1996          # or acs1996_x0.8, acs1996_x0.6, or any in presets/
    species:
      ester:   {smiles: "COC(=O)c1ccc(O)cc1", abbreviate: [OMe], orientation: {rotate: 120}}
      bnbr:    {smiles: "BrCc1ccccc1"}

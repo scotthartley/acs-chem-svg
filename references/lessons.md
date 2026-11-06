@@ -768,3 +768,13 @@ removed renders pixel-identical to the approved `m4_nitration_x1.0`. Inbox triag
 - **ChemDraw keeps an S** (gate, phase 3, 2026-11-06, ChemDraw 26.1): re-saves of m3_carbonyl_addition and m3_radical_propagation
   return every CurvePoints value and ArrowheadHead unchanged, so a 2e⁻ S and a fishhook S export as they are. Drawn head tips are
   within 0.014 pt of ours.
+- **A bracket's lip is not a style value** (new-style probe, 2026-11-06, ChemDraw 26.1): the drawn lip is 0.0726 x the bar's height at
+  LipSize 60, in the references (resonance_x*: 55.17 -> 4.007, 44.14 -> 3.212, 33.11 -> 2.417) and in re-saves of our own files (m4_resonance
+  53.59 -> 3.894, m4_nitration 44.62 -> 3.246). `bracket.lip_length` stays a default in proportion to the bond, and the probe doesn't measure it.
+  ChemDraw otherwise redraws our CDXML's specimens as its own: on the gate re-saves the probe's methods give the committed x1.0 values
+  (hash, wedge, signs, rings, HeadSize 1500 heads, equilibrium offsets, fishhooks).
+- **Applying a style to a drawing** (probe at the x0.8 settings, 2026-11-06, ChemDraw 26.1): bonds, labels, arrows, dots and curved arrows all
+  follow, and HeadSize 1500 stays on the arrow that has it. It drops the captions' bold and italics and re-places charge signs and radical
+  dots, none of which the probe measures. It also rewrites every sign's box to 0.075 x LabelSize^2, circled ones included (4.8 at 8 pt), where
+  a circled sign drawn fresh has 0.75 x LabelSize (6.0). Sizes follow the box alone: bars 0.6 + 4/9 x dx (exact over five boxes), rings 0.25 + 4/9 x dx
+  (within 0.03 pt), so the ring at x0.8 is 2.39 in the probe and 2.89 drawn fresh. A generated preset takes the fresh size, from those rules.

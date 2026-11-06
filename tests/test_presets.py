@@ -6,6 +6,8 @@ import pytest
 import yaml
 
 from acs_chem_svg import fontmetrics
+from acs_chem_svg.cdxml_writer import HEADER_DIR
+from acs_chem_svg.preset import available, load_preset
 
 PRESETS = Path(__file__).resolve().parents[1] / "presets"
 # dimensionless placement defaults (control offset / chord): the same in every preset
@@ -50,7 +52,27 @@ def test_kerning_matches_resvg_behaviour():
     assert h.advance("11", 10) == pytest.approx(2 * h.advance("1", 10, kern=False) - 0.737, abs=0.002)
 
 
-def test_presets_parse_and_scale():
+@pytest.mark.parametrize("name", available())
+def test_any_preset(name):
+    """What every preset owes, ACS or generated (scripts/new_preset.py): it parses, has its CDXML
+    templates, its scale is the bond length ratio, and its lists name real values."""
+    p = load_preset(name)
+    raw = _load(name)
+    lists = ("exempt", "nonlinear", "assumed_exempt", "approx", "placement", "derived")
+    flat = _flat({k: v for k, v in raw.items() if k not in lists})
+    assert p.name == name
+    assert p.scale == pytest.approx(p.lengths.bond_length / 14.4, abs=0.001)
+    assert (HEADER_DIR / f"{name}.xml").exists() and (HEADER_DIR / f"{name}.nicknames.xml").exists()
+    for lst in lists:
+        assert set(raw.get(lst, [])) <= flat.keys(), lst
+    assert p.ratios.bond_spacing_fraction * p.lengths.bond_length == pytest.approx(p.lengths.bond_spacing, abs=0.002)
+    for key in raw["placement"]:
+        grid = 10 if key in RATIO_PLACEMENT else 2
+        assert round(grid * flat[key], 9).is_integer(), key
+
+
+def test_acs_presets_parse_and_scale():
+    """The k-scale rules of the ACS family (a generated preset measures these instead)."""
     base = _load("acs1996")
     lists = ("exempt", "nonlinear", "assumed_exempt", "approx", "placement")
     flat_base = _flat({k: v for k, v in base.items() if k not in lists})

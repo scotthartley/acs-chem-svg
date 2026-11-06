@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import itertools
 import math
+from pathlib import Path
 
 from lxml import etree
 
@@ -19,13 +20,13 @@ CDXML_SYMBOL_REFS = ["labels_x1.0", "m1_set_x1.0", "m1_set_x0.8", "m1_set_x0.6",
                      "resonance_x1.0", "resonance_x0.8", "resonance_x0.6"]
 
 
-def cdxml_symbols(name: str) -> dict:
+def cdxml_symbols(name: str, ref_dir: Path = REF_DIR) -> dict:
     """Charge symbols (<graphic GraphicType="Symbol" SymbolType="Plus|Minus">) of one reference
     (§13): the BoundingBox's first point vs the drawn sign's center (_charges, SVG mapped to the
     CDXML frame), and the second point as (first x - dx, first y + dy). dx_per_size2 is
     dx / LabelSize^2. The scheme references draw no charges."""
-    doc = load(name)
-    root = etree.parse(str(REF_DIR / f"{name}.cdxml")).getroot()
+    doc = load(name, ref_dir)
+    root = etree.parse(str(ref_dir / f"{name}.cdxml")).getroot()
     size = float(root.get("LabelSize"))
     drawn = [sub(c["center"], doc.offset) for c in measure(doc)["charges"]]
     out = []
@@ -47,15 +48,15 @@ def cdxml_symbols(name: str) -> dict:
 CHARGES_LEWIS_REFS = ["charges_lewis_x1.0", "charges_lewis_x0.8", "charges_lewis_x0.6"]
 
 
-def charges_lewis(name: str) -> dict:
+def charges_lewis(name: str, ref_dir: Path = REF_DIR) -> dict:
     """charges_lewis_x* (the user's edit of cdxml_gate.py --lewis-draft, 2026-10-28; §2.2,
     §13.4). Per symbol the user added with ChemDraw's tools (circled and plain signs, Electron
     dots): SymbolType, its attachment, BoundingBox dx, and the ink ChemDraw drew around the box's
     first point: ring radius (stroke center) and stroke width, bar length and thickness, dot
     radius. Also each node with Radical or Charge set and its label runs (face 64 = superscript),
     and the free <t> texts."""
-    doc = load(name)
-    root = etree.parse(str(REF_DIR / f"{name}.cdxml")).getroot()
+    doc = load(name, ref_dir)
+    root = etree.parse(str(ref_dir / f"{name}.cdxml")).getroot()
 
     def center(sh):
         if sh.center:
@@ -186,13 +187,13 @@ def _cdxml_arrow(a, lw: float) -> dict:
     }
 
 
-def cdxml_scheme(name: str) -> dict:
+def cdxml_scheme(name: str, ref_dir: Path = REF_DIR) -> dict:
     """CDXML conventions of a scheme reference (§13.1): captions (<t> on the page and formula
     fragments, _cdxml_caption), arrows (_cdxml_arrow, with the legacy <graphic> each supersedes),
     and the <scheme><step> structure: what kind of object each step cites, and the page order."""
-    doc = load(name)
+    doc = load(name, ref_dir)
     off = doc.offset
-    root = etree.parse(str(REF_DIR / f"{name}.cdxml")).getroot()
+    root = etree.parse(str(ref_dir / f"{name}.cdxml")).getroot()
     page = root.find("page")
     lw = float(root.get("LineWidth"))
     texts = [t for t in page.iter("t") if t.getparent().tag != "n" or t.getparent().get("NodeType") in ("Fragment", "Nickname")]

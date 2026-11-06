@@ -18,6 +18,10 @@ from acs_chem_svg.geometry import add, dot, length, mul, sub, unit
 
 REPO = Path(__file__).resolve().parents[2]
 REF_DIR = REPO / "reference_renders" / "chemdraw"
+# The ACS presets and the scale in their reference file names (<family>_x<scale>): one table, for
+# the scripts and tests that go from a preset to its references or back. Presets made from a style
+# probe (scripts/new_preset.py) have no references and are not listed.
+ACS_PRESETS = {"acs1996": "1.0", "acs1996_x0.8": "0.8", "acs1996_x0.6": "0.6"}
 ELEMENTS = {n: _Chem.GetPeriodicTable().GetElementSymbol(n) for n in range(1, 104)}  # CDXML Element -> symbol
 
 

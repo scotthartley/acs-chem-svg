@@ -37,26 +37,28 @@ import measure_refs as mr  # noqa: E402
 from acs_chem_svg import abbrev  # noqa: E402
 from acs_chem_svg.cdxml_writer import HEADER_DIR  # noqa: E402
 
-SOURCES = {"acs1996": "m1_set_x1.0", "acs1996_x0.8": "m1_set_x0.8", "acs1996_x0.6": "m1_set_x0.6"}
-NICKNAME_SOURCES = {k: [f"{r}_x{k.rsplit('_x', 1)[1] if '_x' in k else '1.0'}" for r in ("abbrev", "abbrev_2", "ligands")]
-                    for k in ("acs1996", "acs1996_x0.8", "acs1996_x0.6")}
+SOURCES = {p: f"m1_set_x{s}" for p, s in mr.ACS_PRESETS.items()}
+NICKNAME_SOURCES = {p: [f"{r}_x{s}" for r in ("abbrev", "abbrev_2", "ligands")] for p, s in mr.ACS_PRESETS.items()}
 # abbrev_x*'s labels: their templates must come from the references
 REQUIRED = ["OMe", "OEt", "OBn", "OPh", "OAc", "SMe", "NHAc", "CO2Me", "CO2Et", "CO2H", "CF3", "CN", "NO2",
             "Ph", "Bn", "Et", "Ac", "TMS", "TES", "TBS", "TIPS", "PPh3", "PMe3"]
 DROP_ATTRS = ("Z", "CrossingBonds", "BondCircularOrdering", "AtomID", "AS", "BS", "NeedsClean")
-EXTRA_NICKNAME_SOURCES = {"acs1996": "metals_x1.0", "acs1996_x0.8": "metals_x0.8", "acs1996_x0.6": "metals_x0.6"}
+EXTRA_NICKNAME_SOURCES = {p: f"metals_x{s}" for p, s in mr.ACS_PRESETS.items()}
 DERIVED_NICKNAMES = {"PMe3": "PPh3"}  # key -> the template it is cut from (_methyls)
 PER_FILE_ROOT = ("CreationProgram", "Name", "BoundingBox")
-FONT_SOURCE = "scheme_multi_x1.0"
+FONT_SOURCE = mr.REF_DIR / "scheme_multi_x1.0.cdxml"
 CAPTION_FONTS = ("Helvetica Bold", "Helvetica Oblique")
 
 
-def _parse(ref: str):
+def _parse(ref: str | Path):
+    """A reference's name, or the path of any CDXML file."""
     parser = etree.XMLParser(load_dtd=False, no_network=True, remove_blank_text=True)
-    return etree.parse(str(mr.REF_DIR / f"{ref}.cdxml"), parser)
+    return etree.parse(str(mr.REF_DIR / f"{ref}.cdxml" if isinstance(ref, str) else ref), parser)
 
 
-def header(ref: str) -> bytes:
+def header(ref: str | Path, font_source: Path = FONT_SOURCE) -> bytes:
+    """The header template of a reference (by name) or of any ChemDraw file (by path). The caption
+    fonts it doesn't list come from `font_source`."""
     doc = _parse(ref)
     src = doc.getroot()
     root = etree.Element("CDXML", {k: v for k, v in src.attrib.items() if k not in PER_FILE_ROOT})
@@ -67,7 +69,7 @@ def header(ref: str) -> bytes:
             root.append(el)
     table = root.find("fonttable")
     have = {f.get("name") for f in table}
-    for f in _parse(FONT_SOURCE).getroot().find("fonttable"):
+    for f in _parse(font_source).getroot().find("fonttable"):
         if f.get("name") in CAPTION_FONTS and f.get("name") not in have:
             table.append(etree.fromstring(etree.tostring(f)))
     page = src.find("page")

@@ -3,7 +3,9 @@
 Values are used as written; nothing is derived from `scale` here. The `exempt`,
 `nonlinear`, `assumed_exempt`, `approx` and `placement` lists document how each value
 relates to the x1.0 preset (tests/test_presets.py checks them); the renderer does not read them.
-`placement` keys are round defaults (0.5 pt grid) for hand-placed positions.
+`placement` keys are round defaults (0.5 pt grid) for hand-placed positions. `derived` is empty in
+the measured ACS presets; a preset built from a style probe (scripts/new_preset.py) lists there the
+values carried over from acs1996 instead of measured (acs-style.md §16).
 """
 
 from __future__ import annotations
@@ -206,6 +208,7 @@ class Preset(_Section):
     assumed_exempt: list[str]
     approx: list[str]
     placement: list[str]
+    derived: list[str] = []  # generated presets: values derived from acs1996, not measured
     lengths: Lengths
     ratios: Ratios
     angles: Angles

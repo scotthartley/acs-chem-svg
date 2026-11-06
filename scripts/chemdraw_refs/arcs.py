@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 import statistics
+from pathlib import Path
 
 from lxml import etree
 
@@ -63,7 +64,7 @@ def arc_shaft(doc, tail):
     return shaft, pts
 
 
-def arc_summary(name: str) -> dict:
+def arc_summary(name: str, ref_dir: Path = REF_DIR) -> dict:
     """Arc arrows (acs-style.md §15.1): per CDXML <arrow> with AngularSize, the circle
     (arc_circle: from Head3D, Tail3D and AngularSize), the sweep Tail3D -> Head3D on the page,
     where Center3D and the axis ends sit relative to it, and the drawn shaft (the
@@ -71,9 +72,9 @@ def arc_summary(name: str) -> dict:
     Head frame: corners = the head's two vertices farthest from the tip on either side of the
     tip -> notch line (notch = the shaft's end); axis = tip - corner midpoint. The axis is
     compared with the chord notch -> tip and the circle's tangents at the tip and the notch."""
-    doc = load(name)
+    doc = load(name, ref_dir)
     off = doc.offset
-    root = etree.parse(str(REF_DIR / f"{name}.cdxml")).getroot()
+    root = etree.parse(str(ref_dir / f"{name}.cdxml")).getroot()
     lw = float(root.get("LineWidth"))
     graphics = {g.get("SupersededBy"): g for g in root.iter("graphic") if g.get("GraphicType") == "Arc"}
     recs = []
@@ -169,7 +170,7 @@ def path_samples(s: Shape, n: int = 8) -> list:
     return out
 
 
-def arc_eq_arrows(name: str) -> list[dict]:
+def arc_eq_arrows(name: str, ref_dir: Path = REF_DIR) -> list[dict]:
     """The arc arrows of an arcs_eq_x* reference (acs-style.md §15.1): per CDXML <arrow>, its
     circle (Center3D and the major axis end), kind (equilibrium, equilibrium_products, none),
     Tail3D angle a0 and sweep, glitch (minor and major axis radii more than 1 pt apart: an
@@ -178,8 +179,8 @@ def arc_eq_arrows(name: str) -> list[dict]:
     notch (its stroke's ends, the notch the one nearer a head), the head's tip (its sampled point
     farthest along the shaft's travel) and the head polygon. Positions are arc lengths along the
     circle from Tail3D, in the direction of travel."""
-    doc = load(name)
-    root = etree.parse(str(REF_DIR / f"{name}.cdxml")).getroot()
+    doc = load(name, ref_dir)
+    root = etree.parse(str(ref_dir / f"{name}.cdxml")).getroot()
     out = []
     for a in root.iter("arrow"):
         if not a.get("AngularSize"):

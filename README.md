@@ -126,6 +126,23 @@ write or edit specs yourself; `examples/` has a spec for every kind of drawing.
 When something goes wrong, Claude appends a note to `issues/inbox.md` in the repository
 (local, not tracked by git). If it turns up a bug, please open a GitHub issue with the note.
 
+## Adding a style
+
+The ACS presets (`acs1996`, `acs1996_x0.8`, `acs1996_x0.6`) are measured from full sets of ChemDraw references. Another style needs only
+one ChemDraw file:
+
+```bash
+uv run python scripts/new_preset.py probe     # writes build/style_probe/style_probe.cdxml
+# In ChemDraw: open it, apply your style's settings to the whole drawing, save as CDXML and as SVG.
+# Don't tidy it: lost bold and italics and moved charge signs are expected, and aren't measured.
+uv run python scripts/new_preset.py build --name mystyle --probe path/to/style_probe.cdxml
+```
+
+Settings and specimens are measured; placement defaults and drawing rules are carried over from ACS, and abbreviations use generated
+fragments. So a generated preset is a close starting point, not the 0.1 pt match the ACS presets meet. The preset's comments say where each
+value came from, and the build's report shows how far each is from ACS. It works with Helvetica only so far, and the probe hasn't yet been
+tried on a style with a different line width. See [`references/acs-style.md`](references/acs-style.md) §16.
+
 ## Limits
 
 - Not yet supported: explicit CH₂/CH labels on internal carbons, condensed labels that aren't

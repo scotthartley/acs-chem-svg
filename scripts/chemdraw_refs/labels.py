@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import math
 import statistics
+from pathlib import Path
 
 from lxml import etree
 
 from acs_chem_svg.geometry import unit
 
 from .core import (
-    Doc, Glyph, REF_DIR, _glyph_chain, _kern, _line_from_shape, assign, frame, label_glyphs, load, stats,
+    ACS_PRESETS, Doc, Glyph, REF_DIR, _glyph_chain, _kern, _line_from_shape, assign, frame, label_glyphs, load, stats,
 )
 from .measurements import _r
 
@@ -20,18 +21,21 @@ ABBREV_REFS = ["abbrev_x1.0", "abbrev_x0.8", "abbrev_x0.6", "abbrev_2_x1.0", "ab
                "metals_x1.0", "metals_x0.8", "metals_x0.6"]  # metals_x*: PPh3
 
 
-def abbrev_summary(name: str) -> dict:
+def abbrev_summary(name: str, ref_dir: Path = REF_DIR, preset_name: str | None = None) -> dict:
     """§3.5: per abbreviation (abbrev_x*; PPh3 from metals_x*), each drawn form: displayed text, ChemDraw's
     LabelJustification, which glyph's advance center sits on the atom (its offset), baseline −
     atom y, and each bond end with its residual against the §2.1 model (preset values) on the
-    anchor glyphs label_glyphs picks."""
+    anchor glyphs label_glyphs picks. `preset_name`: the preset to model with (default: the ACS
+    preset of the file name's _x<k>)."""
     from acs_chem_svg import draw_mol
     from acs_chem_svg.preset import load_preset
 
-    doc = load(name)
+    doc = load(name, ref_dir)
     asg = assign(doc)
-    k = name.rsplit("_x", 1)[1]
-    preset = load_preset("acs1996" if k == "1.0" else f"acs1996_x{k}")
+    if preset_name is None:
+        k = name.rsplit("_x", 1)[1]
+        preset_name = next(p for p, s in ACS_PRESETS.items() if s == k)
+    preset = load_preset(preset_name)
     L, r = preset.lengths, preset.ratios
     margin = float(doc.settings["MarginWidth"])
     forms, offsets, baselines, residuals, pitches = [], [], [], [], {}
@@ -100,7 +104,7 @@ def _tail_line(doc: Doc, anchor: Glyph, alignment: str) -> dict:
 NH_REFS = ["nh_x1.0", "nh_x0.8", "nh_x0.6"]
 
 
-def nh_summary(name: str) -> dict:
+def nh_summary(name: str, ref_dir: Path = REF_DIR) -> dict:
     """§2: every NH of nh_x* (pyrrolidine turned in 15° steps, an acyclic R-NH-R at a peak, a
     valley and turned 15° / 30°, aziridine up and down). Per atom: the open direction (opposite
     the sum of its bond unit vectors; deg, counterclockwise from +x, y up) and its angle from
@@ -108,8 +112,8 @@ def nh_summary(name: str) -> dict:
     the H glyph origin and baseline relative to N's, and the CDXML <t> p (y relative to the
     usual first-line y, 3.59 at 10 pt) and LineStarts. Summary: the largest off-vertical angle
     with H above / below, the smallest with H beside, and the line pitch."""
-    doc = load(name)
-    root = etree.parse(str(REF_DIR / f"{name}.cdxml")).getroot()
+    doc = load(name, ref_dir)
+    root = etree.parse(str(ref_dir / f"{name}.cdxml")).getroot()
     nodes = {n.get("id"): n for n in root.iter("n")}
     atoms, pitch, stored = [], [], {}
     for a in doc.atoms.values():
@@ -136,9 +140,9 @@ def nh_summary(name: str) -> dict:
                       "h_dx": _r(h_g.x - n_g.x), "h_dbase": _r(h_g.base - n_g.base), "t_dy": _r(ty)})
     vertical = [r["off_vertical"] for r in atoms if r["alignment"] in ("Above", "Below")]
     beside = [r["off_vertical"] for r in atoms if r["alignment"] in ("Left", "Right")]
-    ok = all((r["alignment"] == "Above") == (r["off_vertical"] <= max(vertical) and 0 < r["open_deg"] < 180)
-             for r in atoms if r["alignment"] != "Below")
+    ok = bool(vertical) and all((r["alignment"] == "Above") == (r["off_vertical"] <= max(vertical) and 0 < r["open_deg"] < 180)
+                                for r in atoms if r["alignment"] != "Below")
     return {"atoms": sorted(atoms, key=lambda r: (r["bond_angle"], r["open_deg"])),
-            "vertical_max_off_vertical": max(vertical), "beside_min_off_vertical": min(beside),
+            "vertical_max_off_vertical": max(vertical, default=None), "beside_min_off_vertical": min(beside, default=None),
             "above_iff_open_upward": ok,
             "line_pitch": stats(pitch), "t_dy": {k: stats(v) for k, v in stored.items()}}

@@ -1,0 +1,58 @@
+# The style probe (acs-style.md §16): one drawing with a specimen of everything a new style's preset
+# measures. scripts/new_preset.py probe writes it as CDXML, at acs1996, and turns the second
+# forward arrow's heads large (a spec has one head variant). In ChemDraw the user applies the target
+# style's settings to all of it and saves it as CDXML and SVG; new_preset.py build measures that.
+# Keep the specimens' order: nothing here is a style value, and new_preset.py looks them up by kind.
+preset: acs1996
+arrow_head: standard
+species:
+  # bonds and labels: ring double bond, chain double bond, wedge, hash, subscripts
+  stereo:    {smiles: "C=CC[C@H](O)[C@H](C)c1ccccc1"}
+  groups:    {smiles: "OC(=O)CCC(F)(F)F", abbreviate: [CF3]}
+  # plain signs on a labeled atom and on a carbon; both circled signs
+  plain:     {smiles: "C[N+](=O)[O-]"}
+  cation:    {smiles: "C[CH+]C"}
+  circled:   {smiles: "C[N+](=O)[O-]", circled_charges: true}
+  # NH with H above and below, H beside; ring NTs with its tail above
+  nh_above:  {smiles: "C1CCNC1", orientation: {rotate: 120}, align: false}
+  nh_below:  {smiles: "C1CCNC1", orientation: {rotate: 300}, align: false}
+  nh_beside: {smiles: "C1CCNC1", align: false}
+  nts:       {smiles: "C1CCN(S(=O)(=O)c2ccc(C)cc2)C1", abbreviate: [Ts], align: false}
+  # equilibrium
+  acid:      {smiles: "CC(=O)O", align: false}
+  ester:     {smiles: "CC(=O)OC", align: false}
+  # resonance: ↔ arrows in square brackets
+  benzene:   {smiles: "c1ccccc1"}
+  sigma_a:   {smiles: "[H:7][C:1]1([N+:8](=[O:9])[O-:10])[CH:2]=[CH:3][CH:4]=[CH:5][CH+:6]1", abbreviate: [NO2],
+              orientation: {rotate: 240, flip_h: true}, align: false}
+  sigma_b:   {smiles: "[H:7][C:1]1([N+:8](=[O:9])[O-:10])[CH:2]=[CH:3][CH+:4][CH:5]=[CH:6]1", abbreviate: [NO2]}
+  # two-electron arrows and lone pairs
+  bromide:   {smiles: "[Br-:1]", show_lone_pairs: [1]}
+  mecl:      {smiles: "[CH3:2][Cl:3]", show_lone_pairs: [3]}
+  mebr:      {smiles: "[CH3:2][Br:1]"}
+  chloride:  {smiles: "[Cl-:3]"}
+  # fishhooks and a radical
+  br_dot:    {smiles: "[Br:4]", show_lone_pairs: [4]}
+  isobutane: {smiles: "[CH3:5][C:6]([CH3:7])([CH3:8])[H:9]"}
+  hbr:       {smiles: "[H:9][Br:4]"}
+  tbu:       {smiles: "[CH3:5][C:6]([CH3:7])[CH3:8]"}
+numbers: {stereo: "1"}
+steps:
+  - {from: [stereo, groups], to: [plain, cation], above: "*n*-BuLi", below: "H2O, 90 °C"}
+  - {new_row: true, from: [circled, nh_above], to: [nh_below, nh_beside], above: "H3O+"}
+  - {new_row: true, from: [nts, acid], to: ester, arrow_type: equilibrium, above: "TsOH"}
+  - {new_row: true, from: benzene, to: sigma_a, above: "NO2+"}
+  - resonance: [sigma_a, sigma_b]
+  - new_row: true
+    from: [bromide, mecl]
+    to: [mebr, chloride]
+    arrows:
+      - {from: "lp(1)", to: "between(1,2)"}
+      - {from: "bond(2-3)", to: "atom(3)"}
+  - new_row: true
+    from: [br_dot, isobutane]
+    to: [hbr, tbu]
+    arrows:
+      - {type: fishhook, from: "electron(4)", to: "between(4,9)"}
+      - {type: fishhook, from: "bond(6-9)", to: "between(4,9)"}
+      - {type: fishhook, from: "bond(6-9)", to: "atom(6)"}

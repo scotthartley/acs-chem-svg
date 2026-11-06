@@ -718,6 +718,18 @@ Rules (M4; unmeasured, user decisions 2026-10-25, flagged at review):
     CDXML and the SVG. Re-exporting them with italics, from one save, would let the tests hold
     those presets to 0.1 pt and run the CDXML diff on them.
 
+33. **Line width** (§16): every reference has LineWidth 0.60, so the "exempt" values (hash thickness, shafts, heads, bar
+    thickness, equilibrium offsets) can't tell constant from proportional to LineWidth. `cdxml.arrow_heads` points to
+    proportional (HeadSize 1000 = 10 x LineWidth). A probe measures these, so a new style is right either way, but the
+    rules can't be settled, or `cdxml.arrow_box_pad` trusted, until a style with another line width is built and compared
+    with a ChemDraw drawing outside the probe.
+34. **Fonts** (§16): Helvetica is hardcoded in `fontmetrics`, `svg_writer`, `preview` and `cdxml_headers`, and
+    `new_preset.py build` refuses other fonts. Several `ratios.*` values are probably font-dependent
+    (`label_baseline_per_size` is cap height / 2), and the bond-to-label clip fit may be too.
+35. ~~**Does applying settings restyle the probe?**~~ **Resolved for x0.8 (2026-11-06):** yes (§16), and the x0.8 probe matches the committed
+    preset. Not yet tried on a style with another line width (Open 33). The 0.6 in the bar rule and the 0.25 in the ring rule may be
+    line-width terms, which that style would show as failed rules in the report.
+
 ## 7. Design-brief (docs/design.md) discrepancies (references win)
 
 1. **Bond drawing.** design.md §3.3 says "stroked line, butt caps". ChemDraw draws filled polygons
@@ -1330,3 +1342,42 @@ They are still drawn as before, so this is accepted, as with the other captions.
 
 Held by `tests/test_cycle.py` (equal arcs within 0.05 pt, θ0 = 90°, no species within `clear` of
 an arrow, the radius growing with count, size and labels, tail text not moving the radius).
+
+## 16. New style presets (`scripts/new_preset.py`)
+
+A style beyond the ACS presets comes from one ChemDraw file, the **style probe** (`presets/probe/style_probe.yaml`), not a
+new set of references. The three ACS presets show which values follow from others: predicting x0.8 and x0.6 from
+x1.0 alone puts 86-90 of 109 within 0.005 pt.
+
+**Workflow.** `new_preset.py probe` writes `build/style_probe/style_probe.cdxml`, drawn at acs1996 by our CDXML writer, so the
+specimens are always the same. Open it in ChemDraw, apply the target style's settings to the whole drawing, and save it as CDXML and as
+SVG with the same name. Don't tidy it: ChemDraw drops the captions' bold and italics and re-places charge signs and radical dots, and none of
+that is measured. `new_preset.py build --name X --probe <saved>.cdxml` writes `presets/X.yaml`, `presets/cdxml/X.xml` and an empty
+`presets/cdxml/X.nicknames.xml`. It prints each value, its source and its departure from what acs1996 predicts. Choices that aren't
+measurements are options: `--wrap-width`, `--default-head` (default standard, ChemDraw's own), `--number-weight`.
+
+**Sources** (`scripts/chemdraw_refs/probe.py`). The generated YAML states each value's source in its comment, and lists
+the derived ones under `derived:`.
+
+| Source | Values |
+|---|---|
+| Settings (CDXML root) | bond length, line width, bold width, margin, hash spacing, bond spacing, chain angle, label and caption size, font; ring inset (spacing x tan 30) |
+| Probe (a specimen, the ACS methods) | hash thickness, wedge end, charge bars (ChemDraw's as drawn, not k-scaled as in the ACS family: user decision 2026-11-06), curved-arrow heads, dot radius and spacing, reaction heads (standard and large), shaft, outline, equilibrium offsets, bracket stroke and LipSize, NH and tail pitches, symbol boxes |
+| Derived from acs1996, unmeasured | placement defaults (x k on the 0.5 pt grid), chair vertices (x k), `ratios.*`, bracket lip (x k; drawn at 0.0726 x the bar's height, lessons.md), `lewis.bond_length` (its rule), lone-pair and electron box reach (dot radius + 0.137 / + 0.067), circled signs (box 0.75 x LabelSize, ring 0.25 + 4/9 x box: drawn fresh, which the probe can't show, since applying a style rewrites the box) |
+
+k is the bond length ratio to 14.4. `build` stops if a specimen is missing, if bonds, line width or labels didn't follow
+the file's settings, or if the label font isn't Helvetica (Open 34); nothing silently falls back.
+
+**What a generated preset guarantees.** Settings and probe values are measured. Placement defaults and drawing rules are
+carried over from ACS and not re-verified: the clip model, hash count, charge corners, H placement, double-bond placement.
+Abbreviations use generated fragments, not ChemDraw's own (`cdxml_writer.generated_nickname`). A generated preset is a close
+starting point: features the probe doesn't cover aren't held to the 0.1 pt the ACS presets meet.
+
+**Rules the report checks.** Fits to the three ACS scales, tested on each new style and used to set nothing: `dot_spacing` = 4.5 x
+`dot_radius`, `electron_box_dx` = 2 x `dot_spacing`, `charge_box_dx` = 0.075 x LabelSize², `wedge_wide_end` = 1.5 x BoldWidth, bar length =
+0.6 + 4/9 x box dx, the probe's ring = 0.25 + 4/9 x its box dx, head length = HeadSize x LineWidth / 100.
+
+**Held by** `tests/test_preset_derivation.py` against x0.8 and x0.6: the derivation rules alone (0.1 pt, placement 0.5 pt; miss:
+`cdxml.resonance_box_pad`, 0.18 against 0.67, not drawn); the measuring methods on the references, each role from its own file (0.1 pt; miss:
+`charge.bar_length`, where ChemDraw's 2.733 / 1.798 stand against the k-scaled 3.148 / 2.361 of the user decision of 2026-10-24); and real
+probes in `reference_renders/probes/` (x0.8 from one ChemDraw round, 2026-11-06, same misses; x0.6 when saved). A generated preset renders and exports every spec kind.

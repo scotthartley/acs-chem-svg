@@ -84,10 +84,7 @@ def ref_arrow(a: dict, preset: Preset, name: str):
 
 
 def preset_for(name: str) -> str:
-    for k in ("0.8", "0.6"):
-        if name.endswith(f"_x{k}"):
-            return f"acs1996_x{k}"
-    return "acs1996"
+    return next((p for p, k in mr.ACS_PRESETS.items() if name.endswith(f"_x{k}")), "acs1996")
 
 
 @dataclass

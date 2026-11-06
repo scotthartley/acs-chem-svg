@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import math
+from pathlib import Path
 
 from acs_chem_svg.geometry import add, dot, length, mul, sub, unit
 
-from .core import _box_center, frame, label_glyphs, load, stats, union
+from .core import REF_DIR, _box_center, frame, label_glyphs, load, stats, union
 from .measurements import measure
 
 
@@ -49,11 +50,11 @@ def _elem_box(doc, atom):
     return union(g.box for g in elem) if elem else None
 
 
-def mech_summary(name: str) -> dict:
+def mech_summary(name: str, ref_dir: Path = REF_DIR) -> dict:
     """Mechanism parameters from one mech_basic file (acs-style.md §4): exact dot and
     curved-arrow geometry, and the hand-placed positions (lone-pair gaps, radical distances,
     curved-arrow tails, heads and shape)."""
-    doc = load(name)
+    doc = load(name, ref_dir)
     m = measure(doc)
     pairs, singles = _dot_sets(doc)
     out = {"dot_radius": stats([c.r for p in pairs for c in p] + [c.r for c in singles]),

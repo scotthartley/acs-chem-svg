@@ -1,6 +1,6 @@
 """Scheme spec: YAML validated with pydantic (references/scheme-schema.md).
 
-    preset: acs1996                      # or acs1996_x0.8, acs1996_x0.6
+    preset: acs1996                      # or acs1996_x0.8, acs1996_x0.6, or any in presets/
     species:
       ester:  {smiles: "COC(=O)c1ccc(O)cc1", abbreviate: [OMe]}
       bnbr:   {smiles: "BrCc1ccccc1"}
