@@ -36,6 +36,9 @@ BASE_BOND_LENGTH = 14.4  # acs1996's lengths.bond_length: scale = bond length / 
 SUPPORTED_FONT = "Helvetica"  # fontmetrics, svg_writer and preview draw only this (acs-style.md §16, open)
 RESTYLE_TOL = 0.1  # pt: specimens vs the file's settings; M1's tolerance
 RULE_TOL = 0.05  # pt: a measured value vs its rule, in the report
+# A sign's box dx per LabelSize: ChemDraw's tool draws one at the first, applying a style rewrites it to the second x LabelSize^2.
+# They agree at 10 pt and part quickly away from it, and the sign's bars and ring follow the box (acs-style.md §16).
+FRESH_SIGN_BOX, RESTYLED_SIGN_BOX = 0.75, 0.075
 ROLES = ("settings", "stereo", "charges", "circled", "mech", "arrows", "large", "equilibrium", "brackets", "nh", "tail")
 # dimensionless placement defaults: not scaled
 UNSCALED_PLACEMENT = ("curved_arrow.curvature", "curved_arrow.loop_curvature", "cycle.tail_join_in", "cycle.tail_join_out",
@@ -62,7 +65,9 @@ COPIED = ("lengths.label_outline_offset_x", "lengths.label_outline_offset_y", "c
           "cdxml.arrow_box_pad", "cdxml.resonance_box_pad", "chair.axial_up", "chair.equatorial_deg", "chair.heteroatom_vertex")
 # acs1996 x k, 3 decimals. ChemDraw draws a bracket's lip at 0.0726 x its bar's height, whatever the style (resonance_x*,
 # gate re-saves): a probe's lip would report the probe's bracket, so the default keeps acs1996's proportion to the bond.
-SCALED = ("text.line_pitch_sub_upper", "text.line_pitch_sub_lower", "bracket.lip_length")
+SCALED = ("bracket.lip_length",)
+# acs1996 x LabelSize / its LabelSize: a text pitch follows the text, not the bonds
+SCALED_BY_LABEL = ("text.line_pitch_sub_upper", "text.line_pitch_sub_lower")
 
 
 class MissingSpecimen(ValueError):
@@ -350,15 +355,17 @@ def lewis_bond_length(label_size: float, dot_spacing: float, dot_radius: float, 
     return math.ceil(2 * need) / 2
 
 
-def ring_radius_of_box(dx: float) -> float:
-    """ChemDraw's circled-sign ring from its box dx: 7.5 -> 3.59, 6 -> 2.89, 4.8 -> 2.39, 4.5 -> 2.24
-    (charges_lewis_x*, style_probe_x0.8), all within 0.03 pt of this line."""
-    return round(0.25 + 4 / 9 * dx, 3)
+def ring_radius_of_box(dx: float, line_width: float) -> float:
+    """ChemDraw's circled-sign ring from its box dx and the line width: 7.5 -> 3.59, 6 -> 2.89, 4.8 -> 2.39,
+    4.5 -> 2.24 at LineWidth 0.6 (charges_lewis_x*, style_probe_x0.8), 13.5 -> 6.864 at 2.16 (the presentation
+    probe), all within 0.03 pt."""
+    return round(0.4 * line_width + 4 / 9 * dx, 3)
 
 
-def bar_length_of_box(dx: float) -> float:
-    """ChemDraw's sign bars from the box dx: exact on 7.5, 6, 4.8, 4.5 and 2.7 (charges_lewis_x*)."""
-    return round(0.6 + 4 / 9 * dx, 3)
+def bar_length_of_box(dx: float, line_width: float) -> float:
+    """ChemDraw's sign bars from the box dx and the line width: exact on 7.5, 6, 4.8, 4.5 and 2.7 at LineWidth 0.6
+    (charges_lewis_x*) and on 13.5 at 2.16 (the presentation probe)."""
+    return round(line_width + 4 / 9 * dx, 3)
 
 
 def scale_of(bond_length: float) -> float:
@@ -373,16 +380,18 @@ def derive(base: dict[str, object], placement: list[str], known: dict[str, Value
     """The values `known` (settings, specimens, options) doesn't hold, from the flat base preset and
     the bond length ratio. Raises if a value has no rule."""
     k = known["lengths.bond_length"].value / BASE_BOND_LENGTH
+    k_label = known["text.label_size"].value / base["text.label_size"]
     out: dict[str, Value] = {}
     dr, sp = known["lone_pair.dot_radius"].value, known["lone_pair.dot_spacing"].value
-    circled = round(0.75 * known["text.label_size"].value, 3)
+    circled = round(FRESH_SIGN_BOX * known["text.label_size"].value, 3)
 
     def d(v, why: str) -> Value:
         return Value(v, "derived", f"derived from {BASE_PRESET} {why}, unmeasured")
     rules = {"cdxml.lone_pair_box_reach": d(round(dr + 0.137, 2), "lone_pair.dot_radius + 0.137 (three ACS scales)"),
              "cdxml.electron_box_reach": d(round(dr + 0.067, 2), "lone_pair.dot_radius + 0.067 (three ACS scales)"),
              "cdxml.circled_box_dx": d(circled, "rule: a circled sign drawn fresh, 0.75 x LabelSize (three ACS scales)"),
-             "charge.circle_radius": d(ring_radius_of_box(circled), "rule: 0.25 + 4/9 x cdxml.circled_box_dx (charges_lewis_x*, the probe)")}
+             "charge.circle_radius": d(ring_radius_of_box(circled, known["lengths.line_width"].value),
+                                       "rule: 0.4 x LineWidth + 4/9 x cdxml.circled_box_dx (charges_lewis_x*, the probes)")}
     for key, v0 in base.items():
         if key in known or key in ("name", "scale"):
             continue
@@ -400,6 +409,8 @@ def derive(base: dict[str, object], placement: list[str], known: dict[str, Value
             out[key] = d(v0, "(not scaled at any ACS scale)")
         elif key in SCALED:
             out[key] = d(round(k * v0, 3), f"x {k:.3f}")
+        elif key in SCALED_BY_LABEL:
+            out[key] = d(round(k_label * v0, 3), f"x {k_label:.3f} (LabelSize)")
         else:
             raise ValueError(f"no source for preset value {key!r}: measure it, or give it a rule")
     gap = out["lone_pair.gap"].value
@@ -408,17 +419,25 @@ def derive(base: dict[str, object], placement: list[str], known: dict[str, Value
     return out
 
 
+def restyled_signs(values: dict[str, Value]) -> bool:
+    """The specimens hold the signs and dots applying a style left, not ones drawn fresh in the style."""
+    size = values["text.label_size"].value
+    return abs(values["cdxml.charge_box_dx"].value - FRESH_SIGN_BOX * size) > RULE_TOL
+
+
 def rule_checks(values: dict[str, Value], ring: tuple[float, float] | None = None) -> list[tuple[str, float, float, str]]:
     """Measured values against rules fitted to the ACS scales (acs-style.md §16): (key, measured, rule,
     rule text). `ring`: circled_ring's result. They set nothing; they test the rules on a new style."""
     v = {k: x.value for k, x in values.items()}
-    dr, sp, size = v["lone_pair.dot_radius"], v["lone_pair.dot_spacing"], v["text.label_size"]
-    checks = [] if ring is None else [("circled ring (the probe's own box)", ring[1], ring_radius_of_box(ring[0]), "0.25 + 4/9 x box dx")]
+    dr, sp, size, lw = v["lone_pair.dot_radius"], v["lone_pair.dot_spacing"], v["text.label_size"], v["lengths.line_width"]
+    box = v["cdxml.charge_box_dx"]
+    checks = [] if ring is None else [("circled ring (the probe's own box)", ring[1], ring_radius_of_box(ring[0], lw), "0.4 x LineWidth + 4/9 x box dx")]
     return checks + [
             ("lone_pair.dot_spacing", sp, round(4.5 * dr, 3), "4.5 x dot_radius"),
             ("cdxml.electron_box_dx", v["cdxml.electron_box_dx"], round(2 * sp, 3), "2 x dot_spacing"),
-            ("cdxml.charge_box_dx", v["cdxml.charge_box_dx"], round(0.075 * size ** 2, 3), "0.075 x LabelSize^2"),
+            ("cdxml.charge_box_dx", box, min(round(FRESH_SIGN_BOX * size, 3), round(RESTYLED_SIGN_BOX * size ** 2, 3), key=lambda r: abs(r - box)),
+             "0.75 x LabelSize (drawn fresh) or 0.075 x LabelSize^2 (restyled)"),
             ("lengths.wedge_wide_end", v["lengths.wedge_wide_end"], round(1.5 * v["lengths.bold_width"], 3), "1.5 x BoldWidth"),
-            ("charge.bar_length", v["charge.bar_length"], bar_length_of_box(v["cdxml.charge_box_dx"]), "0.6 + 4/9 x box dx"),
+            ("charge.bar_length", v["charge.bar_length"], bar_length_of_box(box, lw), "LineWidth + 4/9 x box dx"),
             ("arrow.heads.standard.head_length", v["arrow.heads.standard.head_length"],
              round(v["cdxml.arrow_heads.standard"][0] * v["lengths.line_width"] / 100, 3), "HeadSize x LineWidth / 100")]

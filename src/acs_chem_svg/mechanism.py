@@ -570,6 +570,8 @@ class Planner:
             if stroke_shown(cand) < MIN_STROKE * self.preset.curved_arrow.head_length \
                     and not (hook and self.ring_inside(arr, add(s0, bow))):  # ring hooks: RING_SLIDE shows theirs
                 off += 0.5  # the head hides the stroke
+            if head_spill(cand) > self.preset.curved_arrow.stroke_width:
+                off += 0.5  # the stroke leaves its head again
             if best is not None and (off, *rest) >= best[0]:
                 return  # can't win even without clashes
             score = (len(clashes(cand, self.parts, self.done, self.preset)) + off, *rest)
@@ -699,6 +701,8 @@ class Planner:
                         c = self.build(step, index, arr, o, name, bow, ds, s0, p_anchor, pick, 1.0, 0.0, far, same,
                                        tangent=(land, handle, turn))
                         if c is None or not aims(c, r) or stroke_shown(c) < MIN_STROKE * ca.head_length:
+                            continue
+                        if head_spill(c) > ca.stroke_width:
                             continue
                         tight, total, energy, loops = curve_shape(c.p0, c.c1, c.c2, c.p3)
                         if tight < TANGENT_MIN_RADIUS * L or total < TANGENT_MIN_TURN or loops:
@@ -1023,6 +1027,18 @@ def stroke_shown(arrow: MechArrow) -> float:
     """The stroke's length outside its head: what the reader sees of it."""
     pts, head = arrow.polyline(), arrow.head
     return sum(length(sub(b, a)) for a, b in zip(pts, pts[1:]) if not (_inside(a, head) and _inside(b, head)))
+
+
+def head_spill(arrow: MechArrow) -> float:
+    """The stroke's length outside its head after it first enters it: a short arrow whose end bends more than its
+    head is long pokes out of the head's side and hooks back (presentation_x1.0's E2 chair, 17 pt heads on 28 pt bonds)."""
+    pts, head = arrow.polyline(), arrow.head
+    inside = [_inside(q, head) for q in pts]
+    first = next((k for k, x in enumerate(inside) if x), None)
+    if first is None:
+        return 0.0
+    return sum(length(sub(b, a)) for k, (a, b) in enumerate(zip(pts[first:], pts[first + 1:]), first)
+               if not (inside[k] and inside[k + 1]))
 
 
 def _inside(p: Point, poly: list[Point]) -> bool:

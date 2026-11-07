@@ -448,6 +448,7 @@ CHARGE_DOT_CLEARANCE = 1.0  # unmeasured rule: a charge beside dots (or a circle
 CHARGE_DOT_STEP_DEG = 5.0  # unmeasured: directions tried around the atom, this far apart
 CHARGE_DOT_STEP_PT = 0.5  # unmeasured: ... at the first position, then this much farther each round
 CHARGE_DOT_EXTRA_PT = 2.0  # unmeasured: ... up to this much beyond it
+ACS_BOND_LENGTH = 14.4  # acs1996's: _charge_room scales the clearance rule by the bond length past this
 
 
 @dataclass
@@ -1034,7 +1035,8 @@ class Drawer:
                 chosen = next(((d, p) for d, p in corners if spare(unit(d)) >= limit - 1e-9 and own(p)), None)
                 if chosen:
                     break
-            if chosen is None:
+
+            def in_gap() -> tuple[Point, Point]:
                 # no usable corner (nitro N⁺): on the largest gap's bisector, the center as far from
                 # the element ink box as at a corner, sign extent included (unmeasured rule,
                 # acs-style.md §2.2; user review 2026-10-29: measured along the ray, the ring
@@ -1048,11 +1050,24 @@ class Drawer:
                 t = ray_box_exit(ctr, d, (x0, y0, x1, y1))
                 while box_dist(add(ctr, mul(d, t))) < want - 1e-9:
                     t += 0.01
-                chosen = (d, add(ctr, mul(d, t)))
+                return (d, add(ctr, mul(d, t)))
+            if chosen is None:
+                chosen = in_gap()
             d, p = chosen
-            if not (self.dot_sets().get(i) or sign.bigger):
+            if not (self.dot_sets().get(i) or sign.bigger or self._plain_sign_crowded(i, sign, p)):
                 return p
             d = unit(d)
+            if self._charge_room() > 1.0:  # a larger style: any free corner or the gap, as long as the sign stays this atom's
+                if own(p) and self.charge_clearance(i, sign.clash_segments(p)) >= CHARGE_DOT_CLEARANCE * self._charge_room():
+                    return p  # already clear: a sign moves only when it must
+                starts = [(unit(d), p)] + [(unit(q), r) for q, r in corners if spare(unit(q)) >= CHARGE_CORNER_MIN_DEG - 1e-9]
+                gd, gp = in_gap()
+                starts.append((gd, gp))
+
+                def anywhere(k: int) -> list[Point]:
+                    pts = [add(r, mul(q, k * CHARGE_DOT_STEP_PT)) for q, r in starts]
+                    return [r for r in pts if own(r)] or pts[:1]
+                return self._charge_clear(i, sign, anywhere)
             return self._charge_clear(i, sign, lambda k: [add(p, mul(d, k * CHARGE_DOT_STEP_PT))])
         if self.dot_sets().get(i) or sign.bigger:
             gap, g = self._largest_gap(i)
@@ -1083,15 +1098,26 @@ class Drawer:
         CHARGE_DOT_EXTRA_PT, the best candidate at the farthest step. The label's own ink needs no
         check: a corner only moves away from it."""
         best = None
-        for k in range(round(CHARGE_DOT_EXTRA_PT / CHARGE_DOT_STEP_PT) + 1):
+        clear = CHARGE_DOT_CLEARANCE * self._charge_room()
+        for k in range(round(CHARGE_DOT_EXTRA_PT * self._charge_room() / CHARGE_DOT_STEP_PT) + 1):
             best = None
             for ctr in candidates(k):
                 score = round(self.charge_clearance(i, sign.clash_segments(ctr)), 6)
                 if best is None or score > best[0]:
                     best = (score, ctr)
-            if best[0] >= CHARGE_DOT_CLEARANCE:
+            if best[0] >= clear:
                 break
         return best[1]
+
+    def _charge_room(self) -> float:
+        """How far the clearance rule's distances grow: they were set at the ACS sizes (acs1996 and smaller keep
+        them), and a larger style's signs and bonds need them in proportion (presentation_x1.0, unmeasured)."""
+        return max(1.0, self.preset.lengths.bond_length / ACS_BOND_LENGTH)
+
+    def _plain_sign_crowded(self, i: int, sign: ChargeSign, p: Point) -> bool:
+        """A plain sign at p too near a bond's lines. Only a style larger than acs1996 tests it: the ACS presets'
+        plain signs keep their measured corners."""
+        return self._charge_room() > 1.0 and self.charge_clearance(i, sign.clash_segments(p)) < CHARGE_DOT_CLEARANCE * self._charge_room()
 
     def charge_clearance(self, i: int, segs: list[tuple[Point, Point, float]]) -> float:
         """Least gap (pt) between a sign's clash segments and atom i's drawn dots (a Lewis

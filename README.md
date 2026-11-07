@@ -133,15 +133,16 @@ one ChemDraw file:
 
 ```bash
 uv run python scripts/new_preset.py probe     # writes build/style_probe/style_probe.cdxml
-# In ChemDraw: open it, apply your style's settings to the whole drawing, save as CDXML and as SVG.
-# Don't tidy it: lost bold and italics and moved charge signs are expected, and aren't measured.
+# In ChemDraw: open it and apply your style's settings to the whole drawing.
+# Delete every charge sign, lone pair and radical dot, then add a few fresh ones with ChemDraw's tools
+# (applying a style rewrites their sizes). Tidy nothing else. Save as CDXML and as SVG.
 uv run python scripts/new_preset.py build --name mystyle --probe path/to/style_probe.cdxml
 ```
 
 Settings and specimens are measured; placement defaults and drawing rules are carried over from ACS, and abbreviations use generated
 fragments. So a generated preset is a close starting point, not the 0.1 pt match the ACS presets meet. The preset's comments say where each
-value came from, and the build's report shows how far each is from ACS. It works with Helvetica only so far, and the probe hasn't yet been
-tried on a style with a different line width. See [`references/acs-style.md`](references/acs-style.md) §16.
+value came from, and the build's report shows how far each is from ACS. It works with Helvetica only so far. One generated style ships: `presentation_x1.0` (LineWidth 2.16, 18 pt labels, wrapping at 900 pt).
+See [`references/acs-style.md`](references/acs-style.md) §16, which also lists the checks for a new style after the build.
 
 ## Limits
 

@@ -4,10 +4,11 @@
     uv run python scripts/new_preset.py build --name NAME --probe PATH/style_probe.cdxml
         [--wrap-width PT] [--default-head standard|large] [--number-weight bold|regular] [--dry-run]
 
-`probe` writes style_probe.cdxml (presets/probe/style_probe.yaml, at acs1996). In ChemDraw, open it,
-apply the target style's settings to the whole drawing, and save it as CDXML and as SVG, same name.
-Don't tidy it: ChemDraw drops the captions' bold and italics and re-places charge signs and radical
-dots when it restyles, and none of that is measured.
+`probe` writes style_probe.cdxml (presets/probe/style_probe.yaml, at acs1996). In ChemDraw, open it and
+apply the target style's settings to the whole drawing. Then delete every charge sign, lone pair and
+radical dot, and add a few fresh ones with ChemDraw's tools: applying a style rewrites their sizes, which
+are measured. Save it as CDXML and as SVG, same name. Tidy nothing else: lost bold and italics in the
+captions don't matter.
 `build` measures that file and writes presets/NAME.yaml, presets/cdxml/NAME.xml and an empty
 presets/cdxml/NAME.nicknames.xml (abbreviations then use generated fragments), and prints each value's
 source and its departure from scaled ACS. It stops if a specimen is missing.
@@ -27,7 +28,7 @@ import measure_refs as mr  # noqa: E402
 from cdxml_headers import header  # noqa: E402
 from chemdraw_refs.probe import (  # noqa: E402
     BASE_PRESET, MissingSpecimen, OPTIONS, RULE_TOL, UNSCALED_PLACEMENT, UnsupportedFont, Value, check_restyled, circled_ring,
-    derive, measure_specimens, read_settings, rule_checks, scale_of, single_file,
+    derive, measure_specimens, read_settings, restyled_signs, rule_checks, scale_of, single_file,
 )
 
 from acs_chem_svg.cdxml_writer import HEADER_DIR  # noqa: E402
@@ -164,6 +165,9 @@ def report(values: dict[str, Value], ring: tuple[float, float] | None = None) ->
     bad = [c for c in rule_checks(values, ring) if abs(c[1] - c[2]) > RULE_TOL]
     rows.append("rules fitted to the ACS scales: " + ("all hold" if not bad else "do NOT hold on this style:"))
     rows += [f"  {key}: measured {got}, {text} = {rule}" for key, got, rule, text in bad]
+    if restyled_signs(values):
+        rows.append("warning: the charge signs have the size applying a style gives, not a fresh sign's. If they weren't redrawn in the "
+                    "style, charge bars and dots here are off: replace them and rebuild.")
     return rows
 
 
@@ -197,9 +201,10 @@ def main(argv=None) -> int:
     args = ap.parse_args(argv)
     if args.cmd == "probe":
         path = write_probe(args.out)
-        print(f"wrote {path}\nIn ChemDraw: open it, apply the target style's settings to the whole drawing, and save it as\n"
-              "CDXML and as SVG, same name. Don't tidy it: lost bold and italics and moved charge signs are expected, and\n"
-              "none of them is measured. Then: new_preset.py build --name NAME --probe <saved>.cdxml")
+        print(f"wrote {path}\nIn ChemDraw: open it and apply the target style's settings to the whole drawing. Delete every charge\n"
+              "sign, lone pair and radical dot, then add fresh ones with ChemDraw's tools: three lone pairs (horizontal and vertical), a\n"
+              "radical dot away from the others, and one each of +, -, circled + and circled -. Applying a style rewrites their sizes.\n"
+              "Tidy nothing else. Save as CDXML and as SVG, same name. Then: new_preset.py build --name NAME --probe <saved>.cdxml")
         return 0
     if args.name in mr.ACS_PRESETS:
         print(f"error: {args.name} is a measured ACS preset; pick another name", file=sys.stderr)

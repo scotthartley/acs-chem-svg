@@ -778,3 +778,14 @@ removed renders pixel-identical to the approved `m4_nitration_x1.0`. Inbox triag
   dots, none of which the probe measures. It also rewrites every sign's box to 0.075 x LabelSize^2, circled ones included (4.8 at 8 pt), where
   a circled sign drawn fresh has 0.75 x LabelSize (6.0). Sizes follow the box alone: bars 0.6 + 4/9 x dx (exact over five boxes), rings 0.25 + 4/9 x dx
   (within 0.03 pt), so the ring at x0.8 is 2.39 in the probe and 2.89 drawn fresh. A generated preset takes the fresh size, from those rules.
+- **At 10 pt two rules look like one** (presentation probe: LineWidth 2.16, LabelSize 18, bond 28.35, 2026-11-06, ChemDraw 26.1): applying the style left
+  signs at box 24.3 (0.075 x 18²), lone pairs 13.3 and ChemDraw adding H's to O, Br and Cl (`BrH`). Redrawn with the tools they are 13.5 and 6.75
+  (0.75 x and 0.375 x LabelSize). "Don't tidy the probe" had held at x0.8, where the error is small; it failed here, so signs and dots are now redrawn.
+- **Fixed numbers fitted to LineWidth 0.6 hide as constants.** The sign rules' 0.6 and 0.25 are 1 x and 0.4 x LineWidth (bars 8.16, ring 6.864), which only a second line width
+  could show. The same held for detection: `_small_bars` and the arrow searches had fixed windows in pt and found nothing at 2.16, and now grow with the file's settings.
+  Also, dot radius is the radical's box / 9 on 7.5, 4.8 and 13.5 (0.833, 0.533, 1.5): the step between x1.0 and x0.8 comes from the box.
+- **A curved arrow's head depends on the tool** (presentation style, 2026-11-07, ChemDraw 26.1): the arc tool writes an `<arrow>` with HeadSize 800,
+  ArrowheadCenterSize 700, ArrowheadWidth 200 (17.2 x 4.4 half width x 15.1 at LineWidth 2.16; curved_arrows_presentation_x1.0); the Bézier tool writes a
+  `<curve>` with no size and draws 8 x 2.5 x 6.75 x LineWidth (17.28 x 5.40 x 14.58, the probe's and mech_basic_x*'s 4.81 x 1.50 x 4.06). HeadSize,
+  HeadCenterSize and HeadWidth on a `<curve>` are in the DTD but ChemDraw ignores them (user check of m3_sn2 and m3_radical_initiation with them set on one
+  arrow each: every head the same). So a `<curve>` can't take the arc tool's narrower head.

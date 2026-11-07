@@ -231,14 +231,24 @@ def _label_entry(doc, atom, asg):
     return entry
 
 
+def _line_scale(doc) -> float:
+    """How far a search window fitted to LineWidth 0.6 (every ACS scale) must grow on this file's thicker lines."""
+    return max(1.0, float(doc.settings.get("LineWidth") or 0) / 0.6)
+
+
 def _small_bars(doc):
+    # a sign's bars. 6 x 1 pt holds to LabelSize 10 and LineWidth 0.6 (every ACS scale). Past that the limits grow
+    # with the style; 0.9 x LineWidth keeps out hash lines and the like, which are as thick as a line.
+    line_width = float(doc.settings.get("LineWidth") or 0)
+    label_size = float(doc.settings.get("LabelSize") or 0)
+    max_length, max_thickness = max(6.0, 0.6 * label_size), max(1.0, 0.9 * line_width)
     bars = []
     for s in doc.shapes:
         if s.kind != "poly" or s.owner or s.curved or len(s.pts) != 4 or s.group.endswith("-bonds"):
             continue  # ours: a crossing's oblique cut end (draw_mol.cut_caps) is a short polygon among the bonds
         x0, y0, x1, y1 = s.bbox
         w, h = x1 - x0, y1 - y0
-        if 1.0 < max(w, h) < 6.0 and min(w, h) < 1.0:
+        if 1.0 < max(w, h) < max_length and min(w, h) < max_thickness:
             bars.append((s, "h" if w > h else "v"))
     return bars
 
@@ -364,12 +374,13 @@ def _arrow_entry(doc, arr):
     outlines = [s.width for s in doc.shapes if s.kind == "outline"]
     rec["head_outline_stroke"] = stats(outlines)
     # shaft: an unclaimed straight polygon along the axis
+    scale = _line_scale(doc)
     for sh in doc.shapes:
         if sh.kind != "poly" or sh.curved or sh.owner:
             continue
         loc = [(dot(sub(p, tail), axis), dot(sub(p, tail), n)) for p in sh.pts]
         us, vs = [p[0] for p in loc], [p[1] for p in loc]
-        if max(abs(v) for v in vs) < 0.6 and min(us) > -1 and max(us) < rec["length"] + 1 and max(us) - min(us) > 3:
+        if max(abs(v) for v in vs) < 0.6 * scale and min(us) > -1 and max(us) < rec["length"] + 1 and max(us) - min(us) > 3:
             sh.owner = "arrow-shaft"
             rec["shaft"] = {"width": round(max(vs) - min(vs), 3), "u_start": round(min(us), 3),
                             "u_end_from_tip": round(rec["length"] - max(us), 3)}
@@ -405,17 +416,18 @@ def _equilibrium_entry(doc, arr):
     axis = unit(sub(head, tail))
     n = (-axis[1], axis[0])
     L = length(sub(head, tail))
+    scale = _line_scale(doc)
     shafts, heads = [], []
     for sh in doc.shapes:
         if sh.kind != "poly" or sh.owner:
             continue
         lp = [(dot(sub(p, tail), axis), dot(sub(p, tail), n)) for p in sh.pts]
         us, vs = [q[0] for q in lp], [q[1] for q in lp]
-        if max(abs(v) for v in vs) > 4 or min(us) < -3 or max(us) > L + 3:
+        if max(abs(v) for v in vs) > 4 * scale or min(us) < -3 * scale or max(us) > L + 3 * scale:
             continue
         if sh.curved:
             heads.append((sh, lp))
-        elif max(vs) - min(vs) < 1.0 and max(us) - min(us) > 3:
+        elif max(vs) - min(vs) < scale and max(us) - min(us) > 3:
             shafts.append((sh, lp))
     recs = []
     for sh, lp in shafts:
@@ -426,9 +438,9 @@ def _equilibrium_entry(doc, arr):
             hu = [q[0] for q in hp]
             if hs.owner or o * statistics.fmean(q[1] for q in hp) < 0:
                 continue
-            if min(hu) < u1 < max(hu) + 0.5:
+            if min(hu) < u1 < max(hu) + 0.5 * scale:
                 d, tip = 1, max(hp, key=lambda q: q[0])
-            elif min(hu) - 0.5 < u0 < max(hu):
+            elif min(hu) - 0.5 * scale < u0 < max(hu):
                 d, tip = -1, min(hp, key=lambda q: q[0])
             else:
                 continue

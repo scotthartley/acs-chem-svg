@@ -88,15 +88,15 @@ def test_rules_hold_on_acs(name):
 @pytest.mark.parametrize("scale", ["1.0", "0.8", "0.6"])
 @needs_refs
 def test_sign_sizes_follow_their_box(scale):
-    """ChemDraw's sign bars and rings depend on the symbol's box dx alone (acs-style.md §16); the
-    plain signs and the circled ones have different boxes at x0.8 and x0.6."""
+    """At one line width, ChemDraw's sign bars and rings depend on the symbol's box dx alone (acs-style.md §16);
+    the plain signs and the circled ones have different boxes at x0.8 and x0.6."""
     syms = np.mr.charges_lewis(f"charges_lewis_x{scale}")["symbols"]
     assert len(syms) > 4
     for s in syms:
         if s.get("bar_length"):
-            assert s["bar_length"] == pytest.approx(probe.bar_length_of_box(s["dx"]), abs=0.003), s
+            assert s["bar_length"] == pytest.approx(probe.bar_length_of_box(s["dx"], 0.6), abs=0.003), s
         if s.get("ring_radius"):
-            assert s["ring_radius"] == pytest.approx(probe.ring_radius_of_box(s["dx"]), abs=0.03), s
+            assert s["ring_radius"] == pytest.approx(probe.ring_radius_of_box(s["dx"], 0.6), abs=0.03), s
 
 
 def _check_measured(values, name):
@@ -128,6 +128,68 @@ def test_real_probe_hold_out(scale, name):
     _check_measured(values, name)
     bad = [c for c in probe.rule_checks(values, probe.circled_ring(sources["circled"])) if abs(c[1] - c[2]) > probe.RULE_TOL]
     assert bad == []
+
+
+PRESENTATION = PROBES / "style_probe_presentation_x1.0.cdxml"  # LineWidth 2.16, LabelSize 18, bond 28.35; signs and dots drawn fresh
+needs_presentation = pytest.mark.skipif(not PRESENTATION.exists(), reason="no presentation probe")
+
+
+@needs_presentation
+def test_another_line_width():
+    """The first style at another line width (acs-style.md §16, Open 33): what follows LineWidth does so exactly,
+    and every rule holds with its line-width term."""
+    sources = probe.single_file(PRESENTATION)
+    values = np.collect(sources, {})
+    v = {k: x.value for k, x in values.items()}
+    lw = v["lengths.line_width"]
+    assert lw == 2.16
+    bad = [c for c in probe.rule_checks(values, probe.circled_ring(sources["circled"])) if abs(c[1] - c[2]) > probe.RULE_TOL]
+    assert bad == []
+    for key, per_lw in (("lengths.hash_line_width", 1), ("arrow.heads.standard.head_length", 10), ("arrow.heads.large.head_length", 15),
+                        ("curved_arrow.head_length", 8), ("equilibrium.shaft_spacing", 3), ("equilibrium.stagger", 1.5)):
+        assert v[key] == pytest.approx(per_lw * lw, abs=0.02), key
+    assert not probe.restyled_signs(values)
+    assert v["cdxml.charge_box_dx"] == 13.5  # 0.75 x LabelSize: 24.3 had the signs been left as applying the style draws them
+    assert v["lone_pair.dot_radius"] == pytest.approx(1.5, abs=0.01)
+    ring = probe.circled_ring(sources["circled"])
+    assert v["charge.circle_radius"] == pytest.approx(ring[1], abs=probe.RESTYLE_TOL)  # the derived ring is the one drawn
+
+
+def test_text_pitch_follows_the_label_size():
+    """Bond length and label size part in a new style; a text pitch goes with the text."""
+    base_raw, base = np.base_values()
+    known = {k: probe.Value(base[k], "settings", "") for k in base if k not in ("name", "scale")}
+    known["lengths.bond_length"] = probe.Value(2 * base["lengths.bond_length"], "settings", "")
+    known["text.label_size"] = probe.Value(3 * base["text.label_size"], "settings", "")
+    for key in probe.SCALED + probe.SCALED_BY_LABEL + ("lewis.bond_length", "lone_pair.gap", "cdxml.lone_pair_box_reach", "charge.circle_radius",
+                                                       "cdxml.circled_box_dx", "cdxml.electron_box_reach"):
+        known.pop(key, None)
+    out = probe.derive(base, base_raw["placement"], known)
+    assert out["text.line_pitch_sub_upper"].value == pytest.approx(3 * base["text.line_pitch_sub_upper"])
+    assert out["bracket.lip_length"].value == pytest.approx(2 * base["bracket.lip_length"])
+
+
+@pytest.mark.parametrize("circled", [True, False])
+def test_larger_style_signs_clear_bonds_and_stay_on_their_atom(circled):
+    """presentation_x1.0's nitro group: signs clear the N=O, and each stays nearest its own atom, or ChemDraw
+    rebinds it to the =O on open (Drawer._nearest_atom). The O- starts clear, so it keeps its corner."""
+    from acs_chem_svg import chem
+    from acs_chem_svg.draw_mol import CHARGE_DOT_CLEARANCE, Drawer
+    from acs_chem_svg.preset import load_preset
+    preset = load_preset("presentation_x1.0")
+    mol = chem.from_smiles("C[N+](=O)[O-]", "nitro", preset.lengths.bond_length)
+    mol.circled_charges = circled
+    d = Drawer(mol, preset)
+    d.draw("x")
+    room = d._charge_room()
+    assert room > 1
+    for a in mol.atoms:
+        if a.charge:
+            p = d.charge_center(a.idx)
+            assert d._nearest_atom(p) == a.idx
+            assert d.charge_clearance(a.idx, d.charge_sign(a.idx).clash_segments(p)) >= CHARGE_DOT_CLEARANCE * room
+            if a.charge < 0:
+                assert p[1] < a.y  # above the O: its first corner
 
 
 # --------------------------------------------------------------------------- the probe
@@ -280,3 +342,18 @@ def test_generated_preset_renders_and_exports(generated, tmp_path, spec):
     render_spec(path)
     root = etree.fromstring(spec_cdxml(path, warn=lambda m: None).encode(), np.PARSER)
     assert float(root.get("BondLength")) == pytest.approx(11.52)
+
+
+def test_larger_style_curved_arrows_end_inside_their_heads(tmp_path):
+    """presentation_x1.0's E2 chair: a short arrow whose end bent more than its 17 pt head showed its stroke leaving the
+    head's side and hooking back (mechanism.head_spill). Every arrow now ends inside its head."""
+    import re
+    from acs_chem_svg import figure, mechanism
+    from acs_chem_svg.preset import load_preset
+    src = Path(__file__).resolve().parents[1] / "examples" / "m3" / "m3_e2_chair_x1.0.yaml"
+    spec = tmp_path / "e2.yaml"
+    spec.write_text(re.sub(r"^preset: .*$", "preset: presentation_x1.0", src.read_text(), flags=re.M))
+    curved = figure.build_figure(spec).scheme.curved
+    assert len(curved) == 3
+    stroke = load_preset("presentation_x1.0").curved_arrow.stroke_width
+    assert [round(mechanism.head_spill(a), 2) for a in curved if mechanism.head_spill(a) > stroke] == []
