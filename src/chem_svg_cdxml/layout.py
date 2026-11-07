@@ -1,4 +1,4 @@
-"""Scheme layout (design.md §10 M2, acs-style.md §3): one row of species, plus signs, reaction
+"""Scheme layout (design.md §10 M2, style-spec.md §3): one row of species, plus signs, reaction
 arrows with conditions, and compound numbers.
 
 Rules (values are presets' `scheme:` keys: round placement defaults chosen from
@@ -17,7 +17,7 @@ scheme_basic_x* and scheme_multi_x*, user decision 2026-10-24):
 - Equilibrium arrows (a step's arrow_type, arrows.equilibrium_arrow): the same rules, with the
   above/below baselines measured from the outer shafts (equilibrium.shaft_spacing / 2 off the
   axis), the conditions centered on the arrow, and a head_inset at each end in the length
-  (unmeasured rules, acs-style.md §3.6). Heads: spec arrow_head, else the preset's default.
+  (unmeasured rules, style-spec.md §3.6). Heads: spec arrow_head, else the preset's default.
 - Compound numbers: bold, ink-centered under each structure, on one baseline: the tallest
   number's ink top is number_gap below the lowest structure ink in the row.
 
@@ -302,7 +302,7 @@ def _place(spec: Spec, out: SchemeLayout, breaks: set[tuple[str, int]], rings: d
     def put_over(names: list[str], st: StepLayout) -> None:
         """Reactants a mechanism step adds, side by side (with '+') above its arrow: centered on
         tail -> notch, their ink bottom conditions_above_baseline above the arrow or above its
-        conditions (unmeasured rule, acs-style.md §4.3)."""
+        conditions (unmeasured rule, style-spec.md §4.3)."""
         top = min([ln.ink()[1] for ln in st.above] + [-st.shaft_offset(preset)])
         base = top - s.conditions_above_baseline
         boxes = [out.species[n].group.ink_bbox() for n in names]

@@ -1,4 +1,4 @@
-"""Equilibrium arrows and the large arrowhead vs ChemDraw (acs-style.md §3.1, §3.6), within
+"""Equilibrium arrows and the large arrowhead vs ChemDraw (style-spec.md §3.1, §3.6), within
 0.1 pt, at all three presets.
 
 Each reference is redrawn on ChemDraw's page (compare.render_reference): our arrows on

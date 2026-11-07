@@ -1,4 +1,4 @@
-"""CDXML export, phase 4a (acs-style.md §13.3): resonance arrows and brackets (resonance_x*),
+"""CDXML export, phase 4a (style-spec.md §13.3): resonance arrows and brackets (resonance_x*),
 wrapped schemes (scheme_wrap_x*), abbreviation nodes; and every example spec (ALL_SPECS).
 """
 
@@ -7,9 +7,9 @@ from lxml import etree
 from rdkit import Chem
 
 import measure_refs as mr
-from acs_chem_svg.draw_mol import Drawer
-from acs_chem_svg.preset import load_preset
-from acs_chem_svg.spec import load_spec
+from chem_svg_cdxml.draw_mol import Drawer
+from chem_svg_cdxml.preset import load_preset
+from chem_svg_cdxml.spec import load_spec
 
 from cdxml_helpers import (
     PARSER, TOL, _check_structure, _floats, _spec_smiles, _text, check_scheme_round_trip, exported,
@@ -128,7 +128,7 @@ def test_all_spec_round_trips(spec):
 def test_signs_sit_nearest_their_atom(spec):
     """ChemDraw binds each sign symbol to the nearest atom on open and resets its charge from it
     (phase 4b gate), so every drawn charge is nearer its own atom than any other."""
-    from acs_chem_svg.spec import molecules
+    from chem_svg_cdxml.spec import molecules
     sp = load_spec(mr.REPO / spec)
     for mol in molecules(sp, (mr.REPO / spec).parent):
         d = Drawer(mol, load_preset(sp.preset))

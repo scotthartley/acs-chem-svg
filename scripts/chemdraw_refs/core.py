@@ -12,8 +12,8 @@ import pypdfium2
 from lxml import etree
 from rdkit import Chem as _Chem
 
-from acs_chem_svg.fontmetrics import load_face
-from acs_chem_svg.geometry import add, dot, length, mul, sub, unit
+from chem_svg_cdxml.fontmetrics import load_face
+from chem_svg_cdxml.geometry import add, dot, length, mul, sub, unit
 
 
 REPO = Path(__file__).resolve().parents[2]
@@ -589,7 +589,7 @@ def _glyph_chain(doc: Doc, seed: list) -> list:
 
 
 def _nickname_glyphs(doc: Doc, atom: Atom):
-    from acs_chem_svg.draw_mol import anchor_symbol
+    from chem_svg_cdxml.draw_mol import anchor_symbol
 
     best = None
     for g in doc.glyphs:

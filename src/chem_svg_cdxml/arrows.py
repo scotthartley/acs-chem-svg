@@ -1,4 +1,4 @@
-"""Reaction arrows (acs-style.md §3.1; exact, measured on every arrow in scheme_basic_x*,
+"""Reaction arrows (style-spec.md §3.1; exact, measured on every arrow in scheme_basic_x*,
 scheme_multi_x* and arrows_large_x1.0).
 
 - Shaft: a butt-capped stroke of shaft_width from the tail to shaft_end_from_tip before the
@@ -11,10 +11,10 @@ scheme_multi_x* and arrows_large_x1.0).
 - Two head sizes (preset arrow.heads): standard (ChemDraw's default) and large; each arrow
   takes the preset's arrow.default_head unless `variant` names one (Preset.head).
 
-Resonance arrows (acs-style.md §4.1; resonance_x*): the same head at both ends, and the shaft
+Resonance arrows (style-spec.md §4.1; resonance_x*): the same head at both ends, and the shaft
 from shaft_end_from_tip after one tip to shaft_end_from_tip before the other.
 
-Equilibrium arrows (acs-style.md §3.6; equilibrium_x*, arrows_large_x1.0): two shafts
+Equilibrium arrows (style-spec.md §3.6; equilibrium_x*, arrows_large_x1.0): two shafts
 equilibrium.shaft_spacing apart, centered on the tail -> head axis. The forward shaft (left of
 the direction of travel: above for a left-to-right arrow) points at `head`, the back shaft at
 `tail`; each ends in a half head, the outer half of the full head with its tip and notch on
@@ -25,12 +25,12 @@ behind the other's tip; unbalanced (favoring products or reactants), the long sh
 end and the short one is centered on it, its butt -> notch run 1 / ratios.equilibrium_long_per_short
 of the long one's.
 
-Arc arrows (acs-style.md §15.1; arcs_x*): a forward arrow along a circle, tail and tip on it.
+Arc arrows (style-spec.md §15.1; arcs_x*): a forward arrow along a circle, tail and tip on it.
 The notch is on the circle too, head_inset (the chord) back from the tip, and the head is the
 straight head on that chord, so it does not follow the circle. The shaft is the arc from the tail
 to the notch. Its <marker> is turned in its frame by the angle between the arc's end tangent and
 the chord (SVG orients a marker by the tangent), one marker id per turn.
-Arc equilibrium arrows (acs-style.md §15.1; arcs_eq_x*): two concentric shafts
+Arc equilibrium arrows (style-spec.md §15.1; arcs_eq_x*): two concentric shafts
 equilibrium.shaft_spacing apart, the forward one on the left of travel. Unlike a straight one,
 no stagger: each shaft runs from end to end of the arc (its butt on one end, its tip on the
 other). Unbalanced: the long shaft end to end, the short one centered, L / ratio long (butt to
@@ -243,7 +243,7 @@ def notch_x(tail: Point, head: Point, preset: Preset, variant: str | None = None
 
 def conditions_mid(tail: Point, head: Point, preset: Preset, kind: str = "forward", variant: str | None = None) -> float:
     """x the conditions are centered on: tail -> notch for a forward arrow, the middle of an
-    equilibrium arrow (symmetric; unmeasured rule, acs-style.md §3.6)."""
+    equilibrium arrow (symmetric; unmeasured rule, style-spec.md §3.6)."""
     if kind == "forward":
         return (tail[0] + notch_x(tail, head, preset, variant)) / 2
     return (tail[0] + head[0]) / 2

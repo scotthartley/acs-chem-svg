@@ -1,4 +1,4 @@
-"""M4 exact items vs ChemDraw (acs-style.md §4.1), within 0.1 pt, at all three presets.
+"""M4 exact items vs ChemDraw (style-spec.md §4.1), within 0.1 pt, at all three presets.
 
 Each resonance reference is redrawn on ChemDraw's page (compare.render_reference): structures
 from templates/m4/, our double-headed arrows at ChemDraw's tips (arrows.resonance_arrow) and

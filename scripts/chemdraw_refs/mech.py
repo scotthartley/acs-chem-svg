@@ -1,11 +1,11 @@
-"""Mechanism parameters per preset: curved arrows, lone pairs, radicals (acs-style.md §4)."""
+"""Mechanism parameters per preset: curved arrows, lone pairs, radicals (style-spec.md §4)."""
 
 from __future__ import annotations
 
 import math
 from pathlib import Path
 
-from acs_chem_svg.geometry import add, dot, length, mul, sub, unit
+from chem_svg_cdxml.geometry import add, dot, length, mul, sub, unit
 
 from .core import REF_DIR, _box_center, frame, label_glyphs, load, stats, union
 from .measurements import measure
@@ -51,7 +51,7 @@ def _elem_box(doc, atom):
 
 
 def mech_summary(name: str, ref_dir: Path = REF_DIR) -> dict:
-    """Mechanism parameters from one mech_basic file (acs-style.md §4): exact dot and
+    """Mechanism parameters from one mech_basic file (style-spec.md §4): exact dot and
     curved-arrow geometry, and the hand-placed positions (lone-pair gaps, radical distances,
     curved-arrow tails, heads and shape)."""
     doc = load(name, ref_dir)

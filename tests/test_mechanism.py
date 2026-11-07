@@ -1,4 +1,4 @@
-"""Mechanism layout (draw_mol dots, mechanism.py arrows, acs-style.md §4.2) and checks."""
+"""Mechanism layout (draw_mol dots, mechanism.py arrows, style-spec.md §4.2) and checks."""
 
 import math
 from dataclasses import replace
@@ -8,19 +8,19 @@ from pathlib import Path
 import pytest
 from validate import validate
 
-from acs_chem_svg import chem
-from acs_chem_svg.draw_mol import Drawer
-from acs_chem_svg.geometry import (add, angle_deg, dot, length, mul, perp, point_box_dist, segment_box_dist,
+from chem_svg_cdxml import chem
+from chem_svg_cdxml.draw_mol import Drawer
+from chem_svg_cdxml.geometry import (add, angle_deg, dot, length, mul, perp, point_box_dist, segment_box_dist,
                                    segment_distance, sub, unit)
-from acs_chem_svg.geometry_checks import check_mechanism
-from acs_chem_svg.layout import arrow_parts, build_scheme
-from acs_chem_svg.mechanism import (ARC_HANDLES, FARTHER, MISS_DEG, TANGENT_CLEAR_LABEL, TANGENT_MAX_LENGTH, TANGENT_MIN_TURN, aims,
+from chem_svg_cdxml.geometry_checks import check_mechanism
+from chem_svg_cdxml.layout import arrow_parts, build_scheme
+from chem_svg_cdxml.mechanism import (ARC_HANDLES, FARTHER, MISS_DEG, TANGENT_CLEAR_LABEL, TANGENT_MAX_LENGTH, TANGENT_MIN_TURN, aims,
                                     curve_shape, fishhook_side, miss, species_parts, stroke_clear, stroke_length,
                                     tangent_barb_stable, tangent_clear)
-from acs_chem_svg.preset import load_preset
-from acs_chem_svg.scene import Circle
-from acs_chem_svg.spec import Spec, load_spec
-from acs_chem_svg.svg_writer import to_svg
+from chem_svg_cdxml.preset import load_preset
+from chem_svg_cdxml.scene import Circle
+from chem_svg_cdxml.spec import Spec, load_spec
+from chem_svg_cdxml.svg_writer import to_svg
 
 EX = Path(__file__).resolve().parents[1] / "examples"
 M3 = sorted(p.stem for p in (EX / "m3").glob("m3_*.yaml"))
@@ -119,7 +119,7 @@ def test_overrides_flip_the_bow():
     import yaml
     spec = yaml.safe_load((EX / "m3" / "m3_sn2_x1.0.yaml").read_text())
     spec["overrides"] = {"arrows": [{"step": 1, "index": 0, "bow": "right"}]}
-    from acs_chem_svg.spec import Spec
+    from chem_svg_cdxml.spec import Spec
     lay = build_scheme(Spec.model_validate(spec), EX, "sn2_flipped")
     a = lay.curved[0]
     assert a.c1[1] > a.p0[1]  # tail -> head runs rightward, so its right-hand side is down
@@ -222,7 +222,7 @@ def test_short_hook_shows_its_stroke(stem):
     # pt, so a chord-sized hook was a bare head. Its tip slides along the bond away from C, the
     # stroke leaves along the pair's direction and shows at least MIN_STROKE head lengths
     # (user decisions 2026-10-29)
-    from acs_chem_svg.mechanism import MIN_STROKE, stroke_shown
+    from chem_svg_cdxml.mechanism import MIN_STROKE, stroke_shown
     lay = scheme(stem)
     pr = lay.preset
     a = next(x for x in lay.curved if x.step == 2 and x.spec.from_ == "lp(4)")
@@ -261,7 +261,7 @@ def test_chair_e2_hook_crosses_only_the_ring():
                                         ((1.0, 0.0), (0.0, 1.0), 4.0)])
 def test_excursion_controls_reach(d, t1, reach):
     # the apex stands `reach` off the chord; the ends leave along d and arrive along t1
-    from acs_chem_svg.mechanism import apex, excursion_controls
+    from chem_svg_cdxml.mechanism import apex, excursion_controls
     tail, end = (0.0, 0.0), (3.0, 0.5)
     c1, c2 = excursion_controls(tail, d, end, t1, reach)
     assert apex(tail, c1, c2, end) == pytest.approx(reach, abs=0.01)
@@ -387,7 +387,7 @@ def test_ring_carbanion_pair_on_bisector_charge_beside(rotate):
 
 def _old_head(c1, c2, p3, kind, p):
     """The curved-arrow head as mechanism.head_polygon built it before markers."""
-    from acs_chem_svg.geometry import perp
+    from chem_svg_cdxml.geometry import perp
     ca = p.curved_arrow
     c_last = c2 if length(sub(p3, c2)) > 1e-6 else c1
     t = unit(sub(p3, c_last))
@@ -413,7 +413,7 @@ CURVES = {"up": ((0.0, 0.0), (6.0, -22.0), (30.0, -22.0), (38.0, -2.0)),
 @pytest.mark.parametrize("kind", ["two_electron", "fishhook"])
 @pytest.mark.parametrize("curve", sorted(CURVES))
 def test_curved_head_marker_places_the_old_head(curve, kind):
-    from acs_chem_svg.mechanism import curved_arrow, head_polygon
+    from chem_svg_cdxml.mechanism import curved_arrow, head_polygon
     p0, c1, c2, p3 = CURVES[curve]
     (stroke,) = curved_arrow(p0, c1, c2, p3, kind, P).children
     (head,) = stroke.head_leaves()
@@ -424,7 +424,7 @@ def test_curved_head_marker_places_the_old_head(curve, kind):
 
 
 def test_fishhook_markers_take_both_sides():
-    from acs_chem_svg.mechanism import head_marker
+    from chem_svg_cdxml.mechanism import head_marker
     ids = {head_marker(*CURVES[c][1:], "fishhook", P).id for c in ("up", "down")}
     assert ids == {"acs1996-head-fishhook-left", "acs1996-head-fishhook-right"}
 
@@ -525,7 +525,7 @@ def test_arrow_within_the_substrate_may_not_cross_its_reaction_arrow():
     assert any("curved-arrow-step-5-0 crosses arrow-step-5" in p for p in check_mechanism(lay))
 
 
-# --- tangent arrows: set by their end directions, a C or an S (acs-style.md §4.2) ---
+# --- tangent arrows: set by their end directions, a C or an S (style-spec.md §4.2) ---
 
 
 def _curved(stem, step, index=0):
@@ -622,7 +622,7 @@ def test_shape_tangent_rules_out_curvature():
 
 
 def test_shape_tangent_without_a_curve_says_so(monkeypatch):
-    monkeypatch.setattr("acs_chem_svg.mechanism.TANGENT_MIN_RADIUS", 1e6)
+    monkeypatch.setattr("chem_svg_cdxml.mechanism.TANGENT_MIN_RADIUS", 1e6)
     with pytest.raises(ValueError, match="shape tangent"):
         _with_override("m3_sn2_x1.0", shape="tangent")
 

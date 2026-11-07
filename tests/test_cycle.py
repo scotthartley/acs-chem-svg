@@ -1,4 +1,4 @@
-"""Catalytic cycles (acs-style.md §15): the circle solver, arc arrows, tails and the spec."""
+"""Catalytic cycles (style-spec.md §15): the circle solver, arc arrows, tails and the spec."""
 
 import math
 from pathlib import Path
@@ -6,12 +6,12 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from acs_chem_svg.arrows import arc_arrow, arc_equilibrium_arrow
-from acs_chem_svg.cycle import _box_at, _gap, arc_ends, build_cycle, check_cycle, solve, tail_items
-from acs_chem_svg.geometry import arc_point, length, point_box_dist, sub
-from acs_chem_svg.figure import render_spec
-from acs_chem_svg.preset import load_preset
-from acs_chem_svg.spec import CycleTail, Spec, load_spec
+from chem_svg_cdxml.arrows import arc_arrow, arc_equilibrium_arrow
+from chem_svg_cdxml.cycle import _box_at, _gap, arc_ends, build_cycle, check_cycle, solve, tail_items
+from chem_svg_cdxml.geometry import arc_point, length, point_box_dist, sub
+from chem_svg_cdxml.figure import render_spec
+from chem_svg_cdxml.preset import load_preset
+from chem_svg_cdxml.spec import CycleTail, Spec, load_spec
 
 ROOT = Path(__file__).resolve().parents[1]
 EXAMPLES = sorted((ROOT / "examples" / "m6").glob("m6_*_cycle_x*.yaml"))
@@ -81,7 +81,7 @@ def test_labels_grow_the_radius_and_stay_clear():
     R0, R1 = _radius(halves), _radius(halves, labels=labels)
     assert R1 > R0
     R, (th, al, _) = solve(halves, 40.0, P, -1.0, labels)
-    from acs_chem_svg.cycle import _label_line
+    from chem_svg_cdxml.cycle import _label_line
     boxes = [_label_line(t, R, a0, a1, P, k).ink() for k, (t, (a0, a1)) in enumerate(zip(labels, arc_ends(th, al, -1.0)))]
     species = [_box_at(h, arc_point((0.0, 0.0), R, t)) for t, h in zip(th, halves)]
     assert all(_gap(a, b) >= P.cycle.label_clear - 1e-6 for a in boxes for b in species)

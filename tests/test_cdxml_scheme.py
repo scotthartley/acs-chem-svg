@@ -1,4 +1,4 @@
-"""CDXML export, phase 2 (acs-style.md §13.1): M2 schemes.
+"""CDXML export, phase 2 (style-spec.md §13.1): M2 schemes.
 
 - Scheme round trip: each scheme reference rebuilt as a CdxScheme at ChemDraw's coordinates
   (templates; arrows from its Head3D / Tail3D; captions set by richtext at its glyph origins;
@@ -15,7 +15,7 @@ from compare import preset_for
 from lxml import etree
 
 import measure_refs as mr
-from acs_chem_svg.preset import load_preset
+from chem_svg_cdxml.preset import load_preset
 
 from cdxml_helpers import (
     PARSER, TOL, _check_structure, _floats, _text, check_scheme_round_trip, exported, needs_dtd, needs_refs,
@@ -27,7 +27,7 @@ SCHEME_REFS = [f"{k}_x{s}" for k in ("scheme_basic", "scheme_multi", "scheme_wra
                for s in ("1.0", "0.8", "0.6")]
 SCHEME_SPECS = ([f"examples/m2/m2_{k}_x{s}.yaml" for k in ("scheme_basic", "equilibrium") for s in ("1.0", "0.8", "0.6")]
                 + ["examples/m2/m2_stages_x1.0.yaml", "examples/m2/m2_stages3_x1.0.yaml", "examples/m2/m2_suzuki_x1.0.yaml"])
-# ChemDraw values the rules (acs-style.md §13.1) don't reproduce, with their measured size
+# ChemDraw values the rules (style-spec.md §13.1) don't reproduce, with their measured size
 KNOWN = {
     ("scheme_basic_x0.6", "arrow box", 1): 0.35,  # pad above the axis 0.18, not 0.5
     ("scheme_wrap_x0.6", "arrow box", 1): 0.35,  # the same
@@ -138,7 +138,7 @@ def test_cdxml_head_attrs_match_preset_heads():
 
 @needs_refs
 def test_cdxml_arrow_conventions_hold_in_references():
-    """The rules the writer applies (acs-style.md §13.1), on every scheme reference's arrows:
+    """The rules the writer applies (style-spec.md §13.1), on every scheme reference's arrows:
     Center3D the midpoint, MajorAxisEnd3D = center + (head - tail), MinorAxisEnd3D turned 90°,
     the box's half width from ArrowheadWidth / ArrowShaftSpacing, and the pad, all to 0.02 pt,
     except arrows_large_x1.0's balanced arrow (minor axis 28.8 long, a copied arrow's) and the

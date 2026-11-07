@@ -6,8 +6,8 @@ import math
 import re
 import statistics
 
-from acs_chem_svg.fontmetrics import load_face
-from acs_chem_svg.geometry import (
+from chem_svg_cdxml.fontmetrics import load_face
+from chem_svg_cdxml.geometry import (
     add, convex_hull, dot, length, mul, ray_box_gap, ray_polygon, seg_seg_dist, sub, unit,
 )
 
@@ -405,7 +405,7 @@ def _half_head_geometry(lp, tip, d, vc, o):
 
 
 def _equilibrium_entry(doc, arr):
-    """Equilibrium arrow (acs-style.md §3.6): two straight shafts parallel to Tail3D -> Head3D,
+    """Equilibrium arrow (style-spec.md §3.6): two straight shafts parallel to Tail3D -> Head3D,
     each with a filled half head (curved polygon) at one end. Per shaft: center offset v from the
     CDXML axis, width, tip and butt along the axis (u from Tail3D), direction (forward: tip
     toward Head3D) and its half head (_half_head_geometry). Per arrow: shaft spacing (center to
@@ -644,7 +644,7 @@ def _rows(structs: dict) -> list[set]:
 
 
 def _scheme(doc, arrows: list[dict]):
-    """Scheme layout (acs-style.md §3): each caption is assigned to an arrow (horizontal overlap,
+    """Scheme layout (style-spec.md §3): each caption is assigned to an arrow (horizontal overlap,
     then nearest in y), a plus sign or a compound number; structures are grouped in rows.
     `arrows` are the _arrow_entry records (they carry the measured head inset)."""
     structs = _structures(doc)

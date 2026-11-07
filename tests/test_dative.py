@@ -8,10 +8,10 @@ import pytest
 from lxml import etree
 from rdkit import Chem
 
-from acs_chem_svg import chem, electrons
-from acs_chem_svg.figure import spec_cdxml
-from acs_chem_svg.preset import load_preset
-from acs_chem_svg.spec import CurvedArrow
+from chem_svg_cdxml import chem, electrons
+from chem_svg_cdxml.figure import spec_cdxml
+from chem_svg_cdxml.preset import load_preset
+from chem_svg_cdxml.spec import CurvedArrow
 
 P = load_preset("acs1996")
 PD0 = "CP(C)(C)->[Pd]<-P(C)(C)C"

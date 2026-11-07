@@ -1,11 +1,11 @@
-"""Typed access to presets/*.yaml (design.md §3, references/acs-style.md).
+"""Typed access to presets/*.yaml (design.md §3, references/style-spec.md).
 
 Values are used as written; nothing is derived from `scale` here. The `exempt`,
 `nonlinear`, `assumed_exempt`, `approx` and `placement` lists document how each value
 relates to the x1.0 preset (tests/test_presets.py checks them); the renderer does not read them.
 `placement` keys are round defaults (0.5 pt grid) for hand-placed positions. `derived` is empty in
 the measured ACS presets; a preset built from a style probe (scripts/new_preset.py) lists there the
-values carried over from acs1996 instead of measured (acs-style.md §16).
+values carried over from acs1996 instead of measured (style-spec.md §16).
 """
 
 from __future__ import annotations
@@ -53,7 +53,7 @@ class Ratios(_Section):
     superscript_raise_per_size: float
     arrow_back_control_per_half_width: float
     equilibrium_long_per_short: float
-    crossing_clearance_per_margin: float  # rear-bond cut beyond the front bond's half-extent (acs-style.md §14.2)
+    crossing_clearance_per_margin: float  # rear-bond cut beyond the front bond's half-extent (style-spec.md §14.2)
 
 
 class Angles(_Section):
@@ -162,7 +162,7 @@ class Scheme(_Section):
 
 
 class Cycle(_Section):
-    """Catalytic-cycle placement (acs-style.md §15.2): unmeasured defaults, pt unless noted."""
+    """Catalytic-cycle placement (style-spec.md §15.2): unmeasured defaults, pt unless noted."""
     clear: float
     tail_room: float
     tail_join_in: float  # fraction of the arc
@@ -176,7 +176,7 @@ class Cycle(_Section):
 
 
 class Chair(_Section):
-    """ChemDraw's chair template (acs-style.md §14.1). The flipped chair is its exact mirror: its
+    """ChemDraw's chair template (style-spec.md §14.1). The flipped chair is its exact mirror: its
     vertex k mirrors vertex (4 - k) mod 6 of `vertices` (0-based). ChemDraw's own flipped template
     is not quite a mirror and is not used."""
     vertices: list[tuple[float, float]]  # pt from vertex 1, y down
@@ -186,13 +186,13 @@ class Chair(_Section):
 
 
 class Cdxml(_Section):
-    charge_box_dx: float  # charge <graphic> BoundingBox second point, center x minus this (acs-style.md §13)
+    charge_box_dx: float  # charge <graphic> BoundingBox second point, center x minus this (style-spec.md §13)
     circled_box_dx: float  # the same for CirclePlus / CircleMinus (charges_lewis_x*; ChemDraw sizes the ring from it)
     electron_box_dx: float  # radical <graphic> (Electron) BoundingBox second point, dot x minus this (§13.2)
     lone_pair_box_reach: float  # fragment BoundingBox beyond a lone-pair dot center (§13.2)
     electron_box_reach: float  # fragment BoundingBox beyond a radical dot center (§13.2)
     arrow_heads: dict[str, tuple[int, int, int]]  # head variant -> HeadSize, ArrowheadCenterSize, ArrowheadWidth (§13.1)
-    arrow_box_pad: float  # <arrow> BoundingBox: extra on the sides ChemDraw pads (acs-style.md §13.1)
+    arrow_box_pad: float  # <arrow> BoundingBox: extra on the sides ChemDraw pads (style-spec.md §13.1)
     resonance_box_pad: float  # ↔ <arrow> BoundingBox: extra on both sides (§13.3)
     bracket_lip_size: int  # bracket <graphic> LipSize (§13.3)
     h_above_rise: float  # how far an H-above label's <t> p.y is above the usual first-line y (nh_x*, §2)

@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from acs_chem_svg import chem, electrons
-from acs_chem_svg.spec import CurvedArrow, load_spec, parsed_species
+from chem_svg_cdxml import chem, electrons
+from chem_svg_cdxml.spec import CurvedArrow, load_spec, parsed_species
 
 ROOT = Path(__file__).resolve().parents[1]
 

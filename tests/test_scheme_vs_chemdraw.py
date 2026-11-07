@@ -1,4 +1,4 @@
-"""M2 exact items vs ChemDraw (acs-style.md §3), within 0.1 pt, at all three presets.
+"""M2 exact items vs ChemDraw (style-spec.md §3), within 0.1 pt, at all three presets.
 
 Each scheme reference is redrawn on ChemDraw's page (compare.render_reference): structures
 from templates/m2/, our reaction arrows at ChemDraw's tail and head, and every caption line
@@ -16,7 +16,7 @@ import measure_refs as mr
 
 pytestmark = pytest.mark.skipif(not mr.REF_DIR.exists(),
                                 reason="ChemDraw references (reference_renders/) are local only")
-from acs_chem_svg import fontmetrics
+from chem_svg_cdxml import fontmetrics
 
 TOL = 0.1
 REFS = ["scheme_basic_x1.0", "scheme_basic_x0.8", "scheme_basic_x0.6",

@@ -1,6 +1,6 @@
 # M1 abbreviations in both forms, from SMILES without orientation: a group whose bond leaves to
 # the right is set right-justified in ChemDraw's reversed text (MeO, MeO2C, O2N, F3C; TMS and Ph
-# unchanged), the last letter centered on the atom (acs-style.md §3.5, abbrev_x*).
+# unchanged), the last letter centered on the atom (style-spec.md §3.5, abbrev_x*).
 preset: acs1996
 species:
   ester: {smiles: "COC(=O)c1ccc(Br)cc1", abbreviate: [CO2Me]}

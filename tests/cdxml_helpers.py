@@ -1,4 +1,4 @@
-"""Shared by the CDXML export tests (test_cdxml_*.py; acs-style.md §13–§13.4): the DTD check,
+"""Shared by the CDXML export tests (test_cdxml_*.py; style-spec.md §13–§13.4): the DTD check,
 cached exports, and the node-pairing helpers the reference diffs use.
 
 - DTD: reference_renders/cdxml/CDXML.dtd (Revvity's file, fetched once from the DOCTYPE URL;
@@ -18,12 +18,12 @@ from rdkit import Chem, RDLogger
 from rdkit.Chem import rdChemReactions
 
 import measure_refs as mr
-from acs_chem_svg.cdxml_writer import to_cdxml
-from acs_chem_svg.figure import spec_cdxml
-from acs_chem_svg.chem import ABBREVIATIONS
-from acs_chem_svg.draw_mol import Drawer
-from acs_chem_svg.geometry import sub
-from acs_chem_svg.spec import ResonanceStep, load_spec, resolve_molfile
+from chem_svg_cdxml.cdxml_writer import to_cdxml
+from chem_svg_cdxml.figure import spec_cdxml
+from chem_svg_cdxml.chem import ABBREVIATIONS
+from chem_svg_cdxml.draw_mol import Drawer
+from chem_svg_cdxml.geometry import sub
+from chem_svg_cdxml.spec import ResonanceStep, load_spec, resolve_molfile
 
 
 DTD_PATH = mr.REPO / "reference_renders" / "cdxml" / "CDXML.dtd"  # Revvity's: local only, never committed
@@ -315,7 +315,7 @@ def scheme_pairs(ref: str) -> tuple[list[str], list[tuple[str, str, float, float
         if f.get("id") in doc.text_frags:
             tobj[f.get("id")] = f.find("n").find("t")
     # the lines of their stacked captions as drawn: we write one <t> per line where a line has a
-    # sub- or superscript (acs-style.md §13.1), each paired with its line: p on its drawn
+    # sub- or superscript (style-spec.md §13.1), each paired with its line: p on its drawn
     # baseline, box its ink
     their_lines = {}
     for cap in doc.captions:

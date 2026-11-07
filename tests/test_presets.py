@@ -5,9 +5,9 @@ from pathlib import Path
 import pytest
 import yaml
 
-from acs_chem_svg import fontmetrics
-from acs_chem_svg.cdxml_writer import HEADER_DIR
-from acs_chem_svg.preset import available, load_preset
+from chem_svg_cdxml import fontmetrics
+from chem_svg_cdxml.cdxml_writer import HEADER_DIR
+from chem_svg_cdxml.preset import available, load_preset
 
 PRESETS = Path(__file__).resolve().parents[1] / "presets"
 # dimensionless placement defaults (control offset / chord): the same in every preset
@@ -42,7 +42,7 @@ def test_fallback_faces_load(sub):
 def test_system_helvetica_faces_load(sub):
     face = fontmetrics.load_system_helvetica(sub)
     assert (face.family, face.subfamily) == ("Helvetica", sub)
-    if sub == "Regular":  # labels (Regular) hang from cap height / 2 (acs-style.md §2)
+    if sub == "Regular":  # labels (Regular) hang from cap height / 2 (style-spec.md §2)
         assert face.cap_height(10) / 2 == pytest.approx(3.586, abs=0.01)
 
 

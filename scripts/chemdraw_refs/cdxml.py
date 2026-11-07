@@ -1,4 +1,4 @@
-"""CDXML conventions: charge-symbol boxes, Lewis references, captions, arrows, steps (acs-style.md §13)."""
+"""CDXML conventions: charge-symbol boxes, Lewis references, captions, arrows, steps (style-spec.md §13)."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from pathlib import Path
 
 from lxml import etree
 
-from acs_chem_svg.geometry import length, sub
+from chem_svg_cdxml.geometry import length, sub
 
 from .core import Doc, REF_DIR, _xy, load, union
 from .measurements import _brackets, _caption_glyphs, measure, text_lines

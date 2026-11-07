@@ -8,7 +8,7 @@ only after approval run `scripts/gallery.py --update` (CLAUDE.md).
 import pytest
 from gallery import GALLERY, alpha, canonical, cases, cdxml_cases, png
 
-from acs_chem_svg import fontmetrics
+from chem_svg_cdxml import fontmetrics
 
 pytestmark = pytest.mark.skipif(not fontmetrics.SYSTEM_HELVETICA.exists(),
                                 reason="gallery was rendered with system Helvetica")

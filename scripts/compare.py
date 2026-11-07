@@ -49,19 +49,19 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import measure_refs as mr  # noqa: E402
 from cdxml_to_molfile import fragments, front_path, ids_path, template_path  # noqa: E402
 
-from acs_chem_svg import chem, richtext  # noqa: E402
-from acs_chem_svg.arrows import equilibrium_arrow, reaction_arrow, resonance_arrow  # noqa: E402
-from acs_chem_svg.brackets import square_bracket  # noqa: E402
-from acs_chem_svg.cdxml_writer import CdxArrow, CdxBracket, CdxCurve, CdxScheme, CdxStep, CdxText  # noqa: E402
-from acs_chem_svg.draw_mol import Drawer  # noqa: E402
-from acs_chem_svg.preset import Preset, load_preset  # noqa: E402
-from acs_chem_svg.preview import compare_png, rasterize_file, zoom_crops  # noqa: E402
-from acs_chem_svg.geometry import add, length, mul, sub, unit  # noqa: E402
-from acs_chem_svg.layout import build_scheme  # noqa: E402
-from acs_chem_svg.mechanism import curved_arrow  # noqa: E402
-from acs_chem_svg.scene import Circle, Group  # noqa: E402
-from acs_chem_svg.spec import load_spec  # noqa: E402
-from acs_chem_svg.svg_writer import to_svg  # noqa: E402
+from chem_svg_cdxml import chem, richtext  # noqa: E402
+from chem_svg_cdxml.arrows import equilibrium_arrow, reaction_arrow, resonance_arrow  # noqa: E402
+from chem_svg_cdxml.brackets import square_bracket  # noqa: E402
+from chem_svg_cdxml.cdxml_writer import CdxArrow, CdxBracket, CdxCurve, CdxScheme, CdxStep, CdxText  # noqa: E402
+from chem_svg_cdxml.draw_mol import Drawer  # noqa: E402
+from chem_svg_cdxml.preset import Preset, load_preset  # noqa: E402
+from chem_svg_cdxml.preview import compare_png, rasterize_file, zoom_crops  # noqa: E402
+from chem_svg_cdxml.geometry import add, length, mul, sub, unit  # noqa: E402
+from chem_svg_cdxml.layout import build_scheme  # noqa: E402
+from chem_svg_cdxml.mechanism import curved_arrow  # noqa: E402
+from chem_svg_cdxml.scene import Circle, Group  # noqa: E402
+from chem_svg_cdxml.spec import load_spec  # noqa: E402
+from chem_svg_cdxml.svg_writer import to_svg  # noqa: E402
 
 OUT = mr.REPO / "build" / "compare"
 ARROW_HEADS = {"1000": "standard", "1500": "large"}  # CDXML HeadSize -> preset arrow.heads variant
@@ -106,7 +106,7 @@ def render_reference(name: str, preset_name: str | None = None) -> Rendered:
         if ids_path(name, n).exists():  # CDXML ids above 999 (V2000 atom maps hold 3 digits)
             for a, aid in zip(mol.atoms, json.loads(ids_path(name, n).read_text())):
                 a.id = aid
-        if front_path(name, n).exists():  # crossings: ChemDraw's front bonds (higher Z), acs-style.md §14.2
+        if front_path(name, n).exists():  # crossings: ChemDraw's front bonds (higher Z), style-spec.md §14.2
             ids = {a.id: a.idx for a in mol.atoms}
             pairs = {frozenset(ids[i] for i in p) for p in json.loads(front_path(name, n).read_text())}
             mol.front = [b.idx for b in mol.bonds if frozenset((b.a, b.b)) in pairs]
@@ -377,7 +377,7 @@ def images(r: Rendered) -> list[Path]:
     ref_svg = (mr.REF_DIR / f"{r.name}.svg").read_text()
     w, h = r.ref.svg_size
     cmp = compare_png(ref_svg, r.svg, w, h, OUT / f"{r.name}_compare.png",
-                      labels=(f"ChemDraw 26.1 ({r.name})", f"acs-chem-svg ({r.preset.name})"))
+                      labels=(f"ChemDraw 26.1 ({r.name})", f"chem-svg-cdxml ({r.preset.name})"))
     boxes = [b for fid, b in r.ref.fragments.items()
              if any(a.frag == fid and not a.nickname for a in r.ref.atoms.values())]
     if r.name.startswith(ARROWS_ONLY):  # both ends of every arrow
@@ -425,7 +425,7 @@ def _row(label, a, b):
 
 
 def resonance_report(ours: mr.Doc, ref_name: str) -> None:
-    """Resonance placement (acs-style.md §4.3), ours vs ChemDraw: arrow lengths and gaps,
+    """Resonance placement (style-spec.md §4.3), ours vs ChemDraw: arrow lengths and gaps,
     bracket gaps."""
     r, o = mr.resonance_summary(ref_name), mr.resonance_summary(ours)
     print(f"\n== our layout vs {ref_name}: resonance placement (approx; no tolerance)")
@@ -438,7 +438,7 @@ def resonance_report(ours: mr.Doc, ref_name: str) -> None:
 
 
 def wrap_report(ours: mr.Doc, ref_name: str) -> None:
-    """Multi-row items (acs-style.md §3.4), ours vs ChemDraw: row widths, the row gap and the
+    """Multi-row items (style-spec.md §3.4), ours vs ChemDraw: row widths, the row gap and the
     left alignment."""
     r, o = mr.wrap_summary(ref_name), mr.wrap_summary(ours)
     print(f"\n== our layout vs {ref_name}: rows (approx; no tolerance)")

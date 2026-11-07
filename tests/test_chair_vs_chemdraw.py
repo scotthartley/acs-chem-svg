@@ -1,4 +1,4 @@
-"""Chairs and crossings vs ChemDraw (chair_x*: acs-style.md §14), within 0.1 pt.
+"""Chairs and crossings vs ChemDraw (chair_x*: style-spec.md §14), within 0.1 pt.
 
 Our drawing of each chair_x* template (templates/chair/, front bonds from ChemDraw's Z order) is
 measured by the same code as ChemDraw's (scripts/measure_refs.py): the M1 items

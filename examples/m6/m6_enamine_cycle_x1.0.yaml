@@ -1,4 +1,4 @@
-# Proline-catalyzed aldol reaction as a catalytic cycle (acs-style.md §15): four species,
+# Proline-catalyzed aldol reaction as a catalytic cycle (style-spec.md §15): four species,
 # clockwise from proline; two equilibrium steps, tails entering and leaving.
 preset: acs1996
 species:

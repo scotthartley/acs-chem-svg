@@ -1,4 +1,4 @@
-"""M3 exact items vs ChemDraw (acs-style.md §4.1), within 0.1 pt, at all three presets.
+"""M3 exact items vs ChemDraw (style-spec.md §4.1), within 0.1 pt, at all three presets.
 
 Each mech_basic reference is redrawn on ChemDraw's page (compare.render_reference): structures
 from templates/m3/, our curved arrows on ChemDraw's CurvePoints (mechanism.curved_arrow), and
@@ -16,7 +16,7 @@ import measure_refs as mr
 
 pytestmark = pytest.mark.skipif(not mr.REF_DIR.exists(),
                                 reason="ChemDraw references (reference_renders/) are local only")
-from acs_chem_svg.geometry import length, sub
+from chem_svg_cdxml.geometry import length, sub
 
 TOL = 0.1
 REFS = ["mech_basic_x1.0", "mech_basic_x0.8", "mech_basic_x0.6"]

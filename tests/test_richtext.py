@@ -1,9 +1,9 @@
-"""Rich-text parsing and line layout (richtext.py, acs-style.md §3)."""
+"""Rich-text parsing and line layout (richtext.py, style-spec.md §3)."""
 
 import pytest
 
-from acs_chem_svg import richtext
-from acs_chem_svg.preset import load_preset
+from chem_svg_cdxml import richtext
+from chem_svg_cdxml.preset import load_preset
 
 P = load_preset("acs1996")
 

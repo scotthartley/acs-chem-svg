@@ -1,4 +1,4 @@
-"""Arc arrows vs ChemDraw (acs-style.md §15.1), within 0.1 pt, at all three presets.
+"""Arc arrows vs ChemDraw (style-spec.md §15.1), within 0.1 pt, at all three presets.
 
 Each arcs_x* arrow is redrawn on ChemDraw's circle (measure_refs.arc_circle: from Head3D,
 Tail3D and the signed AngularSize, which Center3D matches), with the head
@@ -16,9 +16,9 @@ import pytest
 from lxml import etree
 
 import measure_refs as mr
-from acs_chem_svg.arrows import arc_arrow
-from acs_chem_svg.geometry import length, sub
-from acs_chem_svg.preset import load_preset
+from chem_svg_cdxml.arrows import arc_arrow
+from chem_svg_cdxml.geometry import length, sub
+from chem_svg_cdxml.preset import load_preset
 
 pytestmark = pytest.mark.skipif(not mr.REF_DIR.exists(),
                                 reason="ChemDraw references (reference_renders/) are local only")
@@ -100,7 +100,7 @@ def test_arc_equilibrium_vs_chemdraw(ref):
     """Each arcs_eq_x* equilibrium arrow (not ChemDraw's elliptical glitches) redrawn on its
     circle (arrows.arc_step_arrow): per shaft, its offset from the circle, butt and notch along
     it, and every head point's distance to ChemDraw's head."""
-    from acs_chem_svg.arrows import arc_step_arrow
+    from chem_svg_cdxml.arrows import arc_step_arrow
     preset = load_preset(EQ_REFS[ref])
     bad, n = [], 0
     for x in mr.arc_eq_arrows(ref):

@@ -5,8 +5,8 @@ from pathlib import Path
 import render
 from render import main
 
-from acs_chem_svg.cdxml_writer import CdxmlUnsupported
-from acs_chem_svg.figure import Figure
+from chem_svg_cdxml.cdxml_writer import CdxmlUnsupported
+from chem_svg_cdxml.figure import Figure
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEME = ROOT / "examples" / "m3" / "m3_carbonyl_addition_x1.0.yaml"

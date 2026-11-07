@@ -1,4 +1,4 @@
-"""CDXML export, phase 3 (acs-style.md §13.2): M3 mechanisms (mech_basic_x* round trip: curves,
+"""CDXML export, phase 3 (style-spec.md §13.2): M3 mechanisms (mech_basic_x* round trip: curves,
 dot symbols; M3 specs).
 """
 
@@ -9,10 +9,10 @@ from lxml import etree
 from rdkit import Chem
 
 import measure_refs as mr
-from acs_chem_svg.cdxml_writer import to_cdxml
-from acs_chem_svg.figure import spec_cdxml
-from acs_chem_svg.geometry import sub
-from acs_chem_svg.preset import load_preset
+from chem_svg_cdxml.cdxml_writer import to_cdxml
+from chem_svg_cdxml.figure import spec_cdxml
+from chem_svg_cdxml.geometry import sub
+from chem_svg_cdxml.preset import load_preset
 
 from cdxml_helpers import (
     PARSER, TOL, _canonical, _check_structure, _floats, _near, _nodes, check_scheme_round_trip, exported,
@@ -165,7 +165,7 @@ def test_fishhook_side_matches_reference():
     """mechanism.fishhook_side gives +1 (cdxml_writer: HalfRight) on every reference fishhook,
     and the writer's ArrowheadHead equals ChemDraw's on every curve."""
     from compare import curve_points
-    from acs_chem_svg.mechanism import fishhook_side
+    from chem_svg_cdxml.mechanism import fishhook_side
     for ref in MECH_REFS:
         hooks = [c for c in mr.load(ref).curves if c["type"] == "32"]
         assert len(hooks) == 2 and all(c["head"] == "HalfRight" for c in hooks)
@@ -177,7 +177,7 @@ def test_fishhook_left_is_half_left():
     """The references' fishhooks turn left on screen (counterclockwise, y down) and are
     HalfRight; one turning right is written HalfLeft, by symmetry (no reference has one; checked
     at the phase 3 gate)."""
-    from acs_chem_svg.cdxml_writer import CdxCurve, CdxScheme
+    from chem_svg_cdxml.cdxml_writer import CdxCurve, CdxScheme
     turns_left = CdxCurve((0.0, 0.0), (10.0, 10.0), (20.0, 10.0), (30.0, 0.0), "fishhook")  # down, then up
     turns_right = CdxCurve((0.0, 0.0), (10.0, -10.0), (20.0, -10.0), (30.0, 0.0), "fishhook")
     heads = []

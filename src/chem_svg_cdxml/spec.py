@@ -222,7 +222,7 @@ class ChargeOptions(BaseModel):
 
 
 class ChairOptions(BaseModel):
-    """Draw the species' six-membered ring as a chair (chair.py, acs-style.md §14.1). Atoms are
+    """Draw the species' six-membered ring as a chair (chair.py, style-spec.md §14.1). Atoms are
     atom-map numbers."""
     model_config = ConfigDict(extra="forbid")
     ring: list[int] | None = None  # the ring's six atoms, when there is more than one six-membered ring
@@ -241,7 +241,7 @@ class ChairOptions(BaseModel):
 
 
 class AbbrevDef(BaseModel):
-    """A spec's own abbreviation (abbrev.py, acs-style.md §3.5). `smiles` with one `*` (the bond
+    """A spec's own abbreviation (abbrev.py, style-spec.md §3.5). `smiles` with one `*` (the bond
     to the rest); none for a text label (drawn through `labels:`). `kind`: group (merges into a
     heteroatom's label: O + Xyz -> OXyz), formula (default with smiles) or text (default without).
     `text`: richtext markup (*t*-Bu); `reversed`: the right-justified text where the rule is wrong."""
@@ -512,7 +512,7 @@ class CycleStep(BaseModel):
 
 
 class Cycle(BaseModel):
-    """A catalytic cycle (references/scheme-schema.md, acs-style.md §15): species on a circle,
+    """A catalytic cycle (references/scheme-schema.md, style-spec.md §15): species on a circle,
     `start` at 12 o'clock, the steps in order round it, the last back to the first."""
     model_config = ConfigDict(extra="forbid")
     start: str | None = None  # default: the first step's `from`

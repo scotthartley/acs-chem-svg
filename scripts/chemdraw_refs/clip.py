@@ -1,4 +1,4 @@
-"""The bond-to-label clip-model fit (acs-style.md §2.1) and the key-parameter summary table."""
+"""The bond-to-label clip-model fit (style-spec.md §2.1) and the key-parameter summary table."""
 
 from __future__ import annotations
 
@@ -57,14 +57,14 @@ def clip_rows(names=None) -> list[dict]:
 
 
 def fit_label_clip(rows=None) -> dict:
-    """Fit the bond-to-label clip model used by draw_mol.clip_distance (acs-style.md §2.1).
+    """Fit the bond-to-label clip model used by draw_mol.clip_distance (style-spec.md §2.1).
 
     A bond stops c x MarginWidth beyond the furthest point, along the bond, of the element
     glyph outline (as ChemDraw placed it) within ±band of the bond axis, with
     band = beta x label size and the outline shifted by (dx, dy) pt. Grid search: fewest
     rows off by more than 0.1 pt, then the worst residual among the rest, then rms.
     """
-    from acs_chem_svg import draw_mol
+    from chem_svg_cdxml import draw_mol
 
     rows = rows if rows is not None else clip_rows()
     best = None

@@ -1,4 +1,4 @@
-"""Rich text for conditions, compound numbers and abbreviation labels (acs-style.md §3).
+"""Rich text for conditions, compound numbers and abbreviation labels (style-spec.md §3).
 
 `parse` turns a plain string into styled runs:
 - digits right after a letter, `)` or a subscripted digit are subscripts (K2CO3, Pd(PPh3)4,
@@ -15,7 +15,7 @@ Everything else is untouched: °C, −78, (4:1), 1,4-, 12 h.
 `layout_line` sets runs as consecutive TextRuns, as ChemDraw does: each style or script change
 starts a new run at the previous run's origin + advance, with no kerning across the boundary
 (scheme_multi_x*: K|2|CO|3, 1. |n|-BuLi). Pair kerning applies within a run (bold "11",
-acs-style.md §5). Sub- and superscript sizes and offsets are preset ratios.
+style-spec.md §5). Sub- and superscript sizes and offsets are preset ratios.
 """
 
 from __future__ import annotations
@@ -154,7 +154,7 @@ def layout_line(text: str | list[Run], x: float, baseline: float, size: float, p
 
 
 def line_pitch(upper: Line, lower: Line, size: float, preset: Preset) -> float:
-    """Baseline to baseline (acs-style.md §3): size + line_pitch_extra, plus fitted increments
+    """Baseline to baseline (style-spec.md §3): size + line_pitch_extra, plus fitted increments
     when the upper or the lower line has a subscript (approx, Open 9)."""
     t = preset.text
     return (size + t.line_pitch_extra + (t.line_pitch_sub_upper if upper.has_sub else 0.0)

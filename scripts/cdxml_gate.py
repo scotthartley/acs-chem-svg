@@ -1,4 +1,4 @@
-"""CDXML export gate (acs-style.md §13): what does ChemDraw recompute when it opens our file?
+"""CDXML export gate (style-spec.md §13): what does ChemDraw recompute when it opens our file?
 
 Step 1 (default): write build/cdxml_gate/<case>.cdxml for the gate cases: the M1 references'
 templates at ChemDraw's own CDXML coordinates (so a re-save can be compared with the original
@@ -17,7 +17,7 @@ Step 3: --diff compares each re-saved file with our export, nodes paired by posi
   by ChemDraw at the same positions (measure_refs): label baselines and anchors, bond ends at
   labels, charge centers. Equal ink means ChemDraw drew our file exactly as its own.
 
-Phase 2 (--phase 2, acs-style.md §13.1; files in build/cdxml_gate/phase2/): the scheme
+Phase 2 (--phase 2, style-spec.md §13.1; files in build/cdxml_gate/phase2/): the scheme
 references' round-trip exports (compare.reference_cdx_scheme) and render.py --cdxml's output for
 M2 specs. By hand in ChemDraw, besides the
 re-saves: select each arrow (do the reaction tools see its reactants and products?), drag a
@@ -29,7 +29,7 @@ reactant, and retype a condition (does it stay in the step?). --diff then report
    original reference's: line pitch of each stacked caption, and the largest glyph origin shift
    (sub- and superscripts included).
 
-Phase 3 (--phase 3, acs-style.md §13.2; files in build/cdxml_gate/phase3/): mech_basic_x1.0 /
+Phase 3 (--phase 3, style-spec.md §13.2; files in build/cdxml_gate/phase3/): mech_basic_x1.0 /
 x0.6 round trips (compare.reference_cdx_scheme) and render.py --cdxml's output for M3 specs
 (two-electron arrows, fishhooks with HalfRight and HalfLeft barbs, an added reactant above its
 arrow, an S-shaped tangent arrows: m3_carbonyl_addition step 1 and, a fishhook, m3_radical_propagation step 1). By hand in ChemDraw, besides the re-saves (CDXML and SVG): drag an atom with dots (do they
@@ -40,7 +40,7 @@ follow?), move a curve, and run Clean Structure on a copy. --diff reports, besid
    (spec cases: tip and head polygon from the layout) or the original reference (reference
    cases), and the drawn dot centers against the centers our symbols declare.
 
-Phase 4a (--phase 4a, acs-style.md §13.3; files in build/cdxml_gate/phase4a/): round trips of
+Phase 4a (--phase 4a, style-spec.md §13.3; files in build/cdxml_gate/phase4a/): round trips of
 abbrev_x1.0 (templates, as phase 1), resonance_x1.0 and scheme_wrap_x1.0 (as phase 2), and
 render.py --cdxml's output for m1_abbrev, m4_resonance, m4_wrap, m4_nitration and m2_sequence.
 By hand in ChemDraw, besides the re-saves (CDXML and SVG): expand and contract a nickname (Edit >
@@ -50,7 +50,7 @@ Expand Label), drag a contributor (do the brackets and ↔ steps hold?), and mov
 9. the brackets: BoundingBox and LipSize (phase 2's <graphic> diff), and any <bracketedgroup>
    or objecttag ChemDraw adds (new elements in the re-save).
 
-Phase 4c (--phase 4c, acs-style.md §13.3; files in build/cdxml_gate/phase4c/): general
+Phase 4c (--phase 4c, style-spec.md §13.3; files in build/cdxml_gate/phase4c/): general
 abbreviations. abbrev_2_x1.0 and ligands_x1.0 round trips (templates, as phase 1) and render.py
 --cdxml's output for m1_abbrev2_x1.0: one of each kind (a reference template, a generated
 fragment for a registry group without a reference and for the spec's own group, OTBS composed,
@@ -64,7 +64,7 @@ Also label_variants_x1.0 (VARIANT_ROWS): Bpin, IPr and P(o-tol)3 with their bond
 four candidate CDXML forms, one per row (user 2026-11-03: row B keeps IPr, row C pinB; cdxml_writer
 now writes those).
 
-Phase 4b (--phase 4b, acs-style.md §13.4; files in build/cdxml_gate/phase4b/): render.py
+Phase 4b (--phase 4b, style-spec.md §13.4; files in build/cdxml_gate/phase4b/): render.py
 --cdxml's output for m1_charges (circled signs, 2+ / 2-, +3, triplet CH2), m1_lewis,
 m1_lewis_lines and m1_lewis_assigned (oxidation states). By hand in ChemDraw, besides the
 re-saves (CDXML and SVG): note any warning, drag a Lewis atom and a charged atom (what follows?).
@@ -82,7 +82,7 @@ every atom labeled; shared pairs as dots (bonds kept but Visible="no") and as bo
 symbol (shared pairs free, assigned and lone pairs bound to their atom), an odd electron an
 Electron.
 
-Phase 5 (--phase 5, acs-style.md §14; files in build/cdxml_gate/phase5/): chair_x1.0's templates
+Phase 5 (--phase 5, style-spec.md §14; files in build/cdxml_gate/phase5/): chair_x1.0's templates
 (as phase 1, with ChemDraw's front bonds) and render.py --cdxml's output for m1_chair_x1.0. We
 write each crossing's rear bond with the lower Z (cdxml_writer.z_order) and no CrossingBonds. By
 hand in ChemDraw, besides the re-saves (CDXML and SVG): does each crossing show its gap on the
@@ -90,7 +90,7 @@ same bond as our SVG, and does moving an atom keep it? --diff reports, besides p
 11. every crossing ChemDraw records (CrossingBonds) with the bond it draws in front (higher Z),
    against ours, by node positions.
 
-Phase 6 (--phase 6, acs-style.md §15.1; files in build/cdxml_gate/phase6/): render.py --cdxml's
+Phase 6 (--phase 6, style-spec.md §15.1; files in build/cdxml_gate/phase6/): render.py --cdxml's
 output for the catalytic cycles (m6_suzuki_cycle_x1.0, m6_enamine_cycle_x1.0). Every arrow and
 tail is a ChemDraw arc arrow (<arrow> with AngularSize, as arcs_x*); an equilibrium arrow is two
 half-headed arcs, an entering tail a headless one (neither is in arcs_x*). By hand in ChemDraw,
@@ -117,13 +117,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import measure_refs as mr  # noqa: E402
 from compare import preset_for, reference_cdx_scheme, render_reference  # noqa: E402
 
-from acs_chem_svg.cdxml_writer import to_cdxml  # noqa: E402
-from acs_chem_svg.figure import spec_cdxml  # noqa: E402
-from acs_chem_svg.draw_mol import Drawer  # noqa: E402
-from acs_chem_svg.geometry import add, dot, length, sub, unit  # noqa: E402
-from acs_chem_svg.layout import build_scheme  # noqa: E402
-from acs_chem_svg.spec import load_spec  # noqa: E402
-from acs_chem_svg.svg_writer import to_svg  # noqa: E402
+from chem_svg_cdxml.cdxml_writer import to_cdxml  # noqa: E402
+from chem_svg_cdxml.figure import spec_cdxml  # noqa: E402
+from chem_svg_cdxml.draw_mol import Drawer  # noqa: E402
+from chem_svg_cdxml.geometry import add, dot, length, sub, unit  # noqa: E402
+from chem_svg_cdxml.layout import build_scheme  # noqa: E402
+from chem_svg_cdxml.spec import load_spec  # noqa: E402
+from chem_svg_cdxml.svg_writer import to_svg  # noqa: E402
 
 OUT = mr.REPO / "build" / "cdxml_gate"
 RESAVES = mr.REPO / "reference_renders" / "resaves"
@@ -191,7 +191,7 @@ _ID_ATTRS = ("id", "B", "E", "Z", "BondOrdering", "ConnectionOrder", "BondCircul
 
 
 def _set_text(t, markup: str) -> None:
-    from acs_chem_svg.cdxml_writer import label_runs
+    from chem_svg_cdxml.cdxml_writer import label_runs
     s0 = t.find("s")
     attrs = dict(s0.attrib)
     for s in list(t):
@@ -319,7 +319,7 @@ LEWIS_PRESETS = {"x1.0": "acs1996", "x0.8": "acs1996_x0.8", "x0.6": "acs1996_x0.
 def lewis_draft(out: Path = OUT / "lewis_draft") -> list[Path]:
     """The charges_lewis draft files (module docstring), one per preset. Never overwrites: the
     user saved the reference over the first draft (2026-10-28)."""
-    from acs_chem_svg.layout import m1_placed
+    from chem_svg_cdxml.layout import m1_placed
     (out / "specs").mkdir(parents=True, exist_ok=True)
     rows_species = (
         ("charges", {k: f'smiles: "{v}"' + (", show_lone_pairs: [1]" if ":1]" in v else "")
@@ -891,7 +891,7 @@ def _crossings(root) -> dict[frozenset, tuple]:
     pairs = {frozenset((b.get("id"), c)) for b in bonds.values() for c in (b.get("CrossingBonds") or "").split()
              if c in bonds}
     if not pairs:
-        from acs_chem_svg.geometry import segments_cross
+        from chem_svg_cdxml.geometry import segments_cross
         items = list(bonds.values())
         for i, b in enumerate(items):
             for c in items[i + 1:]:

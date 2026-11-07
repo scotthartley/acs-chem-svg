@@ -1,5 +1,5 @@
 """M4: resonance steps, several sequences and wrapped rows (spec.py, electrons.py, layout.py,
-arrows.resonance_arrow, brackets; acs-style.md §3.4, §4.3)."""
+arrows.resonance_arrow, brackets; style-spec.md §3.4, §4.3)."""
 
 from functools import lru_cache
 from pathlib import Path
@@ -10,13 +10,13 @@ from pydantic import ValidationError
 from rdkit import Chem
 from validate import validate
 
-from acs_chem_svg.arrows import resonance_arrow
-from acs_chem_svg.brackets import square_bracket
-from acs_chem_svg.electrons import check_resonance
-from acs_chem_svg.layout import build_scheme
-from acs_chem_svg.preset import load_preset
-from acs_chem_svg.scene import TextRun
-from acs_chem_svg.spec import ResonanceStep, Spec, load_spec
+from chem_svg_cdxml.arrows import resonance_arrow
+from chem_svg_cdxml.brackets import square_bracket
+from chem_svg_cdxml.electrons import check_resonance
+from chem_svg_cdxml.layout import build_scheme
+from chem_svg_cdxml.preset import load_preset
+from chem_svg_cdxml.scene import TextRun
+from chem_svg_cdxml.spec import ResonanceStep, Spec, load_spec
 
 REPO = Path(__file__).resolve().parents[1]
 EX = REPO / "examples"

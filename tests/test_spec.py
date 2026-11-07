@@ -3,7 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
-from acs_chem_svg.spec import Spec
+from chem_svg_cdxml.spec import Spec
 
 SPECIES = {"a": {"smiles": "CCO"}, "b": {"smiles": "CC=O"}, "c": {"smiles": "CC(=O)O"}, "d": {"smiles": "CC"}}
 

@@ -1,10 +1,10 @@
-# acs-chem-svg: design brief
+# chem-svg-cdxml: design brief
 
 The original design brief for development sessions (CLAUDE.md). New users: start with
 [README.md](../README.md). Section numbers (§) are cited throughout the code and
-`references/acs-style.md`; where this brief and `acs-style.md` disagree, `acs-style.md` wins.
+`references/style-spec.md`; where this brief and `style-spec.md` disagree, `style-spec.md` wins.
 
-A Claude Code skill for producing chemical structures, reaction schemes, and arrow-pushing mechanisms in ACS style as **SVG**, for direct use in vector editors (Inkscape; Affinity via `--affinity`) and documents.
+A Claude Code skill for producing chemical structures, reaction schemes, and arrow-pushing mechanisms in the style of ChemDraw's ACS Document 1996 setting as **SVG**, for direct use in vector editors (Inkscape; Affinity via `--affinity`) and documents.
 
 Target usage: in any Claude Code session, the user asks in plain language, e.g.
 
@@ -12,7 +12,7 @@ Target usage: in any Claude Code session, the user asks in plain language, e.g.
 
 Claude writes a declarative scheme spec (YAML), runs the scripts in this repo to validate and render it, **looks at the rendered PNG**, iterates until it is right, and returns `.svg` + `.yaml` (+ `.png` preview).
 
-**Why SVG first.** Claude can rasterize SVG and inspect the result itself, which closes the visual feedback loop. CDXML output cannot be visually verified without ChemDraw. SVG is therefore what Claude checks, and it remains the primary output. A CDXML writer was added later from the same layout model (`references/acs-style.md` §13); it was checked through ChemDraw re-saves and aims for visual consistency, not ChemDraw's chemical reading of every label.
+**Why SVG first.** Claude can rasterize SVG and inspect the result itself, which closes the visual feedback loop. CDXML output cannot be visually verified without ChemDraw. SVG is therefore what Claude checks, and it remains the primary output. A CDXML writer was added later from the same layout model (`references/style-spec.md` §13); it was checked through ChemDraw re-saves and aims for visual consistency, not ChemDraw's chemical reading of every label.
 
 Items marked **[VERIFY]** are assumptions that have not been confirmed and must be checked (against reference renders or by measurement) before code depends on them.
 
@@ -21,7 +21,7 @@ Items marked **[VERIFY]** are assumptions that have not been confirmed and must 
 ## 1. Design principles
 
 1. **Claude writes chemistry; scripts write geometry.** Claude never hand-edits SVG coordinates. It edits the YAML spec and re-renders.
-2. **Our renderer owns ACS style.** No external program does the drawing, so the renderer must implement ACS conventions exactly (bond offsets, label clearance, wedge shapes), measured in pt.
+2. **Our renderer owns the style.** No external program does the drawing, so the renderer must implement ACS conventions exactly (bond offsets, label clearance, wedge shapes), measured in pt.
 3. **Look before delivering.** Every render produces a PNG, and Claude inspects it, including zoomed crops of dense regions (arrowheads, labels, lone pairs).
 4. **Numbers before pictures.** Structural, electron-bookkeeping, and geometric checks run first, so visual inspection is spent on aesthetics rather than on catching errors a script can find.
 5. **Editable output.** Clean, flat, grouped SVG with real text (Helvetica by default) that opens sensibly in Inkscape (Affinity: render with `--affinity`, which writes arrowheads as separate shapes and bold/italic as face names).
@@ -32,7 +32,7 @@ Items marked **[VERIFY]** are assumptions that have not been confirmed and must 
 ## 2. Repository layout
 
 ```
-acs-chem-svg/
+chem-svg-cdxml/
 ├── SKILL.md                 # Entry point for use sessions (keep < ~150 lines)
 ├── CLAUDE.md                # Instructions for development sessions in this repo
 ├── README.md                # Introduction and installation
@@ -44,12 +44,12 @@ acs-chem-svg/
 │   ├── acs1996_x0.8.yaml
 │   └── acs1996_x0.6.yaml
 ├── references/
-│   ├── acs-style.md         # Numeric style spec + drawing conventions
+│   ├── style-spec.md        # Numeric style spec + drawing conventions
 │   ├── scheme-schema.md     # Authoritative YAML schema with examples
 │   └── lessons.md           # Curated, dated lessons (dev sessions only)
 ├── reference_renders/       # local only (gitignored)
 │   └── chemdraw/            # User-supplied ChemDraw SVG/PDF exports (visual ground truth)
-├── src/acs_chem_svg/
+├── src/chem_svg_cdxml/
 │   ├── spec.py              # Load + validate YAML
 │   ├── chem.py              # RDKit: parse, 2D coords, alignment, stereo, ring perception
 │   ├── electrons.py         # Electron-bookkeeping validator for curved arrows
@@ -110,7 +110,7 @@ Every length and font size is multiplied by *k*, **except** parameters listed in
 
 ### 3.3 Rendering conventions the renderer must implement
 
-These are the rules ChemDraw normally applies. Several are **[VERIFY]**: measure them from `reference_renders/chemdraw/` and record the results in `references/acs-style.md`.
+These are the rules ChemDraw normally applies. Several are **[VERIFY]**: measure them from `reference_renders/chemdraw/` and record the results in `references/style-spec.md`.
 
 **Bonds**
 - Single bonds: stroked line, `line_width`, butt caps.
@@ -139,7 +139,7 @@ These are the rules ChemDraw normally applies. Several are **[VERIFY]**: measure
 - Lone pairs: two dots placed in the largest angular gap around the atom, clear of the label. Radical: one dot.
 - Two-electron curved arrows: cubic Bézier, full arrowhead. One-electron: fishhook (half arrowhead).
 - The tail starts at the electrons (lone-pair dots or bond midpoint). The head ends at an atom (new lone pair or charge) or at the midpoint between two atoms (new bond), stopping short of labels.
-- Arrows bow away from the molecule's centroid unless the spec overrides; arcs share one curvature across a mechanism, and an arc with a poor exit gives way to a curve set by its end directions (a C or an S; `references/acs-style.md` §4.2).
+- Arrows bow away from the molecule's centroid unless the spec overrides; arcs share one curvature across a mechanism, and an arc with a poor exit gives way to a curve set by its end directions (a C or an S; `references/style-spec.md` §4.2).
 
 ---
 
@@ -250,7 +250,7 @@ Run in order on every render. Failures return actionable messages; Claude fixes 
 5. **Visual inspection.**
    - Render the full PNG at ≥ 4× (≈ 300 px per inch of output at minimum).
    - Render automatic zoomed crops of every curved arrow and every labeled atom with charges or lone pairs.
-   - Claude reviews them against `references/acs-style.md` and adjusts `overrides` as needed.
+   - Claude reviews them against `references/style-spec.md` and adjusts `overrides` as needed.
    - Cap at ~5 visual iterations per request; then deliver with a note of remaining issues.
 6. **Reference comparison** (development only). `scripts/compare` renders our output side by side with a ChemDraw reference PNG at the same scale, plus a difference overlay.
 
@@ -304,7 +304,7 @@ Each milestone ends with renders the user approves, which are added to `tests/ga
 
 | # | Scope | Acceptance |
 |---|---|---|
-| **M0** | Scaffold, `uv` env, presets, `SKILL.md`/`CLAUDE.md` stubs, font metrics, rasterizer choice. Measure the reference renders and record values in `references/acs-style.md`. RDKit-vs-custom renderer spike (§4.1). | Measured-conventions table with values in pt and the reference file each came from. Spike result documented with side-by-side images. |
+| **M0** | Scaffold, `uv` env, presets, `SKILL.md`/`CLAUDE.md` stubs, font metrics, rasterizer choice. Measure the reference renders and record values in `references/style-spec.md`. RDKit-vs-custom renderer spike (§4.1). | Measured-conventions table with values in pt and the reference file each came from. Spike result documented with side-by-side images. |
 | **M1** | Single structures, all three presets. | M1 set renders with measured bond lengths, line widths, double-bond spacing, and label clearance matching references within 0.1 pt. Side-by-side comparisons approved. Opens cleanly in Affinity with editable text and named groups. |
 | **M2** | Linear schemes: arrows, conditions, plus signs, bold numbers, aligned orientation. | 3-step sequence in all presets, approved. |
 | **M3** | Mechanisms: lone pairs, radicals, two-electron and fishhook arrows; electron bookkeeping; geometric checks; zoomed-crop inspection. | SN2, E2, carbonyl addition, and radical bromination pass validation and visual review. Deliberately broken specs are caught. |
@@ -317,13 +317,13 @@ nitration prompt (`examples/benchmarks/prompts.yaml`) into `examples/benchmarks/
 approved without edits; fresh-agent trials of all six benchmark prompts are summarized in
 `references/lessons.md`.
 
-Catalytic cycles (`cycle:`, `references/acs-style.md` §15, 2026-10-29): arc arrows measured on
+Catalytic cycles (`cycle:`, `references/style-spec.md` §15, 2026-10-29): arc arrows measured on
 the user's arcs_x\* reference (§15.1); the circle layout, labels and tails are our own placement
 (§15.2), with the rules settled on a geometry spike (since retired). CDXML export of cycles
 (phase 5, §15.3): ChemDraw arc arrows, gate passed 2026-10-30. Gallery cases (phase 6):
 the Suzuki and proline/enamine cycles, approved 2026-10-30.
 
-CDXML export (the "Later" backend, `render.py --cdxml`, `references/acs-style.md` §13): phase 1,
+CDXML export (the "Later" backend, `render.py --cdxml`, `references/style-spec.md` §13): phase 1,
 M1 species, and phase 2, M2 schemes (arrows, conditions, plus signs, numbers, `<scheme><step>`,
 §13.1), both passed their ChemDraw gates on 2026-10-28. Phase 3, M3 mechanisms (curved arrows as
 `<curve>`, lone-pair and radical dots as symbols, §13.2), passed its gate the same day. Phase
@@ -331,17 +331,17 @@ M1 species, and phase 2, M2 schemes (arrows, conditions, plus signs, numbers, `<
 and multi-row specs that use them (§13.3), is implemented and passed its ChemDraw gate (2026-10-28). Phase
 4b, Lewis structures (dots or bond lines) and the remaining charge forms (circled signs, 2+ / 2−,
 `charge_labels`, oxidation states, two unpaired electrons; §13.4, from the user's
-charges_lewis_x\* reference), is implemented and passed its ChemDraw gate (2026-10-29; no 4b edit check, closed by the user). Known chemistry-only limits: a lone "+" text beside an atom becomes a charge (`InterpretChemically="no"` doesn't stop it), and ChemDraw drops the charge of an atom whose charge is text (2+, +3); the drawing is unchanged, since the CDXML is for appearance (acs-style.md §13.4).
+charges_lewis_x\* reference), is implemented and passed its ChemDraw gate (2026-10-29; no 4b edit check, closed by the user). Known chemistry-only limits: a lone "+" text beside an atom becomes a charge (`InterpretChemically="no"` doesn't stop it), and ChemDraw drops the charge of an atom whose charge is text (2+, +3); the drawing is unchanged, since the CDXML is for appearance (style-spec.md §13.4).
 
 
-Chairs and crossings (2026-10-29, `references/acs-style.md` §14, from the user's chair_x\*
+Chairs and crossings (2026-10-29, `references/style-spec.md` §14, from the user's chair_x\*
 reference): `chair: true` draws a single six-membered sp³ ring on ChemDraw's two chair templates,
 axial/equatorial from the SMILES stereo and the flip from A-values (`chair.py`); bonds that cross
 are drawn ChemDraw-style in every species, the front bond whole and the rear one cut with
 oblique ends margin_width beyond it (`draw_mol.Drawer.crossings`). Both match ChemDraw within
 0.1 pt on the reference's templates. The CDXML export writes bond Z rear-first; its ChemDraw gate
 (`cdxml_gate.py --phase 5`) passed (re-saves of 2026-10-29; closed by the user 2026-11-05;
-details in acs-style.md §14.2). Not yet: fused chairs (decalins, steroids), boats.
+details in style-spec.md §14.2). Not yet: fused chairs (decalins, steroids), boats.
 ---
 
 ## 11. Sources

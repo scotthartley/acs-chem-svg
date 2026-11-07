@@ -1,4 +1,4 @@
-"""CDXML export, phase 1 (acs-style.md §13): M1 species.
+"""CDXML export, phase 1 (style-spec.md §13): M1 species.
 
 - DTD: the references are validated first, to show that a ChemDraw file passes; then our exports.
 - RDKit round trip: every exported species reads back (Chem.MolsFromCDXML) as its spec's
@@ -21,11 +21,11 @@ from rdkit import Chem
 from test_m1_vs_chemdraw import REFS
 
 import measure_refs as mr
-from acs_chem_svg.cdxml_writer import HEADER_DIR
-from acs_chem_svg.figure import spec_cdxml
-from acs_chem_svg.geometry import sub
-from acs_chem_svg.preset import load_preset
-from acs_chem_svg.spec import load_spec
+from chem_svg_cdxml.cdxml_writer import HEADER_DIR
+from chem_svg_cdxml.figure import spec_cdxml
+from chem_svg_cdxml.geometry import sub
+from chem_svg_cdxml.preset import load_preset
+from chem_svg_cdxml.spec import load_spec
 
 from cdxml_helpers import (
     ABBREV_REFS, CHARGE_TOL, PARSER, SPECS, STYLE_ATTRS, TOL, _canonical, _check_structure, _text, _xy, _xy4,
@@ -235,7 +235,7 @@ def test_charge_box_dx_follows_label_size():
 
 def test_creation_program_is_ours():
     root = etree.fromstring(exported(SPECS[0]).encode(), PARSER)
-    assert root.get("CreationProgram").startswith("acs-chem-svg ")
+    assert root.get("CreationProgram").startswith("chem-svg-cdxml ")
 
 
 def test_page_grows_to_fit():

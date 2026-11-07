@@ -21,9 +21,9 @@ import numpy as np
 import resvg_py
 from PIL import Image
 
-from acs_chem_svg.preview import default_font_files, rasterize
+from chem_svg_cdxml.preview import default_font_files, rasterize
 
-from acs_chem_svg.fontmetrics import SYSTEM_HELVETICA, FontFace, load_fallback, load_system_helvetica
+from chem_svg_cdxml.fontmetrics import SYSTEM_HELVETICA, FontFace, load_fallback, load_system_helvetica
 
 SIZE = 10.0  # pt
 ZOOM = 20  # px per pt -> 0.05 pt per px

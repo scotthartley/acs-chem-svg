@@ -1,4 +1,4 @@
-"""Abbreviation grammar (abbrev.py, acs-style.md §3.5): reversal, anchors and composition.
+"""Abbreviation grammar (abbrev.py, style-spec.md §3.5): reversal, anchors and composition.
 
 MEASURED holds ChemDraw's displayed right-justified text for every label in abbrev_x*,
 abbrev_2_x*, ligands_x* and metals_x* (measure_refs.py --abbrev); test_measured_table re-reads it
@@ -7,8 +7,8 @@ decisions of 2026-11-03 (DECIDED)."""
 
 import pytest
 
-from acs_chem_svg import abbrev, chem
-from acs_chem_svg.spec import Spec
+from chem_svg_cdxml import abbrev, chem
+from chem_svg_cdxml.spec import Spec
 
 MEASURED = {
     # abbrev_x*
@@ -117,7 +117,7 @@ def test_spec_group_composes():
 def test_text_label_through_labels():
     from pathlib import Path
 
-    from acs_chem_svg.spec import molecules
+    from chem_svg_cdxml.spec import molecules
     spec = Spec.model_validate({"species": {"pd": {"smiles": "[*:1][Pd]([*:2])([*:3])[*:4]"}},
                                 "labels": {1: "Ln", 2: "dppf", 3: "L", 4: "X"}})
     (m,) = molecules(spec, Path("."))

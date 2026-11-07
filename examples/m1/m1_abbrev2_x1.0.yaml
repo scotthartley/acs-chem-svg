@@ -1,4 +1,4 @@
-# M1 general abbreviation labels (acs-style.md §3.5, abbrev_2_x*, ligands_x*): one of each kind.
+# M1 general abbreviation labels (style-spec.md §3.5, abbrev_2_x*, ligands_x*): one of each kind.
 # - registry groups and formulas with a ChemDraw reference: OTf, t-Bu (italic t), N3 (subscript
 #   at the centered end), NHBoc;
 # - composition: a group collapsed on a heteroatom merges into its label (TBS on O -> OTBS, Ts on

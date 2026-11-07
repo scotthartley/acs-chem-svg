@@ -1,5 +1,5 @@
 """Write the CDXML header templates presets/cdxml/<preset>.xml from the ChemDraw references
-(acs-style.md §6, CDXML export).
+(style-spec.md §6, CDXML export).
 
 Each template is copied verbatim from reference_renders/chemdraw/m1_set_x<k>.cdxml: the XML
 declaration and DOCTYPE, the root <CDXML> attributes, <colortable>, <fonttable> and the <page>
@@ -11,7 +11,7 @@ style numbers in them (BondLength, LineWidth, LabelSize, ...) trace to the refer
 tests/test_cdxml_species.py checks them against the presets and the other references at each scale.
 
 Also presets/cdxml/<preset>.nicknames.xml from abbrev_x<k>, abbrev_2_x<k> and ligands_x<k> (phase 4,
-acs-style.md §13.3): per registry group or formula (abbrev.py) that one of them holds, the inner <fragment> of ChemDraw's nickname node in its left-justified
+style-spec.md §13.3): per registry group or formula (abbrev.py) that one of them holds, the inner <fragment> of ChemDraw's nickname node in its left-justified
 form (bond leaving to the left), its NodeType (Fragment or Nickname) and IsNickname, moved so the
 attachment atom (the inner node at the outer node's p) is at the origin; the
 ExternalConnectionPoint then lies on -x. Ids and attributes are ChemDraw's (cdxml_writer renumbers
@@ -34,8 +34,8 @@ from lxml import etree
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import measure_refs as mr  # noqa: E402
 
-from acs_chem_svg import abbrev  # noqa: E402
-from acs_chem_svg.cdxml_writer import HEADER_DIR  # noqa: E402
+from chem_svg_cdxml import abbrev  # noqa: E402
+from chem_svg_cdxml.cdxml_writer import HEADER_DIR  # noqa: E402
 
 SOURCES = {p: f"m1_set_x{s}" for p, s in mr.ACS_PRESETS.items()}
 NICKNAME_SOURCES = {p: [f"{r}_x{s}" for r in ("abbrev", "abbrev_2", "ligands")] for p, s in mr.ACS_PRESETS.items()}
@@ -86,7 +86,7 @@ def _xy(n) -> tuple[float, float]:
 def _found(ref: str, found: dict, right_turned: bool = False) -> None:
     """Add to `found` the inner <fragment> of each nickname node's first left-justified form in
     `ref` (`right_turned`: of its right-justified form, turned 180°), relative to the attachment atom."""
-    from acs_chem_svg.cdxml_writer import pts
+    from chem_svg_cdxml.cdxml_writer import pts
     for n in _parse(ref).getroot().iter("n"):
         inner = n.find("fragment")
         if n.get("NodeType") not in ("Fragment", "Nickname", "Unspecified") or inner is None:
@@ -144,7 +144,7 @@ def nicknames(refs: list[str], extra: str | None = None) -> bytes:
     `refs` (or `extra`, turned from its right-justified form; or DERIVED_NICKNAMES), relative to
     the attachment atom. Every key abbrev_x* holds must be found; the other registry keys get a
     generated fragment (cdxml_writer.generated_nickname)."""
-    from acs_chem_svg.chem import ABBREVIATIONS
+    from chem_svg_cdxml.chem import ABBREVIATIONS
     found = {}
     for ref in refs:
         _found(ref, found)

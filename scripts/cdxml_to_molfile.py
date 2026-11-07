@@ -13,7 +13,7 @@ for the abbreviation references; templates/chair/ for chair_x*), with n =
 fragment order in the CDXML (1-based). Fragments whose bonds cross (CDXML CrossingBonds: the
 crossing cases of chair_x*, one bond per fragment) are merged into the first one's template, and
 templates/chair/<reference>__<n>.front.json lists the bonds ChemDraw draws in front at each
-crossing (the higher Z) as CDXML atom-id pairs (acs-style.md §14.2). Labeled carbons (CH3 as text) become molfile atom
+crossing (the higher Z) as CDXML atom-id pairs (style-spec.md §14.2). Labeled carbons (CH3 as text) become molfile atom
 aliases, which chem.from_molfile reads as explicit carbon labels. Nicknames that are known
 abbreviations (OMe, OBn) become their attachment atom with the nickname as its alias; fragments
 with other nicknames (CH3Cl as text) are skipped. Formula text (K2CO3) has no atoms: it is a
@@ -34,8 +34,8 @@ from rdkit.Geometry import Point3D
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import measure_refs as mr  # noqa: E402
 
-from acs_chem_svg import abbrev, chem  # noqa: E402
-from acs_chem_svg.chem import ABBREVIATIONS  # noqa: E402
+from chem_svg_cdxml import abbrev, chem  # noqa: E402
+from chem_svg_cdxml.chem import ABBREVIATIONS  # noqa: E402
 
 OUT = mr.REPO / "templates" / "m1"
 OUT_M2 = mr.REPO / "templates" / "m2"

@@ -500,7 +500,7 @@ removed renders pixel-identical to the approved `m4_nitration_x1.0`. Inbox triag
 ## 2026-10-28 (CDXML export, phase 1 spike)
 
 - **Write what ChemDraw writes, then ask ChemDraw.** The reference CDXMLs show ChemDraw's file
-  conventions, not what it reads back. The writer copies them (acs-style.md §13), and the gate
+  conventions, not what it reads back. The writer copies them (style-spec.md §13), and the gate
   (`scripts/cdxml_spike.py`, Open 20) shows what ChemDraw recomputes on open.
 - **ChemDraw's stored label p is not its drawn baseline.** p.y sits half the first glyph's ink
   height below the atom: 3.68 for O at 10 pt, 3.59 for N. ChemDraw draws both at 3.585. The label
@@ -667,7 +667,7 @@ removed renders pixel-identical to the approved `m4_nitration_x1.0`. Inbox triag
   form's pointing up), so `cdxml_headers.py` takes that form turned 180°.
 - **ChemDraw puts an NH's H above when both ring bonds leave downward** (proline, on re-saving
   our CDXML). Our rule is left / right only; left as is until a reference shows the rule
-  (acs-style.md Open 27). Inbox 2026-10-30.
+  (style-spec.md Open 27). Inbox 2026-10-30.
 - **Abbreviating the Suzuki cycle's PMe3 changed its layout, not just its labels.** CoordGen lays
   the dummy atoms out differently: Pd(0)'s P–Pd–P bent to 120° (it had been linear only by
   CoordGen's choice), and II and III pinned to that bend lost their cross. Rule (user decision,

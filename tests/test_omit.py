@@ -8,9 +8,9 @@ from pathlib import Path
 import yaml
 from validate import notes
 
-from acs_chem_svg.electrons import check_spec
-from acs_chem_svg.layout import build_scheme
-from acs_chem_svg.spec import Spec, load_spec
+from chem_svg_cdxml.electrons import check_spec
+from chem_svg_cdxml.layout import build_scheme
+from chem_svg_cdxml.spec import Spec, load_spec
 
 EX = Path(__file__).resolve().parents[1] / "examples"
 ACID_BASE = {

@@ -1,11 +1,11 @@
-"""Molecules and schemes -> CDXML, so a figure can be edited in ChemDraw (acs-style.md §13).
-Phase 1: M1 species. Phase 2 (acs-style.md §13.1): M2 schemes, i.e. reaction and equilibrium
+"""Molecules and schemes -> CDXML, so a figure can be edited in ChemDraw (style-spec.md §13).
+Phase 1: M1 species. Phase 2 (style-spec.md §13.1): M2 schemes, i.e. reaction and equilibrium
 arrows, conditions, plus signs and compound numbers as captions, and <scheme><step>. Phase 3
-(acs-style.md §13.2): M3 mechanisms, i.e. curved arrows and lone-pair and radical dots. Phase 4a
-(acs-style.md §13.3): abbreviations as nickname nodes, resonance ↔ arrows and brackets, and so
-the wrapped and multi-row specs that use them. Phase 4b (acs-style.md §13.4, charges_lewis_x*):
+(style-spec.md §13.2): M3 mechanisms, i.e. curved arrows and lone-pair and radical dots. Phase 4a
+(style-spec.md §13.3): abbreviations as nickname nodes, resonance ↔ arrows and brackets, and so
+the wrapped and multi-row specs that use them. Phase 4b (style-spec.md §13.4, charges_lewis_x*):
 circled signs, 2+ / 2- and charge_labels texts, two unpaired electrons, Lewis structures.
-Catalytic cycles (acs-style.md §15.3): arc arrows and tails as ChemDraw arc arrows.
+Catalytic cycles (style-spec.md §15.3): arc arrows and tails as ChemDraw arc arrows.
 
 The header (root attributes, color and font tables, page) is presets/cdxml/<preset>.xml, and
 each abbreviation's group presets/cdxml/<preset>.nicknames.xml, both copied from the ChemDraw
@@ -16,7 +16,7 @@ references by scripts/cdxml_headers.py; this module types no style numbers. Per 
   SMILES charge, whatever is drawn); Radical="Doublet", or "Singlet" for two unpaired electrons
   (ChemDraw's own for two Electron dots, charges_lewis_x*' CH2; RDKit reads two radicals) and
   for a singlet carbene / nitrene, whose pair is a bound LonePair (unmeasured, ungated: keeps
-  ChemDraw from adding H; acs-style.md §6 Open).
+  ChemDraw from adding H; style-spec.md §6 Open).
 - A labeled atom's <t>: the text in CDXML order (NH2 even when drawn H2N), one <s> in the
   header's label font, size and face. p: x is the element symbol's glyph origin, or for a
   right-justified label (H on the left) the end of its advance (labels_x1.0, clearance_x*: -Cl
@@ -108,7 +108,7 @@ Scheme objects (phase 2), from the neutral records CdxScheme / CdxArrow / CdxTex
   (the references repeat the last anchor: not written, see _Writer.curve), ArrowheadHead HalfRight when mechanism.fishhook_side is +1 (the
   references' fishhooks), HalfLeft otherwise. p3 is the stroke end, not the head tip: every
   reference curve's last anchor is its stroke end.
-- An arc arrow (CdxArc, acs-style.md §15.1, arcs_x*, arcs_eq_x*): <graphic GraphicType="Arc"
+- An arc arrow (CdxArc, style-spec.md §15.1, arcs_x*, arcs_eq_x*): <graphic GraphicType="Arc"
   SupersededBy> (BoundingBox Head3D then the center; ArrowType FullHead, HalfHead for an
   equilibrium, none for a headless arc; AngularSize the arc tool ChemDraw would start from, the
   smallest of 90 / 120 / 180 / 270 that holds the sweep, with the sweep's sign, the other sign
@@ -295,7 +295,7 @@ def _fit_turn(have: list[Point], want: list[Point]) -> tuple[float, float, bool]
 
 
 def generated_nickname(info: LabelInfo, degree: int, bond_length: float) -> etree._Element:
-    """A <nickname> template for a label ChemDraw gave no fragment for (acs-style.md §13.3,
+    """A <nickname> template for a label ChemDraw gave no fragment for (style-spec.md §13.3,
     generated; gate 4c passed 2026-11-03): RDKit 2D coordinates of the label's SMILES scaled to the bond
     length, the attachment atom at the origin; one ExternalConnectionPoint per `*` (one: on -x,
     BondLength - 0.05 out; [*:k]: ExternalConnectionNum k). Heteroatoms carry Element and
@@ -732,7 +732,7 @@ class _Writer:
     def captions(self, page, text: CdxText, off: Point) -> list[tuple[str, tuple]]:
         """The <t>s of a caption: one, or one per line for a stacked caption with a sub- or
         superscript (ChemDraw sets those lines 11.775 apart at x1.0, not our 10.825 / 10.975: gate
-        2026-10-28, acs-style.md §13.1). [(id, BoundingBox)]."""
+        2026-10-28, style-spec.md §13.1). [(id, BoundingBox)]."""
         if len(text.lines) > 1 and any(p.script != "base" for ln in text.lines for p in ln.parts):
             return [self.caption(page, CdxText([ln], text.justify), off) for ln in text.lines]
         return [self.caption(page, text, off)]
@@ -843,7 +843,7 @@ class _Writer:
 
 
     def arc(self, page, a: CdxArc, off: Point) -> tuple[str, tuple, etree._Element]:
-        """An arc arrow (acs-style.md §15.1): the legacy <graphic GraphicType="Arc"> on the page and
+        """An arc arrow (style-spec.md §15.1): the legacy <graphic GraphicType="Arc"> on the page and
         its <arrow> (returned, appended later); (graphic id, box, arrow element)."""
         c = add(a.center, off)
         a0, a1 = (a.a1, a.a0) if a.kind == "equilibrium_reactants" else (a.a0, a.a1)  # Head3D at the start
@@ -998,7 +998,7 @@ def to_cdxml(scheme: CdxScheme | list[tuple[Molecule, Drawer, Point]], preset_na
     page.extend(arrows)
     box = union_box(boxes) if boxes else (0.0, 0.0, 0.0, 0.0)
     # CreationProgram, Name and BoundingBox first, as ChemDraw orders them
-    _attrs_first(root, {"CreationProgram": f"acs-chem-svg {version('acs-chem-svg')}", "Name": name,
+    _attrs_first(root, {"CreationProgram": f"chem-svg-cdxml {version('chem-svg-cdxml')}", "Name": name,
                         "BoundingBox": pts(*box)})
     # Whole pages of the template's size, enough for the drawing: ChemDraw offers to expand a
     # page it doesn't fit in, and writes BoundingBox="0 0 1080 720" WidthPages="2" (re-save of
@@ -1112,7 +1112,7 @@ def cycle_records(cyc: CycleLayout, spec: Spec, svg_offset: Point = (0.0, 0.0)) 
 
 
 def z_order(mol, d) -> dict[int, int]:
-    """Bond idx -> its rank in Z (acs-style.md §14.2): bond order, except that a bond drawn behind
+    """Bond idx -> its rank in Z (style-spec.md §14.2): bond order, except that a bond drawn behind
     another where they cross (draw_mol.Drawer.crossings) comes before it, so ChemDraw, which cuts
     the lower-Z bond of a crossing (chair_x*), draws the same gap."""
     after: dict[int, set[int]] = {b.idx: set() for b in mol.bonds}  # rear -> fronts

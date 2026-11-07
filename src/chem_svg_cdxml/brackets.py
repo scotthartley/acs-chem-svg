@@ -1,4 +1,4 @@
-"""Square brackets around resonance contributors (acs-style.md §4.1, §4.3; resonance_x*).
+"""Square brackets around resonance contributors (style-spec.md §4.1, §4.3; resonance_x*).
 
 ChemDraw strokes each bracket as three segments: a vertical bar and two lips of lip_length
 pointing toward the content, stroke_width wide (exempt). Ours is one stroked polyline with

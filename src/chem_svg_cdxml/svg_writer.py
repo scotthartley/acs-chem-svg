@@ -154,7 +154,7 @@ def to_svg(root: Group, padding: float = PADDING, size: tuple[float, float] | No
     ]
     faces = faces_used(root)
     if faces:
-        lines.append(f"  <!-- acs-chem-svg: text measured with {'; '.join(faces)} -->")
+        lines.append(f"  <!-- chem-svg-cdxml: text measured with {'; '.join(faces)} -->")
     used = [] if affinity else markers_used(root)
     if used:
         lines.append("  <defs>")

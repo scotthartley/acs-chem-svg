@@ -1,8 +1,9 @@
-# acs-chem-svg
+# chem-svg-cdxml
 
 A [Claude Code](https://code.claude.com) skill that draws chemical structures, reaction
-schemes, arrow-pushing mechanisms, and catalytic cycles in ACS style (ChemDraw's *ACS Document
-1996*) as editable **SVG**, with a **CDXML** copy to open in ChemDraw.
+schemes, arrow-pushing mechanisms, and catalytic cycles in the style of ChemDraw's *ACS Document 1996*
+setting as editable **SVG**, with a **CDXML** copy to open in ChemDraw. (Not affiliated with or
+endorsed by the American Chemical Society; "ACS Document 1996" is the name of a ChemDraw style.)
 
 Ask in plain language:
 
@@ -74,8 +75,8 @@ those folders, and updating the repository updates all of them.
 1. **Clone the repository** once, anywhere you like (here `~/tools`):
 
    ```bash
-   git clone https://github.com/scotthartley/acs-chem-svg.git ~/tools/acs-chem-svg
-   uv sync --project ~/tools/acs-chem-svg
+   git clone https://github.com/scotthartley/chem-svg-cdxml.git ~/tools/chem-svg-cdxml
+   uv sync --project ~/tools/chem-svg-cdxml
    ```
 
    `uv sync` is optional (the first use does it too), but it gets the download out of the way.
@@ -85,7 +86,7 @@ those folders, and updating the repository updates all of them.
    ```bash
    cd ~/path/to/my-project
    mkdir -p .claude/skills
-   ln -sfn ~/tools/acs-chem-svg .claude/skills/acs-chem-svg
+   ln -sfn ~/tools/chem-svg-cdxml .claude/skills/chem-svg-cdxml
    ```
 
    Use `-sfn`: rerunning a plain `ln -s` on an existing link creates a stray link inside the
@@ -93,9 +94,9 @@ those folders, and updating the repository updates all of them.
 
 3. **Start Claude Code** in the project folder and ask for a drawing. The skill loads on its
    own when the request is about structures, schemes or mechanisms; you can also invoke it
-   with `/acs-chem-svg`.
+   with `/chem-svg-cdxml`.
 
-To update, `git -C ~/tools/acs-chem-svg pull`.
+To update, `git -C ~/tools/chem-svg-cdxml pull`.
 
 Don't link the skill into the repository itself (a link back to the repo makes test
 collection loop); development sessions there don't need it.
@@ -142,7 +143,7 @@ uv run python scripts/new_preset.py build --name mystyle --probe path/to/style_p
 Settings and specimens are measured; placement defaults and drawing rules are carried over from ACS, and abbreviations use generated
 fragments. So a generated preset is a close starting point, not the 0.1 pt match the ACS presets meet. The preset's comments say where each
 value came from, and the build's report shows how far each is from ACS. It works with Helvetica only so far. One generated style ships: `presentation_x1.0` (LineWidth 2.16, 18 pt labels, wrapping at 900 pt).
-See [`references/acs-style.md`](references/acs-style.md) §16, which also lists the checks for a new style after the build.
+See [`references/style-spec.md`](references/style-spec.md) §16, which also lists the checks for a new style after the build.
 
 ## Limits
 
@@ -161,7 +162,7 @@ See [`references/acs-style.md`](references/acs-style.md) §16, which also lists 
 | [`SKILL.md`](SKILL.md) | What Claude reads when it uses the skill |
 | [`references/scheme-schema.md`](references/scheme-schema.md) | The YAML spec format |
 | [`references/workflow.md`](references/workflow.md) | Worked example: from a request to a mechanism |
-| [`references/acs-style.md`](references/acs-style.md) | The measured ACS style, with the ChemDraw reference behind each number |
+| [`references/style-spec.md`](references/style-spec.md) | The measured style (ChemDraw ACS Document 1996), with the ChemDraw reference behind each number |
 | [`docs/design.md`](docs/design.md) | Design brief: architecture, validation, milestones |
 | [`CLAUDE.md`](CLAUDE.md) | Rules for development sessions in this repository |
 

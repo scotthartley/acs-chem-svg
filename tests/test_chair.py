@@ -1,4 +1,4 @@
-"""Chairs (chair.py) and bond crossings (draw_mol, acs-style.md §14)."""
+"""Chairs (chair.py) and bond crossings (draw_mol, style-spec.md §14)."""
 
 import math
 
@@ -6,10 +6,10 @@ import pytest
 from rdkit import Chem
 from rdkit.Chem import AllChem
 
-from acs_chem_svg import chair, chem
-from acs_chem_svg.draw_mol import Drawer, cut_pieces
-from acs_chem_svg.preset import load_preset
-from acs_chem_svg.scene import Polygon, Polyline
+from chem_svg_cdxml import chair, chem
+from chem_svg_cdxml.draw_mol import Drawer, cut_pieces
+from chem_svg_cdxml.preset import load_preset
+from chem_svg_cdxml.scene import Polygon, Polyline
 
 PRESET = load_preset("acs1996")
 BL = PRESET.lengths.bond_length
@@ -212,12 +212,12 @@ def test_cut_ring_bond_keeps_the_miters():
     ring = [c for c in chains if len(c.points) > 2]
     assert ring and not any(c.closed for c in ring)  # the ring is cut, so it is no longer one closed line
     assert sum(len(c.points) - 2 for c in ring) == 6  # a miter join at every ring atom
-    from acs_chem_svg.geometry_checks import check_labels
+    from chem_svg_cdxml.geometry_checks import check_labels
     assert not [p for p in check_labels("t", g, mol) if "crosses" in p]
 
 
 def test_cdxml_puts_rear_bonds_below_front_bonds():
-    from acs_chem_svg.cdxml_writer import z_order
+    from chem_svg_cdxml.cdxml_writer import z_order
     mol = _axial_template()
     d = Drawer(mol, PRESET)
     pairs = d.crossings()

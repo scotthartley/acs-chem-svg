@@ -1,4 +1,4 @@
-"""Chair templates and bond crossings (acs-style.md §14.1, §14.2)."""
+"""Chair templates and bond crossings (style-spec.md §14.1, §14.2)."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from pathlib import Path
 
 from lxml import etree
 
-from acs_chem_svg.geometry import dot, length, seg_point_dist, sub
+from chem_svg_cdxml.geometry import dot, length, seg_point_dist, sub
 
 from .core import Doc, REF_DIR, angle_between, assign, frame, load, neighbors, stats
 

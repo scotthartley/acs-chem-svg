@@ -1,4 +1,4 @@
-"""New style presets (scripts/new_preset.py, acs-style.md §16): hold-out against the committed ACS
+"""New style presets (scripts/new_preset.py, style-spec.md §16): hold-out against the committed ACS
 presets. The derivation rules run on x0.8 and x0.6 with no reference; the measuring methods run on
 their references (skipped without reference_renders/), each role from the file that holds its
 specimen; real probes of those settings, when saved, run the same comparison on one file."""
@@ -16,11 +16,11 @@ sys.path.insert(0, str(REPO / "scripts"))
 import new_preset as np  # noqa: E402
 from chemdraw_refs import probe  # noqa: E402
 
-from acs_chem_svg import cdxml_writer  # noqa: E402
-from acs_chem_svg import preset as preset_mod  # noqa: E402
-from acs_chem_svg.figure import render_spec, spec_cdxml  # noqa: E402
-from acs_chem_svg.preset import Preset  # noqa: E402
-from acs_chem_svg.spec import load_spec  # noqa: E402
+from chem_svg_cdxml import cdxml_writer  # noqa: E402
+from chem_svg_cdxml import preset as preset_mod  # noqa: E402
+from chem_svg_cdxml.figure import render_spec, spec_cdxml  # noqa: E402
+from chem_svg_cdxml.preset import Preset  # noqa: E402
+from chem_svg_cdxml.spec import load_spec  # noqa: E402
 
 TARGETS = {"0.8": "acs1996_x0.8", "0.6": "acs1996_x0.6"}
 MEASURED_TOL = 0.1  # M1's tolerance
@@ -88,7 +88,7 @@ def test_rules_hold_on_acs(name):
 @pytest.mark.parametrize("scale", ["1.0", "0.8", "0.6"])
 @needs_refs
 def test_sign_sizes_follow_their_box(scale):
-    """At one line width, ChemDraw's sign bars and rings depend on the symbol's box dx alone (acs-style.md §16);
+    """At one line width, ChemDraw's sign bars and rings depend on the symbol's box dx alone (style-spec.md §16);
     the plain signs and the circled ones have different boxes at x0.8 and x0.6."""
     syms = np.mr.charges_lewis(f"charges_lewis_x{scale}")["symbols"]
     assert len(syms) > 4
@@ -136,7 +136,7 @@ needs_presentation = pytest.mark.skipif(not PRESENTATION.exists(), reason="no pr
 
 @needs_presentation
 def test_another_line_width():
-    """The first style at another line width (acs-style.md §16, Open 33): what follows LineWidth does so exactly,
+    """The first style at another line width (style-spec.md §16, Open 33): what follows LineWidth does so exactly,
     and every rule holds with its line-width term."""
     sources = probe.single_file(PRESENTATION)
     values = np.collect(sources, {})
@@ -173,9 +173,9 @@ def test_text_pitch_follows_the_label_size():
 def test_larger_style_signs_clear_bonds_and_stay_on_their_atom(circled):
     """presentation_x1.0's nitro group: signs clear the N=O, and each stays nearest its own atom, or ChemDraw
     rebinds it to the =O on open (Drawer._nearest_atom). The O- starts clear, so it keeps its corner."""
-    from acs_chem_svg import chem
-    from acs_chem_svg.draw_mol import CHARGE_DOT_CLEARANCE, Drawer
-    from acs_chem_svg.preset import load_preset
+    from chem_svg_cdxml import chem
+    from chem_svg_cdxml.draw_mol import CHARGE_DOT_CLEARANCE, Drawer
+    from chem_svg_cdxml.preset import load_preset
     preset = load_preset("presentation_x1.0")
     mol = chem.from_smiles("C[N+](=O)[O-]", "nitro", preset.lengths.bond_length)
     mol.circled_charges = circled
@@ -348,8 +348,8 @@ def test_larger_style_curved_arrows_end_inside_their_heads(tmp_path):
     """presentation_x1.0's E2 chair: a short arrow whose end bent more than its 17 pt head showed its stroke leaving the
     head's side and hooking back (mechanism.head_spill). Every arrow now ends inside its head."""
     import re
-    from acs_chem_svg import figure, mechanism
-    from acs_chem_svg.preset import load_preset
+    from chem_svg_cdxml import figure, mechanism
+    from chem_svg_cdxml.preset import load_preset
     src = Path(__file__).resolve().parents[1] / "examples" / "m3" / "m3_e2_chair_x1.0.yaml"
     spec = tmp_path / "e2.yaml"
     spec.write_text(re.sub(r"^preset: .*$", "preset: presentation_x1.0", src.read_text(), flags=re.M))

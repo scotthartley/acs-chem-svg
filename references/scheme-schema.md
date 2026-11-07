@@ -1,6 +1,6 @@
 # Scheme spec schema
 
-Validated by `src/acs_chem_svg/spec.py` (pydantic). Unknown keys are errors. Sections: schemes
+Validated by `src/chem_svg_cdxml/spec.py` (pydantic). Unknown keys are errors. Sections: schemes
 (one row of species, plus signs, reaction arrows with conditions, compound numbers); mechanisms
 (curved arrows, lone pairs, radicals); resonance, sequences and rows; catalytic cycles; single
 species (a spec without `steps`: its species are drawn side by side), with Lewis structures and
@@ -31,10 +31,10 @@ align: auto                # or false: every species on its own layout
 | `steps[].omit` | list of names | Products of `to` that the electron bookkeeping uses but the drawing leaves out (water lost, the conjugate acid/base of a reagent drawn over the arrow, the acid/base regenerated in the last step). At least one product stays drawn; no `numbers:` on them. See "Omitted products" below the table. |
 | `steps[].above` / `below` | string or list | Conditions, one string per line, centered on the arrow. |
 | `steps[].stages` | list of ≥ 1 strings | Numbered stages, left-justified: the first ⌈n/2⌉ above, the rest below (2 → "1." / "2."; 3 → "1.", "2." / "3."). Exclusive with above/below. |
-| `steps[].arrow_type` | `forward` (default) \| `equilibrium` \| `equilibrium_products` \| `equilibrium_reactants` | The step's arrow: → , balanced ⇌, or unbalanced ⇌ with the long shaft pointing to the favored side (products: right; reactants: left). Equilibrium conditions sit above and below the outer shafts, centered on the arrow (acs-style.md §3.6). Not on resonance steps. Works with `stages` and curved `arrows` (a reversible proton transfer). |
-| `arrow_head` | `standard` \| `large` | Head of every reaction, equilibrium and ↔ arrow. Default: the preset's (`large` at ×1.0, `standard` at ×0.8 and ×0.6; acs-style.md §3.1). `standard` at ×1.0 matches ChemDraw's default head. Curved arrows are unaffected. |
+| `steps[].arrow_type` | `forward` (default) \| `equilibrium` \| `equilibrium_products` \| `equilibrium_reactants` | The step's arrow: → , balanced ⇌, or unbalanced ⇌ with the long shaft pointing to the favored side (products: right; reactants: left). Equilibrium conditions sit above and below the outer shafts, centered on the arrow (style-spec.md §3.6). Not on resonance steps. Works with `stages` and curved `arrows` (a reversible proton transfer). |
+| `arrow_head` | `standard` \| `large` | Head of every reaction, equilibrium and ↔ arrow. Default: the preset's (`large` at ×1.0, `standard` at ×0.8 and ×0.6; style-spec.md §3.1). `standard` at ×1.0 matches ChemDraw's default head. Curved arrows are unaffected. |
 | `numbers.<name>` | int or string | Bold compound number under the species, on one shared baseline. |
-| `species.<name>.abbreviate` | list | Collapse these terminal groups to labels: any key of the registry (`src/acs_chem_svg/data/abbreviations.yaml`: groups Me, Et, *i*-Pr, *t*-Bu, Ph, Bn, Cy, Mes, Ac, Bz, Piv, Boc, Cbz, Fmoc, Ts, Ms, Tf, TMS, TES, TBS, TIPS, TBDPS, MOM, MEM, SEM, THP, PMB, …; formulas OMe, OAc, OTf, OTs, NHBoc, NMe2, N3, NO2, CO2Me, CO2*t*-Bu, CHO, CF3, CN, B(OH)2, Bpin, SnBu3, …; ligands PPh3, PMe3, PCy3, P(*t*-Bu)3, P(*o*-tol)3, bonded to the metal, `<-` included) or of the spec's `abbreviations:`. A group whose bond leaves to the right is set right-justified in reversed text (MeO, MeO₂C, TfO, BocHN, (HO)₂B, Me₃P; one-token names such as Boc, *t*-Bu, N₃ keep their text). A **group** collapsed on a heteroatom merges into its label (composition: TBS on O → OTBS, Ts on a ring N → NTs with Ts beside, above or below N, Bu ×3 on Sn → SnBu₃); a d-block metal keeps its groups. |
+| `species.<name>.abbreviate` | list | Collapse these terminal groups to labels: any key of the registry (`src/chem_svg_cdxml/data/abbreviations.yaml`: groups Me, Et, *i*-Pr, *t*-Bu, Ph, Bn, Cy, Mes, Ac, Bz, Piv, Boc, Cbz, Fmoc, Ts, Ms, Tf, TMS, TES, TBS, TIPS, TBDPS, MOM, MEM, SEM, THP, PMB, …; formulas OMe, OAc, OTf, OTs, NHBoc, NMe2, N3, NO2, CO2Me, CO2*t*-Bu, CHO, CF3, CN, B(OH)2, Bpin, SnBu3, …; ligands PPh3, PMe3, PCy3, P(*t*-Bu)3, P(*o*-tol)3, bonded to the metal, `<-` included) or of the spec's `abbreviations:`. A group whose bond leaves to the right is set right-justified in reversed text (MeO, MeO₂C, TfO, BocHN, (HO)₂B, Me₃P; one-token names such as Boc, *t*-Bu, N₃ keep their text). A **group** collapsed on a heteroatom merges into its label (composition: TBS on O → OTBS, Ts on a ring N → NTs with Ts beside, above or below N, Bu ×3 on Sn → SnBu₃); a d-block metal keeps its groups. |
 | `species.<name>.align` | bool (default true) | A product takes the orientation of the species it is drawn from (of several sources, the one it shares the largest unchanged part with). Shared atoms: atom maps (≥ 2 common maps, plus the unmapped atoms around them), else the maximum common substructure. **Pin**: when ≥ 3 connected shared atoms keep their neighbor count, those keep the reference's coordinates exactly; with no such group, all shared atoms do (a trigonal center turning tetrahedral). **Orient**: if pinning would bend an sp atom, stretch a bond or crowd an acyclic atom's bonds, the species gets its own layout, turned (or mirrored) the way its shared atoms point in the reference and snapped to the 30° grid. `false` = own layout, auto-oriented. Molfile species keep their layout unless `align_to` is set. |
 | `species.<name>.align_to` | name | Align to this species instead (it must be drawn earlier). |
 | `abbreviations` | map: key → `{smiles, kind, text, reversed, nickname}` | The spec's own abbreviations, added to the registry (same key: replaces it). `smiles` has one `*` (the bond to the rest); none for a text label. `kind`: `group` (merges into a heteroatom's label: O + Xyz → OXyz), `formula` (default with smiles) or `text` (default without). `text`: richtext markup (`*t*-Bu`, `L_*n*`); `reversed`: the right-justified text where the token rule is wrong (a key with a part that is neither a group nor an element must give it, or the validator fails). `nickname: true` writes it as a ChemDraw Nickname. Example: `examples/m1/m1_abbrev2_x1.0.yaml`. |
@@ -60,7 +60,7 @@ species named again is drawn again as a copy (see "repeated names" under Resonan
 | `'SN\2'`, `'\*'` (YAML single quotes) | `\` escapes the next character (set plain) |
 | `0 °C`, `−78 °C`, `(4:1)`, `1,4-dioxane`, `12 h`, `n-BuLi` | unchanged (ASCII `-` is a hyphen) |
 
-### Layout (automatic, acs-style.md §3)
+### Layout (automatic, style-spec.md §3)
 
 Structures sit on the arrow axis by their ring centers (or ink centers if a species has no
 ring); arrows grow to fit their widest line; numbers share a baseline. SVG groups (editor
@@ -119,7 +119,7 @@ never changes the SVG. `render.py` also prints the `bow` each curved arrow got, 
 starts from the default (`bow: left` when it already bows left changes nothing). It adds `shape tangent`, or `shape tangent (S)`, to an
 arrow set by its end directions; its `bow` is the side it leaves toward, since an S ends on the other side.
 
-### Drawing (automatic, acs-style.md §4)
+### Drawing (automatic, style-spec.md §4)
 
 - **Dots:** lone pairs are drawn on lp tails, on arrow targets (the atoms in `atom(n)` and
   `between(a,b)`), on atoms that gain a pair (Br⁻ after SN2), and on `show_lone_pairs`. On a
@@ -180,7 +180,7 @@ steps:
 Bookkeeping: contributors keep the first one's atom maps, connectivity (bonds ignoring order,
 H counts) and total charge; each arrow list must turn contributor k into k + 1.
 
-Drawing (acs-style.md §3.4, §4.3):
+Drawing (style-spec.md §3.4, §4.3):
 - **Brackets** enclose every contributor's ink, including its dots and curved arrows; the ↔
   arrows are `resonance.arrow_length` long, `resonance.arrow_gap` from the contributors (their
   curved arrows count). The arrow into the bracket stops `arrow_gap` before it. The next
@@ -227,7 +227,7 @@ cycle:
 | `cycle.steps` | list of ≥ 3 | Each `to` is the next step's `from`, and the last `to` is the first `from`. Each species appears once round the circle (a second copy needs its own name). |
 | `cycle.steps[].label` | text | Drawn inside the circle by the step's arrow (richtext). The radius grows until every label clears the species, the other labels and the center text. |
 | `cycle.steps[].in` / `out` | text, `{text: ...}`, `{species: name}`, or a list of them | Entering tails join the arc in its first half; leaving tails branch off in its second half and end in a head. Consecutive texts on one side share one tail ("PhCHO, H+"); each species gets its own tail and is drawn as a structure. A tail species must not be one of the cycle's species. |
-| `cycle.steps[].arrow_type` | as `steps[].arrow_type` | `equilibrium` and the unbalanced forms draw ChemDraw's arc equilibrium arrow (acs-style.md §15.1); tails join the outer shaft. |
+| `cycle.steps[].arrow_type` | as `steps[].arrow_type` | `equilibrium` and the unbalanced forms draw ChemDraw's arc equilibrium arrow (style-spec.md §15.1); tails join the outer shaft. |
 | `cycle.start` / `direction` / `center` | name / `clockwise` \| `counterclockwise` / text | See the example. Steps are numbered from `start` round (groups `cycle-arc-<n>`). |
 | `numbers` | as for schemes | Bold, under each cycle species; counted in its box on the circle. |
 
@@ -247,12 +247,12 @@ Chelates (two donors on one ligand) keep CoordGen's layout. As in ChemDraw, a tw
 opposite it (a cross, a linear P–Pd–P); otherwise its first letter is. `validate.py` reports a layout that lays one group over another (atoms on one spot,
 bonds crossing in a flat species): try `orientation`, `align: false` or a molfile.
 
-Drawing (acs-style.md §15): species centered on a circle, the first at 12 o'clock, spaced so
+Drawing (style-spec.md §15): species centered on a circle, the first at 12 o'clock, spaced so
 every arrow between neighbours is the same length; arc arrows with the measured head on the
 chord; tails as small arcs tangent to the circle from outside. A tail that would touch
 something tries other shapes, never moving the species; one still crowded is a `validate.py`
 problem. The `.cdxml` has every arrow and tail as a ChemDraw arc arrow and one `<scheme>` with a
-`<step>` per arrow (acs-style.md §15.3).
+`<step>` per arrow (style-spec.md §15.3).
 Groups: `species-<name>`, `numbers`, `cycle-arc-<n>`, `cycle-in-<n>-<i>`, `cycle-out-<n>-<i>`,
 `cycle-label-<n>`, `cycle-center`.
 
@@ -279,7 +279,7 @@ species:
 | `species.<name>.kekule` | list of `"m=n"` | Atom-map pairs that are double bonds. Every other aromatic bond becomes single. |
 | `species.<name>.orientation.rotate` | number \| `auto` | Degrees, counter-clockwise on screen, applied to the raw CoordGen layout. SMILES default `auto` (bonds at ±30°, rings with vertical sides, linear molecules horizontal). Molfile default 0. |
 | `species.<name>.orientation.flip_h` / `flip_v` | bool | Mirror. Wedges are re-derived so the stereo stays correct. |
-| `species.<name>.show_carbons` | `none` (default), `terminal`, or a list of atom ids | Explicit labels on terminal carbons (CH₃, H₃C, =CH₂). Internal CH₂/CH raise an error until measured (acs-style.md §6 Open 8). Atom ids are atom-map numbers if set, else 1-based atom indices. A molfile atom alias on a carbon (`A` line: CH3, H3C, …) also shows its label. |
+| `species.<name>.show_carbons` | `none` (default), `terminal`, or a list of atom ids | Explicit labels on terminal carbons (CH₃, H₃C, =CH₂). Internal CH₂/CH raise an error until measured (style-spec.md §6 Open 8). Atom ids are atom-map numbers if set, else 1-based atom indices. A molfile atom alias on a carbon (`A` line: CH3, H3C, …) also shows its label. |
 | `charges.circled` | bool (default false) | Draw every ±1 sign in a ring (⊕ / ⊖). Unmeasured ring size (`charge.circle_radius`). |
 | `species.<name>.circled_charges` | bool | Overrides `charges.circled` for this species. |
 | `species.<name>.charge_labels` | map: atom-map number → text | Draw this charge text instead of the formal charge: one sign before or after optional digits (`+3`, `2+`, `-`; `-` draws the minus bar). Display only: electron bookkeeping keeps the SMILES charge; a neutral atom draws it too (an oxidation state). Never circled. |
@@ -308,7 +308,7 @@ species:
   (substituent atoms) pick the flip that has them so, and also place substituents without
   stereo (an H written as `[H:4]` on a CH₂). A substituent without stereo goes equatorial.
 - **Drawing:** ChemDraw's two chair templates, axial bonds vertical, equatorial along the
-  template's directions (acs-style.md §14.1). `start: <map>` puts that ring atom on the right
+  template's directions (style-spec.md §14.1). `start: <map>` puts that ring atom on the right
   tip; otherwise the layout with the least crowding is used (a ring O at the back right, as in
   sugars). Ring stereo shows in the geometry, so the ring gets no wedges.
 - **Crossings:** where an axial bond crosses a ring bond, the farther bond gets a gap

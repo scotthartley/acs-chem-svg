@@ -1,7 +1,7 @@
 # M1 charges: circled ±1 signs (charges.circled, with a per-species override), "2+" / "2−" from the
 # SMILES charge, a charge_labels text (+3), a circled sign beside lone pairs, and two unpaired
 # electrons (triplet CH2). Ring radius from charges_lewis_x*; placement unmeasured
-# (acs-style.md §2.2, Open 18).
+# (style-spec.md §2.2, Open 18).
 preset: acs1996
 charges: {circled: true}
 species:

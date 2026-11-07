@@ -1,4 +1,4 @@
-"""A new style's preset values from one ChemDraw file, the style probe (acs-style.md §16).
+"""A new style's preset values from one ChemDraw file, the style probe (style-spec.md §16).
 
 Every preset value has one of three sources:
 - settings: the CDXML root of the file (bond length, line width, label size, ...);
@@ -20,9 +20,9 @@ from pathlib import Path
 
 from lxml import etree
 
-from acs_chem_svg.draw_mol import element_x
-from acs_chem_svg.fontmetrics import load_face
-from acs_chem_svg.geometry import length, sub
+from chem_svg_cdxml.draw_mol import element_x
+from chem_svg_cdxml.fontmetrics import load_face
+from chem_svg_cdxml.geometry import length, sub
 
 from .cdxml import charges_lewis, cdxml_symbols
 from .core import REF_DIR, label_glyphs, load
@@ -33,11 +33,11 @@ from .scheme import equilibrium_summary
 
 BASE_PRESET = "acs1996"
 BASE_BOND_LENGTH = 14.4  # acs1996's lengths.bond_length: scale = bond length / this
-SUPPORTED_FONT = "Helvetica"  # fontmetrics, svg_writer and preview draw only this (acs-style.md §16, open)
+SUPPORTED_FONT = "Helvetica"  # fontmetrics, svg_writer and preview draw only this (style-spec.md §16, open)
 RESTYLE_TOL = 0.1  # pt: specimens vs the file's settings; M1's tolerance
 RULE_TOL = 0.05  # pt: a measured value vs its rule, in the report
 # A sign's box dx per LabelSize: ChemDraw's tool draws one at the first, applying a style rewrites it to the second x LabelSize^2.
-# They agree at 10 pt and part quickly away from it, and the sign's bars and ring follow the box (acs-style.md §16).
+# They agree at 10 pt and part quickly away from it, and the sign's bars and ring follow the box (style-spec.md §16).
 FRESH_SIGN_BOX, RESTYLED_SIGN_BOX = 0.75, 0.075
 ROLES = ("settings", "stereo", "charges", "circled", "mech", "arrows", "large", "equilibrium", "brackets", "nh", "tail")
 # dimensionless placement defaults: not scaled
@@ -150,7 +150,7 @@ def read_settings(sources: dict[str, Source]) -> dict[str, Value]:
     font = fonts.get(root.get("LabelFont"))
     if font != SUPPORTED_FONT:
         raise UnsupportedFont(f"{src.label}: label font {font!r}; only {SUPPORTED_FONT} is supported so far "
-                              "(fontmetrics, svg_writer and preview hardcode it; acs-style.md §16)")
+                              "(fontmetrics, svg_writer and preview hardcode it; style-spec.md §16)")
     bl, bs = num("BondLength"), num("BondSpacing")
     spacing = bl * bs / 100
     return {
@@ -216,7 +216,7 @@ def _charges(src: Source) -> dict[str, tuple]:
 def circled_ring(src: Source) -> tuple[float, float]:
     """(box dx, ring radius) of the file's circled signs. They set no preset value: applying a style
     rewrites every sign's box to 0.075 x LabelSize^2, where a sign drawn fresh has 0.75 x LabelSize
-    (acs-style.md §16). The ring still tests ring_radius_of_box on the new style."""
+    (style-spec.md §16). The ring still tests ring_radius_of_box on the new style."""
     sym = [s for s in charges_lewis(src.name, src.ref_dir)["symbols"] if s["symbol"] in ("CirclePlus", "CircleMinus")]
     return (_median([s["dx"] for s in sym], "circled sign", src), _median([s.get("ring_radius") for s in sym], "circled sign", src))
 
@@ -426,7 +426,7 @@ def restyled_signs(values: dict[str, Value]) -> bool:
 
 
 def rule_checks(values: dict[str, Value], ring: tuple[float, float] | None = None) -> list[tuple[str, float, float, str]]:
-    """Measured values against rules fitted to the ACS scales (acs-style.md §16): (key, measured, rule,
+    """Measured values against rules fitted to the ACS scales (style-spec.md §16): (key, measured, rule,
     rule text). `ring`: circled_ring's result. They set nothing; they test the rules on a new style."""
     v = {k: x.value for k, x in values.items()}
     dr, sp, size, lw = v["lone_pair.dot_radius"], v["lone_pair.dot_spacing"], v["text.label_size"], v["lengths.line_width"]

@@ -1,4 +1,4 @@
-"""Unit tests of the pure drawing rules in draw_mol (references/acs-style.md §1, §2)."""
+"""Unit tests of the pure drawing rules in draw_mol (references/style-spec.md §1, §2)."""
 
 import math
 from pathlib import Path
@@ -6,11 +6,11 @@ from pathlib import Path
 import pytest
 from cdxml_to_molfile import template_path
 
-from acs_chem_svg import chem
-from acs_chem_svg.draw_mol import Drawer, element_x, h_side
-from acs_chem_svg.preset import load_preset
-from acs_chem_svg.scene import Polyline
-from acs_chem_svg.spec import Spec, scheme_prepared
+from chem_svg_cdxml import chem
+from chem_svg_cdxml.draw_mol import Drawer, element_x, h_side
+from chem_svg_cdxml.preset import load_preset
+from chem_svg_cdxml.scene import Polyline
+from chem_svg_cdxml.spec import Spec, scheme_prepared
 
 P = load_preset("acs1996")
 TOL = 0.01
@@ -39,7 +39,7 @@ INSET = P.lengths.ring_inner_inset  # 1.497 = s tan 30
                                      (4, "(Z)-2-butene"), (5, "acetaldehyde, H drawn"), (6, "acetone"),
                                      (7, "cyclohexanone"), (8, "methylenecyclohexane")])
 def test_double_bond_placement(n, name):
-    """The eight double bonds of double_bonds_x1.0 (acs-style.md §1.1 table)."""
+    """The eight double bonds of double_bonds_x1.0 (style-spec.md §1.1 table)."""
     g, = doubles(drawer("double_bonds_x1.0", n))
     expected = {1: "offset", 2: "centered", 3: "offset", 4: "offset"}.get(n, "centered")
     assert g.placement == expected, name
@@ -219,7 +219,7 @@ def test_smiles_bond_length_and_ez():
 def test_spec_validation(tmp_path):
     from pydantic import ValidationError
 
-    from acs_chem_svg.spec import Spec
+    from chem_svg_cdxml.spec import Spec
     with pytest.raises(ValidationError):
         Spec.model_validate({"species": {"x": {"smiles": "C", "molfile": "a.mol"}}})
     with pytest.raises(ValidationError):
@@ -299,7 +299,7 @@ def test_molfile_carbon_alias():
 def test_spec_show_carbons():
     from pydantic import ValidationError
 
-    from acs_chem_svg.spec import Spec
+    from chem_svg_cdxml.spec import Spec
     assert Spec.model_validate({"species": {"x": {"smiles": "CC", "show_carbons": [1, "2"]}}})
     with pytest.raises(ValidationError):
         Spec.model_validate({"species": {"x": {"smiles": "CC", "show_carbons": "all"}}})

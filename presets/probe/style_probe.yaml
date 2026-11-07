@@ -1,4 +1,4 @@
-# The style probe (acs-style.md §16): one drawing with a specimen of everything a new style's preset
+# The style probe (style-spec.md §16): one drawing with a specimen of everything a new style's preset
 # measures. scripts/new_preset.py probe writes it as CDXML, at acs1996, and turns the second
 # forward arrow's heads large (a spec has one head variant). In ChemDraw the user applies the target
 # style's settings to all of it and saves it as CDXML and SVG; new_preset.py build measures that.

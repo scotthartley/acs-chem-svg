@@ -8,13 +8,13 @@ from pathlib import Path
 import pytest
 
 import measure_refs as mr
-from acs_chem_svg import chem
-from acs_chem_svg.chem import Atom, Bond, Molecule
-from acs_chem_svg.draw_mol import Drawer
-from acs_chem_svg.geometry import sub
-from acs_chem_svg.geometry_checks import check_overlaid
-from acs_chem_svg.preset import load_preset
-from acs_chem_svg.spec import Spec, scheme_prepared
+from chem_svg_cdxml import chem
+from chem_svg_cdxml.chem import Atom, Bond, Molecule
+from chem_svg_cdxml.draw_mol import Drawer
+from chem_svg_cdxml.geometry import sub
+from chem_svg_cdxml.geometry_checks import check_overlaid
+from chem_svg_cdxml.preset import load_preset
+from chem_svg_cdxml.spec import Spec, scheme_prepared
 
 P = load_preset("acs1996")
 TOL = 0.1
@@ -149,7 +149,7 @@ def test_cross_label_is_centered(smiles):
     middle of "Pd"; the CDXML label is Center / Center / Center with p.x on the atom, as
     metals_x*'s Pd and Si; no bond is lengthened (ChemDraw keeps 14.4 pt)."""
     from lxml import etree
-    from acs_chem_svg.cdxml_writer import to_cdxml
+    from chem_svg_cdxml.cdxml_writer import to_cdxml
     m = chem.from_smiles(smiles, "m", P.lengths.bond_length)
     d = Drawer(m, P)
     metal = next(a for a in m.atoms if a.element in ("Pd", "Pt"))
@@ -169,7 +169,7 @@ def test_phosphine_abbreviation_on_a_dative_bond(key, text):
     """chem.condense finds a phosphine bonded P->Pd (rdAbbreviations misses a dative attachment;
     issues 2026-10-30), keeps the cross, and the CDXML writes each as a nickname node."""
     from lxml import etree
-    from acs_chem_svg.cdxml_writer import to_cdxml
+    from chem_svg_cdxml.cdxml_writer import to_cdxml
     full = OXADD if key == "PMe3" else OXADD.replace("P(C)(C)C", "P(c1ccccc1)(c1ccccc1)c1ccccc1")
     m = chem.from_smiles(full, "m", P.lengths.bond_length, abbreviate=[key])
     ab = [a for a in m.atoms if a.abbrev]
@@ -186,7 +186,7 @@ def test_phosphine_abbreviation_on_a_dative_bond(key, text):
 
 METALS = {"metals_x1.0": "acs1996", "metals_x0.8": "acs1996_x0.8", "metals_x0.6": "acs1996_x0.6"}
 # the bond straight down from Pd: our §2.1 clip model stops 0.17-0.24 pt short of ChemDraw's
-# (acs-style.md §2.1, Open 25); every other direction within TOL
+# (style-spec.md §2.1, Open 25); every other direction within TOL
 PD_DOWN_KNOWN = 0.25
 
 

@@ -19,7 +19,7 @@ Cases:
 - m4_*.png: examples/m4/m4_*.yaml with our own layout (m4_nitration_x<k>: the M4 acceptance;
   m4_perkin_x1.0: omit / over; m4_snar_x<k>: a short lone-pair hook as an excursion;
   m4_cyclopropanation_x1.0: α-elimination and a singlet carbene's lp(n) tail).
-- m6_*.png: examples/m6/m6_*_cycle_x1.0.yaml catalytic cycles (acs-style.md §15: arc arrows, arc
+- m6_*.png: examples/m6/m6_*_cycle_x1.0.yaml catalytic cycles (style-spec.md §15: arc arrows, arc
   equilibria, tails entering and leaving, square-planar Pd).
 
 - cdxml/m1_smiles_x1.0.cdxml, cdxml/m1_charges_x1.0.cdxml, cdxml/m2_scheme_basic_x1.0.cdxml,
@@ -49,9 +49,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import measure_refs as mr  # noqa: E402
 from compare import render_reference  # noqa: E402
 
-from acs_chem_svg.figure import render_spec, spec_cdxml  # noqa: E402
-from acs_chem_svg.preview import rasterize  # noqa: E402
-from acs_chem_svg.svg_writer import to_svg  # noqa: E402
+from chem_svg_cdxml.figure import render_spec, spec_cdxml  # noqa: E402
+from chem_svg_cdxml.preview import rasterize  # noqa: E402
+from chem_svg_cdxml.svg_writer import to_svg  # noqa: E402
 
 GALLERY = mr.REPO / "tests" / "gallery"
 PX_PER_PT = 4.0

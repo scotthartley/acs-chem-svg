@@ -1,6 +1,6 @@
 # ACS Document 1996 with scaled Document Settings, x0.8. All lengths in pt.
 # Every value is measured from reference_renders/chemdraw/ by scripts/measure_refs.py;
-# see references/acs-style.md for method, ranges, and open items. The `placement:` keys are
+# see references/style-spec.md for method, ranges, and open items. The `placement:` keys are
 # round defaults chosen from those measurements (user decision 2026-10-24).
 name: acs1996_x0.8
 scale: 0.8
@@ -60,7 +60,7 @@ assumed_exempt:
   - charge.digit_scale             # unmeasured ratio (= ratios.superscript_scale), the same at every preset
 # Auto- or hand-placed by ChemDraw and context-dependent; starting defaults, not k-scaled.
 approx:
-  - text.line_pitch_sub_upper       # fitted from one pitch per preset (acs-style.md §3, Open 9)
+  - text.line_pitch_sub_upper       # fitted from one pitch per preset (style-spec.md §3, Open 9)
   - text.line_pitch_sub_lower
   - cdxml.resonance_box_pad         # 0.18 / 0.67 / 0.67 (resonance_x*), 0.5 on arrows_large_x1.0's ↔: CDXML data, not drawn
 
@@ -115,7 +115,7 @@ lengths:
   wedge_wide_end: 2.4               # m1_set_x0.8: wedge polygon width at drawn end (to H label)
   hash_line_width: 0.60             # m1_set_x0.8: hash polygon thickness; exempt
   hash_spacing: 2.0                 # m1_set_x0.8.cdxml HashSpacing; drawn pitch 3.98 (rule OPEN)
-  margin_width: 1.28                # m1_set_x0.8.cdxml MarginWidth; clip rule in acs-style.md §2.1
+  margin_width: 1.28                # m1_set_x0.8.cdxml MarginWidth; clip rule in style-spec.md §2.1
   label_outline_offset_x: -0.01      # measure_refs.py --fit-clip: glyph outline shift for clipping, all references but CLIP_FIT_EXCLUDE (n=783, refit 2026-10-27, re-run 2026-11-01)
   label_outline_offset_y: 0.03       # measure_refs.py --fit-clip
   label_h_line_pitch: 6.650         # nh_x0.8: H above / below N, baseline to baseline (measure_refs.py --nh, n=11, spread 0.001)
@@ -134,7 +134,7 @@ ratios:                             # dimensionless; identical in every preset
   superscript_raise_per_size: 0.3586 # scheme_multi_x*: baseline raised 3.586 / 2.869 / 2.152
   arrow_back_control_per_half_width: 0.4375  # scheme_*, arrows_large_x1.0, equilibrium_x*: every head's back-edge cubic control sits at (notch, 0.4375 x corner offset), standard and large; a half head's from its shaft's center line
   equilibrium_long_per_short: 3.0   # equilibrium_x*, arrows_large_x1.0: unbalanced, long / short shaft butt -> notch 3.000 (CDXML ArrowEquilibriumRatio 300)
-  crossing_clearance_per_margin: 1.0  # chair_x0.8 (measure_refs.py --crossing): a rear bond's cut ends sit margin_width beyond the front bond's half-extent (0.991-1.002, 10 crossings, 30-90 deg); acs-style.md §14.2
+  crossing_clearance_per_margin: 1.0  # chair_x0.8 (measure_refs.py --crossing): a rear bond's cut ends sit margin_width beyond the front bond's half-extent (0.991-1.002, 10 crossings, 30-90 deg); style-spec.md §14.2
 
 angles:
   chain_angle: 120                  # m1_set_x1.0.cdxml ChainAngle; double_bonds_x1.0 hexane zigzag
@@ -230,7 +230,7 @@ scheme:                             # hand-placed in the references (measure_ref
   row_gap: 28.0                     # placement default (user decision 2026-10-25); row ink bottom (incl. numbers) -> next row ink top (incl. conditions); measured scheme_wrap_x0.8 27.80 (measure_refs.py --wrap)
   wrap_width: 504.0                 # user decision 2026-10-25 (7 in, ACS double column); rows break between steps to stay within it; layout.width overrides
 
-cycle:                              # catalytic cycles (acs-style.md §15.2); no reference: ChemDraw has no cycle layout
+cycle:                              # catalytic cycles (style-spec.md §15.2); no reference: ChemDraw has no cycle layout
   clear: 7.0                          # unmeasured placement default (user decision 2026-10-29, x1.0 x k, rounded): species ink <-> arc arrow tail / tip, along the circle; also between species
   tail_room: 19.0                     # unmeasured placement default (user decision 2026-10-29, x1.0 x k, rounded): free arc a step needs beyond scheme.arrow_min_length per tail on its busier side; also the spacing of tails on one side
   tail_join_in: 0.4                 # unmeasured placement default (user decision 2026-10-29, cycle spike 0.38, on the 0.1 grid): where the last entering tail meets the arc (fraction of the arc); dimensionless
@@ -242,13 +242,13 @@ cycle:                              # catalytic cycles (acs-style.md §15.2); no
   label_clear: 3.0                    # unmeasured placement default (user decision 2026-10-29, x1.0 x k, rounded): step label ink <-> species ink, other labels, the center text (the radius grows to keep it)
   label_pair_clear: 8.0               # unmeasured placement default (user decision 2026-10-30: one caption em): step label ink <-> another step label (the radius grows to keep it)
 
-chair:                              # chair_x0.8 (measure_refs.py --chair); ChemDraw Conformers templates, exact; acs-style.md §14.1
+chair:                              # chair_x0.8 (measure_refs.py --chair); ChemDraw Conformers templates, exact; style-spec.md §14.1
   vertices: [[0, 0], [-5.76, 9.98], [5.32, 6.81], [16.45, 9.98], [22.22, 0], [11.14, 3.17]]  # fragment 1 (chair): vertex offsets from vertex 1, pt, y down; the flipped chair is its exact mirror (ChemDraw's own flipped template, fragment 2, is not: its middle vertices sit 0.25 pt from the mirror; not used, §14.1)
   axial_up: [true, false, true, false, true, false]  # fragment 3: vertical, bond_length long, alternating (flipped: mirrored)
   equatorial_deg: [-165, 165, -120, 15, -15, 60]  # fragment 4: direction per vertex, deg counterclockwise from +x, y up, bond_length long (flipped: mirrored); 15 deg snaps, see §14.1
   heteroatom_vertex: 5              # fragment 5 (β-D-glucopyranose, flipped template): the ring O's vertex (of the mirrored chair)
 
-cdxml:                              # CDXML export only (acs-style.md §13); not drawn
+cdxml:                              # CDXML export only (style-spec.md §13); not drawn
   charge_box_dx: 4.8                # charge <graphic> BoundingBox: second point = (center x - this, center y); m1_set_x0.8, mech_basic_x0.8, resonance_x0.8 (measure_refs.py --cdxml-symbols)
   circled_box_dx: 6.0               # CirclePlus / CircleMinus <graphic> BoundingBox: second point = (center x - this, center y); charges_lewis_x0.8, all four (measure_refs.py --charges-lewis); ChemDraw sizes the drawn ring from it
   electron_box_dx: 4.8              # radical <graphic SymbolType="Electron"> BoundingBox: second point = (dot center x - this, center y); mech_basic_x0.8 (measure_refs.py --cdxml-symbols)

@@ -1,4 +1,4 @@
-# ACS style: measured conventions
+# Style spec: measured conventions (ChemDraw ACS Document 1996)
 
 Every number here was measured from the ChemDraw exports in `reference_renders/chemdraw/` by
 `scripts/measure_refs.py`. To reproduce, run `uv run python scripts/measure_refs.py --summary`
@@ -327,7 +327,7 @@ ligands_x\*: PMe₃, PCy₃, P(*t*-Bu)₃, P(*o*-tol)₃, L, Lₙ, OAc, Cl, Br, 
 itself (`LabelJustification`); the CDXML keeps the key text in both forms and the SVG shows the
 reversed one.
 
-The labels are rules, not a list (`abbrev.py`; registry `src/acs_chem_svg/data/abbreviations.yaml`,
+The labels are rules, not a list (`abbrev.py`; registry `src/chem_svg_cdxml/data/abbreviations.yaml`,
 plus a spec's `abbreviations:`). Groups (Me, Boc, TBS) are named substituents; formulas (OMe,
 CO₂Me, PPh₃) are labels on their attachment atom; text labels (L, Lₙ, dppf, XPhos, IPr) have no
 chemistry.
@@ -530,7 +530,7 @@ Rules (M4; unmeasured, user decisions 2026-10-25, flagged at review):
     doesn't matter for ChemDraw-style labels, which split runs at every subscript.
   - **Verdict:** use the fallback only when Helvetica is missing; Nimbus Sans was not needed.
   - Reproduce with `uv run python scripts/compare_fonts.py`.
-- **Rasterizer: resvg 0.48.1 via resvg-py 0.5.0** (`acs_chem_svg.preview.rasterize`).
+- **Rasterizer: resvg 0.48.1 via resvg-py 0.5.0** (`chem_svg_cdxml.preview.rasterize`).
   - **Font database:** the rasterizer loads only explicit font files (`skip_system_fonts`).
   - **Pt workaround:** resvg-py rejects root `width`/`height` in `pt`, so `rasterize()`
     rewrites the root size to pixels from the pt viewBox.
@@ -766,7 +766,7 @@ Rules (M4; unmeasured, user decisions 2026-10-25, flagged at review):
 
 ## 8. Implemented as (M1)
 
-Module `src/acs_chem_svg/draw_mol.py` unless noted.
+Module `src/chem_svg_cdxml/draw_mol.py` unless noted.
 
 | Rule | Section | Implementation |
 |---|---|---|
@@ -849,14 +849,14 @@ Unmeasured user decisions (2026-10-26), round defaults on the 0.5 pt grid, **app
 
 ## 13. CDXML export (phase 1: M1 species, phase 2: M2 schemes §13.1, phase 3: M3 mechanisms §13.2, phase 4a: abbreviations, resonance, wrap §13.3, phase 4b: charges and Lewis §13.4; source: every reference's .cdxml)
 
-`acs_chem_svg.cdxml_writer` writes what ChemDraw writes for its own structures, so ChemDraw can
+`chem_svg_cdxml.cdxml_writer` writes what ChemDraw writes for its own structures, so ChemDraw can
 edit a figure. These are file conventions, not drawn geometry. They are measured from the CDXML
 files with `measure_refs.py --cdxml-symbols` and `tests/test_cdxml_species.py` (reference diff).
 
 | Item | ChemDraw's files | Ours |
 |---|---|---|
 | Header: root attributes, color and font tables, page | the same at each scale in every reference (`test_header_matches_other_references`) | `presets/cdxml/<preset>.xml`, copied from m1_set_x\<k\> by `scripts/cdxml_headers.py` without CreationProgram, Name, BoundingBox and the page id |
-| CreationProgram | "ChemDraw 26.1.0.6801" | "acs-chem-svg \<version\>" (user decision 2026-10-28) |
+| CreationProgram | "ChemDraw 26.1.0.6801" | "chem-svg-cdxml \<version\>" (user decision 2026-10-28) |
 | Page | 540 × 720 per page; a drawing wider than that makes ChemDraw offer to expand, and the re-save has `BoundingBox="0 0 1080 720" WidthPages="2"` | whole pages, enough for the drawing |
 | Labeled atom | `Element` (none for C), `NumHydrogens` (also 0), `NeedsClean="yes"`; one `<s face="96">` with the text in CDXML order (NH2 even when drawn H₂N) | the same |
 | Label justification | `LabelJustification="Right"` + `Justification="Right"` when the bonds leave to the right and the text has two or more characters (H₂N, HO, –Cl, –Br); a one-character label (–F, –H, –I) stays Left | from `Label.h_side` and the text length |

@@ -44,7 +44,7 @@ stroke.
 
 - **Label clearance.** RDKit stops bonds a fixed padding from the label box. At ×1.0 the gap
   is about 0.55 pt smaller than ChemDraw's (1.10 vs 1.65), and the bonds visibly crowd O, OH and N.
-  ChemDraw clips against the glyph hull plus MarginWidth (acs-style.md §2.1).
+  ChemDraw clips against the glyph hull plus MarginWidth (style-spec.md §2.1).
 - **Charges.** RDKit puts the charge inline in the label run ("N⁺"). That squeezes the
   following bond to a stub (O=N⁺:O in the images). ChemDraw places ⊕ above-right as a separate
   0.5 pt-bar symbol that bonds don't clip against.

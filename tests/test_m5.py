@@ -7,7 +7,7 @@ from render import render
 
 from rdkit import Chem
 
-from acs_chem_svg.spec import Spec
+from chem_svg_cdxml.spec import Spec
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -42,8 +42,8 @@ def test_reuse_renders_the_same_pixels_as_numbered_copies(tmp_path):
 def test_maps_overlay_leaves_the_svg_unchanged(tmp_path):
     from render import maps_svg
 
-    from acs_chem_svg.layout import build_scheme
-    from acs_chem_svg.spec import load_spec
+    from chem_svg_cdxml.layout import build_scheme
+    from chem_svg_cdxml.spec import load_spec
 
     path = ROOT / "examples" / "m3" / "m3_carbonyl_addition_x1.0.yaml"
     plain = render(path, tmp_path / "plain")
@@ -70,7 +70,7 @@ def test_the_reported_bow_reproduces_the_default():
     # render.py prints each curved arrow's bow so overrides aren't blind (r0 carbonyl_addition)
     import yaml as _yaml
 
-    from acs_chem_svg.layout import build_scheme
+    from chem_svg_cdxml.layout import build_scheme
     for name in ("m3_sn2_x1.0", "m3_carbonyl_addition_x1.0", "m3_e2_x1.0"):
         path = ROOT / "examples" / name[:2] / f"{name}.yaml"
         lay = build_scheme(Spec.model_validate(_yaml.safe_load(path.read_text())), path.parent, name)
@@ -82,7 +82,7 @@ def test_the_reported_bow_reproduces_the_default():
 
 def test_an_alignment_that_bends_nitronium_only_orients():
     # r0 nitration (x0.8): nitronium aligned to bent HNO3 atoms was drawn bent
-    from acs_chem_svg import chem
+    from chem_svg_cdxml import chem
     ref = chem.prepare(chem.parse_smiles("[O:1]=[N+:2]([O-:3])[OH+:4][H:10]"), "nitric_h", 14.4)
     p = chem.prepare(chem.parse_smiles("[O:1]=[N+:2]=[O:3]"), "nitronium", 14.4, refs=[ref])
     assert p.aligned_to == "nitric_h" and p.matched == []  # orient mode: own layout, nothing pinned
@@ -94,11 +94,11 @@ def test_an_alignment_that_bends_nitronium_only_orients():
 
 def test_silyl_abbreviations():
     # inbox 2026-10-25 (use session): "unknown abbreviation TMS"
-    from acs_chem_svg.spec import molecules
+    from chem_svg_cdxml.spec import molecules
     spec = Spec.model_validate({"species": {
         "tmsa": {"smiles": "C#C[Si](C)(C)C", "abbreviate": ["TMS"]},
         "tbs": {"smiles": "CC(C)(C)[Si](C)(C)OCCO", "abbreviate": ["TBS"]}}})
     tmsa, tbs = molecules(spec, ROOT)
     assert [a.abbrev for a in tmsa.atoms if a.abbrev] == ["TMS"] and len(tmsa.atoms) == 3
-    # TBS on an ether O merges into the O's label (composition, acs-style.md §3.5): OTBS
+    # TBS on an ether O merges into the O's label (composition, style-spec.md §3.5): OTBS
     assert [a.abbrev for a in tbs.atoms if a.abbrev] == ["OTBS"] and len(tbs.atoms) == 4

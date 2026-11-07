@@ -1,4 +1,4 @@
-"""Scheme layout rules (layout.py, acs-style.md §3) and alignment (chem.prepare)."""
+"""Scheme layout rules (layout.py, style-spec.md §3) and alignment (chem.prepare)."""
 
 import math
 from functools import lru_cache
@@ -6,16 +6,16 @@ from pathlib import Path
 
 import pytest
 
-from acs_chem_svg import chem
-from acs_chem_svg.arrows import notch_x
-from acs_chem_svg.draw_mol import Drawer, draw_molecule
-from acs_chem_svg.figure import render_spec
-from acs_chem_svg.geometry_checks import check_overlaid, check_scheme
-from acs_chem_svg.layout import build_scheme
-from acs_chem_svg.preset import load_preset
-from acs_chem_svg.scene import Group
-from acs_chem_svg.spec import Spec, load_spec, molecules, scheme_prepared
-from acs_chem_svg.svg_writer import to_svg
+from chem_svg_cdxml import chem
+from chem_svg_cdxml.arrows import notch_x
+from chem_svg_cdxml.draw_mol import Drawer, draw_molecule
+from chem_svg_cdxml.figure import render_spec
+from chem_svg_cdxml.geometry_checks import check_overlaid, check_scheme
+from chem_svg_cdxml.layout import build_scheme
+from chem_svg_cdxml.preset import load_preset
+from chem_svg_cdxml.scene import Group
+from chem_svg_cdxml.spec import Spec, load_spec, molecules, scheme_prepared
+from chem_svg_cdxml.svg_writer import to_svg
 
 REPO = Path(__file__).resolve().parents[1]
 EX = REPO / "examples"
@@ -319,9 +319,9 @@ def test_equilibrium_step(arrow_type, lengths):
 
 
 def test_equilibrium_half_heads_barb_outward():
-    """Half heads (acs-style.md §3.6): tip and notch on the shaft's inner edge, barb outward; the
+    """Half heads (style-spec.md §3.6): tip and notch on the shaft's inner edge, barb outward; the
     back shaft's back-edge control back_control_shift nearer its center line."""
-    from acs_chem_svg.arrows import head_marker
+    from chem_svg_cdxml.arrows import head_marker
     p = load_preset("acs1996_x0.8")
     h, w = p.head(), p.arrow.shaft_width
     for half, shift in (("forward", 0.0), ("back", p.equilibrium.back_control_shift)):

@@ -1,4 +1,4 @@
-"""CDXML export, phase 4c (acs-style.md §13.3): general abbreviations (abbrev_2_x*, ligands_x*):
+"""CDXML export, phase 4c (style-spec.md §13.3): general abbreviations (abbrev_2_x*, ligands_x*):
 generated fragments, ring NTs, text labels.
 """
 
@@ -11,8 +11,8 @@ from lxml import etree
 from rdkit import Chem
 
 import measure_refs as mr
-from acs_chem_svg.figure import spec_cdxml
-from acs_chem_svg.geometry import sub
+from chem_svg_cdxml.figure import spec_cdxml
+from chem_svg_cdxml.geometry import sub
 
 from cdxml_helpers import (
     PARSER, TOL, _canonical, _check_structure, _nodes, _text, _xy, exported, needs_dtd, needs_refs,
@@ -142,8 +142,8 @@ def test_italic_label_runs():
 def test_template_node_types_follow_the_registry(preset):
     """Every reference template is a registry group or formula, Nickname exactly when the
     registry says ChemDraw writes it as one."""
-    from acs_chem_svg import abbrev
-    from acs_chem_svg.cdxml_writer import load_nicknames
+    from chem_svg_cdxml import abbrev
+    from chem_svg_cdxml.cdxml_writer import load_nicknames
     reg = abbrev.default()
     for key, tpl in load_nicknames(preset).items():
         e = reg.get(key)

@@ -1,6 +1,6 @@
 """Render a spec to SVG + PNG + CDXML: a scheme (steps), a catalytic cycle, or species side by side.
 
-Layout is acs_chem_svg.figure.build_figure, shared with scripts/gallery.py. Writes
+Layout is chem_svg_cdxml.figure.build_figure, shared with scripts/gallery.py. Writes
 <stem>.svg and <stem>.png (4 px/pt) next to the spec, or in --out, and prints the drawing width.
 --crops also writes zoomed crops (design.md §6.5, 16 px/pt) of every curved arrow, every
 labeled atom with a charge or dots, every resonance arrow, both ends of every equilibrium arrow
@@ -17,7 +17,7 @@ a copy of the SVG text, never into <stem>.svg.
 <marker> (Affinity drops markers on import), and bold/italic text as a bare face name
 ("Helvetica Bold"), which Affinity needs and Inkscape and Chrome can't resolve. The default
 output is for Inkscape and browsers; its markers follow edits.
-<stem>.cdxml for ChemDraw is written too (acs_chem_svg.cdxml_writer, acs-style.md §13), in the
+<stem>.cdxml for ChemDraw is written too (chem_svg_cdxml.cdxml_writer, style-spec.md §13), in the
 SVG's coordinates, from the same layout as the SVG: single species (Lewis structures included), or
 a scheme (arrows, conditions, plus signs, numbers and <scheme><step>, §13.1; curved arrows and
 dots, §13.2; abbreviations, resonance arrows and brackets, §13.3), or a catalytic cycle (arc arrows
@@ -35,13 +35,13 @@ import math
 import sys
 from pathlib import Path
 
-from acs_chem_svg.cdxml_writer import CdxmlUnsupported
-from acs_chem_svg.cycle import CycleLayout
-from acs_chem_svg.figure import build_figure
-from acs_chem_svg.geometry import arc_point, pad_box, shift_box, union_box
-from acs_chem_svg.layout import SchemeLayout
-from acs_chem_svg.preview import crops, rasterize, rasterize_file
-from acs_chem_svg.svg_writer import FONT_FAMILY, PADDING, faces_used, num, to_svg
+from chem_svg_cdxml.cdxml_writer import CdxmlUnsupported
+from chem_svg_cdxml.cycle import CycleLayout
+from chem_svg_cdxml.figure import build_figure
+from chem_svg_cdxml.geometry import arc_point, pad_box, shift_box, union_box
+from chem_svg_cdxml.layout import SchemeLayout
+from chem_svg_cdxml.preview import crops, rasterize, rasterize_file
+from chem_svg_cdxml.svg_writer import FONT_FAMILY, PADDING, faces_used, num, to_svg
 
 MAP_COLOR = "#d01c5b"
 

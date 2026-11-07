@@ -3,7 +3,7 @@
 Usage: uv run python scripts/compare_fonts.py
 """
 
-from acs_chem_svg.fontmetrics import list_system_helvetica_faces, load_fallback, load_system_helvetica
+from chem_svg_cdxml.fontmetrics import list_system_helvetica_faces, load_fallback, load_system_helvetica
 
 CHARS = list("CHNOSPFlBrI0123456789+−()")
 SIZE = 10.0

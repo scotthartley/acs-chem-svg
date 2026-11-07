@@ -24,12 +24,12 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from acs_chem_svg.cycle import build_cycle, check_cycle
-from acs_chem_svg.electrons import StepCheck, check_spec
-from acs_chem_svg.geometry_checks import (check_labels, check_lewis, check_line_end_dots, check_mechanism,
+from chem_svg_cdxml.cycle import build_cycle, check_cycle
+from chem_svg_cdxml.electrons import StepCheck, check_spec
+from chem_svg_cdxml.geometry_checks import (check_labels, check_lewis, check_line_end_dots, check_mechanism,
                                           check_scheme)
-from acs_chem_svg.layout import build_scheme, m1_drawers
-from acs_chem_svg.spec import ResonanceStep, Spec, load_spec
+from chem_svg_cdxml.layout import build_scheme, m1_drawers
+from chem_svg_cdxml.spec import ResonanceStep, Spec, load_spec
 
 
 def validate(path: Path) -> list[str]:

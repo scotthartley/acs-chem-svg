@@ -1,5 +1,5 @@
 """Where an NH's H goes vs ChemDraw (nh_x*: pyrrolidine turned in 15° steps, an acyclic R-NH-R
-at a peak, a valley and turned 15° / 30°, aziridine up and down; acs-style.md §2). Each NH is
+at a peak, a valley and turned 15° / 30°, aziridine up and down; style-spec.md §2). Each NH is
 redrawn at ChemDraw's atom positions (its two neighbors as plain carbons): the H side (beside,
 above, below), the N and H glyph origins and each bond end within 0.1 pt, and the CDXML <t>
 (LabelJustification, LabelAlignment, LineStarts, p) as ChemDraw stores it."""
@@ -10,12 +10,12 @@ import pytest
 from lxml import etree
 
 import measure_refs as mr
-from acs_chem_svg import draw_mol
-from acs_chem_svg.cdxml_writer import to_cdxml
-from acs_chem_svg.chem import Atom, Bond, Molecule
-from acs_chem_svg.draw_mol import Drawer
-from acs_chem_svg.geometry import sub
-from acs_chem_svg.preset import load_preset
+from chem_svg_cdxml import draw_mol
+from chem_svg_cdxml.cdxml_writer import to_cdxml
+from chem_svg_cdxml.chem import Atom, Bond, Molecule
+from chem_svg_cdxml.draw_mol import Drawer
+from chem_svg_cdxml.geometry import sub
+from chem_svg_cdxml.preset import load_preset
 
 pytestmark = pytest.mark.skipif(not (mr.REF_DIR / "nh_x1.0.cdxml").exists(),
                                 reason="ChemDraw references (reference_renders/) are local only")
@@ -23,7 +23,7 @@ pytestmark = pytest.mark.skipif(not (mr.REF_DIR / "nh_x1.0.cdxml").exists(),
 TOL = 0.1
 REFS = {"nh_x1.0": "acs1996", "nh_x0.8": "acs1996_x0.8", "nh_x0.6": "acs1996_x0.6"}
 # bonds 6° and 9° off horizontal or vertical: ChemDraw stops them 0.17-0.61 pt nearer N than our
-# §2.1 clip; a ChemDraw error, not emulated (user decision 2026-10-30, acs-style.md Open 28)
+# §2.1 clip; a ChemDraw error, not emulated (user decision 2026-10-30, style-spec.md Open 28)
 NEAR_AXIS_KNOWN = 0.65
 # x0.6 only (Open 28, not emulated either): two bonds 21-24° off horizontal 0.10 / 0.12 pt short, and the acyclic NH
 # turned 30° (atom 312), whose bond at -60° ChemDraw starts 0.46 pt farther out (x1.0 / x0.8: 0.04)

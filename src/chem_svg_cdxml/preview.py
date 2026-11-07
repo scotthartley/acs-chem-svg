@@ -108,7 +108,7 @@ def _overlay(a_ref, a_ours):
 
 
 def compare_png(ref_svg: str, our_svg: str, w_pt: float, h_pt: float, out: Path,
-                labels: tuple[str, str] = ("ChemDraw", "acs-chem-svg"), px_per_pt: float = 4.0,
+                labels: tuple[str, str] = ("ChemDraw", "chem-svg-cdxml"), px_per_pt: float = 4.0,
                 transform: str | None = None) -> Path:
     """Stack reference | ours | overlay (reference blue, ours red, coincident black) at one pt scale."""
     from PIL import Image, ImageDraw, ImageFont

@@ -1,4 +1,4 @@
-"""Chair conformers of single six-membered rings (acs-style.md §14.1).
+"""Chair conformers of single six-membered rings (style-spec.md §14.1).
 
 A chair species is drawn on ChemDraw's chair template (preset `chair.vertices`) or its exact
 mirror image (the flipped chair), with each ring substituent axial (vertical)

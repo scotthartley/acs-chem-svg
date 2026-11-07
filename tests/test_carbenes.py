@@ -9,12 +9,12 @@ import pytest
 from lxml import etree
 from pydantic import ValidationError
 
-from acs_chem_svg import chem, electrons
-from acs_chem_svg.figure import spec_cdxml
-from acs_chem_svg.draw_mol import Drawer
-from acs_chem_svg.geometry import dot, sub, unit
-from acs_chem_svg.preset import load_preset
-from acs_chem_svg.spec import CurvedArrow, Spec, load_spec, mark_triplets, molecules, parsed_species
+from chem_svg_cdxml import chem, electrons
+from chem_svg_cdxml.figure import spec_cdxml
+from chem_svg_cdxml.draw_mol import Drawer
+from chem_svg_cdxml.geometry import dot, sub, unit
+from chem_svg_cdxml.preset import load_preset
+from chem_svg_cdxml.spec import CurvedArrow, Spec, load_spec, mark_triplets, molecules, parsed_species
 
 ROOT = Path(__file__).resolve().parents[1]
 P = load_preset("acs1996")

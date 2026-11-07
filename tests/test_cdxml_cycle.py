@@ -1,4 +1,4 @@
-"""CDXML export of catalytic cycles (acs-style.md §15.1, phase 5).
+"""CDXML export of catalytic cycles (style-spec.md §15.1, phase 5).
 
 - Calibration: every arcs_x* and arcs_eq_x* arc arrow (forward, balanced and unbalanced
   equilibrium, headless), rewritten on ChemDraw's own circle, gives back its <arrow> (Head3D,
@@ -18,15 +18,15 @@ from lxml import etree
 from rdkit import Chem
 
 import measure_refs as mr
-from acs_chem_svg import chem, richtext
-from acs_chem_svg.cdxml_writer import CdxArc, CdxScheme, load_nicknames, to_cdxml
-from acs_chem_svg.figure import spec_cdxml
-from acs_chem_svg.cycle import build_cycle, tail_items
-from acs_chem_svg.arrows import arc_step_arrow
-from acs_chem_svg.geometry import arc_segments, length, sub
-from acs_chem_svg.scene import Group, Path
-from acs_chem_svg.spec import load_spec
-from acs_chem_svg.svg_writer import to_svg
+from chem_svg_cdxml import chem, richtext
+from chem_svg_cdxml.cdxml_writer import CdxArc, CdxScheme, load_nicknames, to_cdxml
+from chem_svg_cdxml.figure import spec_cdxml
+from chem_svg_cdxml.cycle import build_cycle, tail_items
+from chem_svg_cdxml.arrows import arc_step_arrow
+from chem_svg_cdxml.geometry import arc_segments, length, sub
+from chem_svg_cdxml.scene import Group, Path
+from chem_svg_cdxml.spec import load_spec
+from chem_svg_cdxml.svg_writer import to_svg
 
 PARSER = etree.XMLParser(load_dtd=False, no_network=True, remove_blank_text=True)
 TOL = 0.1

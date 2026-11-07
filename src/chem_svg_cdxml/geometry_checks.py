@@ -8,7 +8,7 @@ M2:
 - Inside each species (M1 rows too: check_labels), an atom label must not overlap another
   atom's label or a bond that isn't on that atom (draw_mol flips a crowded CH₃ to H₃C first),
   and drawn bond lines of bonds that share no atom must not touch: a crossing ChemDraw-style,
-  with the rear bond cut (draw_mol, acs-style.md §14.2), leaves a gap and passes. But a flat
+  with the rear bond cut (draw_mol, style-spec.md §14.2), leaves a gap and passes. But a flat
   species (no depth, no `front`) must not cross at all, and no two atoms may sit on top of each
   other (check_overlaid: the layout laid one group over another).
 

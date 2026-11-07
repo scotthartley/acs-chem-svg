@@ -1,7 +1,7 @@
-"""ACS molecule renderer: Molecule -> scene Group (design.md §3.3, references/acs-style.md).
+"""ACS molecule renderer: Molecule -> scene Group (design.md §3.3, references/style-spec.md).
 
-Every rule cites its section of acs-style.md and the references it was measured on.
-Unmeasured choices say so in their docstrings (acs-style.md §6 Open).
+Every rule cites its section of style-spec.md and the references it was measured on.
+Unmeasured choices say so in their docstrings (style-spec.md §6 Open).
 
 Frames: a bond runs from atom a to atom b. u is the distance along a->b, and v is
 the offset along n = perp(u) (y-down frame). Lines are stored as (v, u0, u1).
@@ -37,7 +37,7 @@ LONE_H_LEFT = {"O"}
 # An NH with two bonds whose open side (opposite the bonds' sum) points within this of straight
 # up or down takes its H above or below N (nh_x*: H above / below up to 15° off vertical, beside
 # from 30°, all three presets; the cut between is unmeasured, halfway). Measured for neutral N
-# with one H only; other atoms keep the left / right rule (acs-style.md §2).
+# with one H only; other atoms keep the left / right rule (style-spec.md §2).
 H_VERTICAL_DEG = 22.5
 H_VERTICAL = {"N"}
 # flip_crowded_labels sets a terminal abbreviation the other way only on a bond this near vertical,
@@ -232,7 +232,7 @@ def label_info(atom: Atom) -> abbrev.LabelInfo:
 
 
 def layout_abbreviation(mol: Molecule, i: int, preset: Preset, face: FontFace, side: str, base: float) -> Label:
-    """Abbreviation label on the label baseline (acs-style.md §3.5; abbrev_x*, abbrev_2_x*,
+    """Abbreviation label on the label baseline (style-spec.md §3.5; abbrev_x*, abbrev_2_x*,
     ligands_x*, metals_x*: about 75 labels, both forms, three presets). Bonds leaving to the left
     or vertically: the key text (OMe, CO2Me) left-justified, first glyph centered on the atom.
     Bonds leaving to the right (side "left"): the reversed text (abbrev.reverse: MeO, MeO2C, TMS)
@@ -355,7 +355,7 @@ Line2 = tuple[Point, Point]  # a line: point, direction
 
 @dataclass
 class Cut:
-    """A front bond's clearance strip across a rear bond (acs-style.md §14.2, chair_x*): the rear
+    """A front bond's clearance strip across a rear bond (style-spec.md §14.2, chair_x*): the rear
     bond's lines stop on the strip's two edges, each parallel to the front bond's outline on its
     side and crossing_clearance beyond the front's half-extent there."""
     front: int  # bond index
@@ -1039,7 +1039,7 @@ class Drawer:
             def in_gap() -> tuple[Point, Point]:
                 # no usable corner (nitro N⁺): on the largest gap's bisector, the center as far from
                 # the element ink box as at a corner, sign extent included (unmeasured rule,
-                # acs-style.md §2.2; user review 2026-10-29: measured along the ray, the ring
+                # style-spec.md §2.2; user review 2026-10-29: measured along the ray, the ring
                 # nearly touched the N)
                 ctr = ((x0 + x1) / 2, (y0 + y1) / 2)
                 d = self._charge_gap_direction(i)
@@ -1088,7 +1088,7 @@ class Drawer:
         return min(range(len(self.mol.atoms)), key=lambda j: math.dist(p, self.mol.atoms[j].p))
 
     def _charge_clear(self, i: int, sign: ChargeSign, candidates) -> Point:
-        """Clearance search for atom i's charge (unmeasured rule, acs-style.md §2.2): the dots
+        """Clearance search for atom i's charge (unmeasured rule, style-spec.md §2.2): the dots
         keep their places, and the sign takes the candidate center whose clash segments clear
         the atom's dots and drawn bonds the most. `candidates(k)` lists the centers at step k
         (each CHARGE_DOT_STEP_PT farther out), in preference order: a labeled atom's corner on
@@ -1477,7 +1477,7 @@ class ChargeSign:
     upright for ⊕; bar_length long, bar_thickness wide); circled, the same bars in a ring of
     circle_radius stroked at bar_thickness; with digits (2+, +3), a digit run at `size` in the
     label font and the bars, digit_gap apart, in the written order, the whole centered on the
-    point. Circled signs and digits are unmeasured (acs-style.md §2.2, Open)."""
+    point. Circled signs and digits are unmeasured (style-spec.md §2.2, Open)."""
     sign: int  # +1 | -1
     digits: str  # "" for a plain sign
     digits_first: bool  # 2+ (True) vs +3

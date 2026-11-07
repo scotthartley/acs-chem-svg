@@ -1,18 +1,18 @@
-# acs-chem-svg: development sessions
+# chem-svg-cdxml: development sessions
 
 `docs/design.md` is the design brief (README.md is the introduction for new users; code and
-references cite the brief as `design.md §n`). `references/acs-style.md` is the measured style spec. Where
-they disagree, `acs-style.md` (the ChemDraw references) wins.
+references cite the brief as `design.md §n`). `references/style-spec.md` is the measured style spec. Where
+they disagree, `style-spec.md` (the ChemDraw references) wins.
 
 ## Location
 
-- The repo is at `~/Coding/productivity/acs-chem-svg`.
+- The repo is at `~/Coding/productivity/chem-svg-cdxml`.
 - Install per project, in each project folder that should have it (not globally, and never
   inside this repo: a link back to the repo makes tree walks such as pytest collection loop):
-  `mkdir -p .claude/skills && ln -sfn ~/Coding/productivity/acs-chem-svg .claude/skills/acs-chem-svg`.
+  `mkdir -p .claude/skills && ln -sfn ~/Coding/productivity/chem-svg-cdxml .claude/skills/chem-svg-cdxml`.
   `-n` matters: a plain `ln -s` rerun on an existing link nests a new link inside the repo.
   Development sessions here don't need the skill installed.
-- Use sessions run `uv run --project ~/Coding/productivity/acs-chem-svg ...`.
+- Use sessions run `uv run --project ~/Coding/productivity/chem-svg-cdxml ...`.
 
 - `reference_renders/`, `spike/` (output of the retired M0 and cycle spikes) and `issues/` are local only (gitignored, not in the public
   repo). `reference_renders/cdxml/CDXML.dtd` is Revvity's DTD: never commit it. Tests that need `reference_renders/` skip without it, and `scripts/gallery.py` leaves out
@@ -25,7 +25,7 @@ they disagree, `acs-style.md` (the ChemDraw references) wins.
 ## Rules
 
 - **Numbers come from measurement only.** Every style number in `presets/` or
-  `references/acs-style.md` must trace to a file in `reference_renders/chemdraw/` plus a method in
+  `references/style-spec.md` must trace to a file in `reference_renders/chemdraw/` plus a method in
   `scripts/measure_refs.py` (its methods live in `scripts/chemdraw_refs/`), or be marked `README, unmeasured` (the design brief's values) / `unmeasured`. Never fill a value
   from memory. If the references can't answer it, add it to the Open list and ask for a new
   reference.
@@ -43,8 +43,8 @@ they disagree, `acs-style.md` (the ChemDraw references) wins.
   and (from M1) the regression gallery.
 - **Gallery changes** (`tests/gallery/`) require the user's approval of the rendered images.
 - **Keep SKILL.md under ~150 lines.** Push detail into `references/`.
-- **One rasterizer:** resvg via `acs_chem_svg.preview.rasterize`, with explicit font files only.
-  Text metrics come from `acs_chem_svg.fontmetrics`, which applies the same pair kerning as resvg.
+- **One rasterizer:** resvg via `chem_svg_cdxml.preview.rasterize`, with explicit font files only.
+  Text metrics come from `chem_svg_cdxml.fontmetrics`, which applies the same pair kerning as resvg.
 
 ## Tools
 
@@ -55,16 +55,16 @@ they disagree, `acs-style.md` (the ChemDraw references) wins.
 - The CDXML export tests are `tests/test_cdxml_{species,scheme,mech,resonance,abbrev,cycle}.py`, sharing `tests/cdxml_helpers.py`.
 - `uv run python scripts/compare_fonts.py` compares Helvetica with the Heros fallback (advances, kerning).
 - `uv run python scripts/check_rasterizer.py` is the rasterizer/font acceptance test.
-- `uv run python scripts/measure_refs.py --fit-clip` refits the bond-to-label clip model (acs-style.md §2.1).
-- `uv run python scripts/measure_refs.py --scheme` prints the scheme parameters per preset (acs-style.md §3).
-- `uv run python scripts/measure_refs.py --mech` prints the mechanism parameters per preset (acs-style.md §4).
-- `uv run python scripts/measure_refs.py --wrap` prints the multi-row scheme parameters per preset (acs-style.md §3.4).
-- `uv run python scripts/measure_refs.py --resonance` prints the resonance arrow and bracket parameters per preset (acs-style.md §4.3).
-- `uv run python scripts/measure_refs.py --abbrev` prints the abbreviation label parameters per preset, both forms, for abbrev_x\*, abbrev_2_x\*, ligands_x\* and metals_x\* (ring NTs's tail line too; acs-style.md §3.5).
-- `uv run python scripts/measure_refs.py --equilibrium` prints the equilibrium arrows and arrowhead variants per preset, incl. arrows_large_x1.0 (acs-style.md §3.1, §3.6).
+- `uv run python scripts/measure_refs.py --fit-clip` refits the bond-to-label clip model (style-spec.md §2.1).
+- `uv run python scripts/measure_refs.py --scheme` prints the scheme parameters per preset (style-spec.md §3).
+- `uv run python scripts/measure_refs.py --mech` prints the mechanism parameters per preset (style-spec.md §4).
+- `uv run python scripts/measure_refs.py --wrap` prints the multi-row scheme parameters per preset (style-spec.md §3.4).
+- `uv run python scripts/measure_refs.py --resonance` prints the resonance arrow and bracket parameters per preset (style-spec.md §4.3).
+- `uv run python scripts/measure_refs.py --abbrev` prints the abbreviation label parameters per preset, both forms, for abbrev_x\*, abbrev_2_x\*, ligands_x\* and metals_x\* (ring NTs's tail line too; style-spec.md §3.5).
+- `uv run python scripts/measure_refs.py --equilibrium` prints the equilibrium arrows and arrowhead variants per preset, incl. arrows_large_x1.0 (style-spec.md §3.1, §3.6).
 - `uv run python scripts/cdxml_to_molfile.py` regenerates `templates/m1/` … `templates/m4/`, `templates/abbrev/` (abbrev_x\*, abbrev_2_x\*, ligands_x\*; `.ids.json` for CDXML ids above 999) and `templates/chair/` (with `.front.json` front bonds) from the reference CDXMLs.
 - `uv run python scripts/readme_images.py` re-renders the README's example images (`docs/images/`).
-- `uv run python scripts/new_preset.py probe [--out DIR]` writes the style probe for ChemDraw; `... build --name X --probe <saved>.cdxml [--dry-run]` measures the re-saved file and writes `presets/X.yaml` and its CDXML templates, with a report of each value's source (acs-style.md §16). The hold-out test is `tests/test_preset_derivation.py`; real probes of the ACS settings go in `reference_renders/probes/style_probe_x<k>.cdxml`, other styles' in `style_probe_<name>.cdxml` (§16 "After the build" lists the checks for a new style).
+- `uv run python scripts/new_preset.py probe [--out DIR]` writes the style probe for ChemDraw; `... build --name X --probe <saved>.cdxml [--dry-run]` measures the re-saved file and writes `presets/X.yaml` and its CDXML templates, with a report of each value's source (style-spec.md §16). The hold-out test is `tests/test_preset_derivation.py`; real probes of the ACS settings go in `reference_renders/probes/style_probe_x<k>.cdxml`, other styles' in `style_probe_<name>.cdxml` (§16 "After the build" lists the checks for a new style).
 - `uv run python scripts/compare.py <ref>...` renders a reference's templates and prints ours vs
   ChemDraw, plus side-by-side PNGs in `build/compare/`. Scheme references also get our arrows and captions;
   mech_basic_x* also gets our curved arrows on ChemDraw's CurvePoints and our dots at its centers.
@@ -76,32 +76,32 @@ they disagree, `acs-style.md` (the ChemDraw references) wins.
   (`examples/m2/m2_*.yaml` … `examples/m4/m4_*.yaml`), a catalytic cycle (`examples/m6/m6_*_cycle_*.yaml`) or M1 species (`examples/m1/m1_smiles_x*.yaml`). `--crops` adds
   16 px/pt crops of curved arrows, charged or dotted labels, ↔ arrows, equilibrium arrow ends and bracket corners; `--maps` adds
   `<stem>_maps.png` with map numbers beside the atoms (preview only). It prints each curved arrow's bow.
-  It also writes `<stem>.cdxml` for ChemDraw (every spec kind; `cdxml_writer`, acs-style.md §13); `--no-cdxml` skips it, and a spec it can't export
+  It also writes `<stem>.cdxml` for ChemDraw (every spec kind; `cdxml_writer`, style-spec.md §13); `--no-cdxml` skips it, and a spec it can't export
   gets a `warning: no CDXML:` line instead.
 - `uv run python scripts/cdxml_headers.py` regenerates the CDXML header templates `presets/cdxml/` from m1_set_x* (caption fonts from scheme_multi_x1.0)
   and the nickname templates `presets/cdxml/<preset>.nicknames.xml` from abbrev_x*, abbrev_2_x*, ligands_x* and metals_x*.
-- `uv run python scripts/measure_refs.py --cdxml-symbols` prints the charge-symbol boxes per reference (acs-style.md §13),
+- `uv run python scripts/measure_refs.py --cdxml-symbols` prints the charge-symbol boxes per reference (style-spec.md §13),
   and on mech_basic_x* the LonePair / Electron boxes and each fragment box's reach beyond its dots (§13.2).
-- `uv run python scripts/measure_refs.py --cdxml-scheme` prints the CDXML caption, arrow, bracket and step conventions per scheme reference, resonance_x* included (acs-style.md §13.1, §13.3).
+- `uv run python scripts/measure_refs.py --cdxml-scheme` prints the CDXML caption, arrow, bracket and step conventions per scheme reference, resonance_x* included (style-spec.md §13.1, §13.3).
 - `uv run python scripts/cdxml_gate.py [--phase 2|3|4a|4b|4c|5|6] [--diff]` writes the CDXML gate files to `build/cdxml_gate/`
   (`phase2/` for schemes, `phase3/` for mechanisms, `phase4a/` for abbreviations, resonance and wrap, `phase4c/` for general
   abbreviations (generated fragments, ring NTs, text labels), `phase4b/` for
-  charges and Lewis, `phase5/` for chairs and crossings, `phase6/` for catalytic cycles); `--diff` compares ChemDraw's re-saves (`reference_renders/resaves/phase<N>/`, phase 1 for the default) with them (acs-style.md §13–§13.4, §15.3, gate).
+  charges and Lewis, `phase5/` for chairs and crossings, `phase6/` for catalytic cycles); `--diff` compares ChemDraw's re-saves (`reference_renders/resaves/phase<N>/`, phase 1 for the default) with them (style-spec.md §13–§13.4, §15.3, gate).
   `--lewis-draft` writes `build/cdxml_gate/lewis_draft/charges_lewis_draft_x*.cdxml`, the draft the user edited into
   the charges_lewis_x* reference (never overwrites).
-- `uv run python scripts/measure_refs.py --arc` prints arcs_x*'s arc arrows: circle, sweep, notch and head on the chord, ChemDraw's cubics (acs-style.md §15.1).
-- `uv run python scripts/measure_refs.py --arc-eq` prints arcs_eq_x*'s arc equilibrium and headless arrows: shaft offsets, butts, notches, tips, glitches (acs-style.md §15.1).
-- `uv run python scripts/measure_refs.py --chair` prints chair_x*'s templates, axial and equatorial bonds per vertex, and the chairs' crossings (acs-style.md §14.1).
-- `uv run python scripts/measure_refs.py --crossing` prints every crossing's front bond (by Z) and the rear bond's cut ends (acs-style.md §14.2).
-- `uv run python scripts/measure_refs.py --nh` prints nh_x*'s NH labels: open direction, H beside / above / below, line pitch, CDXML `<t>` (acs-style.md §2).
+- `uv run python scripts/measure_refs.py --arc` prints arcs_x*'s arc arrows: circle, sweep, notch and head on the chord, ChemDraw's cubics (style-spec.md §15.1).
+- `uv run python scripts/measure_refs.py --arc-eq` prints arcs_eq_x*'s arc equilibrium and headless arrows: shaft offsets, butts, notches, tips, glitches (style-spec.md §15.1).
+- `uv run python scripts/measure_refs.py --chair` prints chair_x*'s templates, axial and equatorial bonds per vertex, and the chairs' crossings (style-spec.md §14.1).
+- `uv run python scripts/measure_refs.py --crossing` prints every crossing's front bond (by Z) and the rear bond's cut ends (style-spec.md §14.2).
+- `uv run python scripts/measure_refs.py --nh` prints nh_x*'s NH labels: open direction, H beside / above / below, line pitch, CDXML `<t>` (style-spec.md §2).
 - `uv run python scripts/measure_refs.py --charges-lewis` prints charges_lewis_x*'s circled signs, symbol sizes per box,
-  two-electron radicals and label texts (acs-style.md §2.2, §13.4).
+  two-electron radicals and label texts (style-spec.md §2.2, §13.4).
 - `uv run python scripts/validate.py [--suggest] spec.yaml` checks schema, chemistry, electron bookkeeping, scheme
   overlaps and mechanism geometry, and prints paste-ready `suggested:` products on a mismatch (`--suggest`: for
   every step). `tests/broken/*.yaml` must each fail with their `# expect:` message.
 - `examples/benchmarks/prompts.yaml` holds the M5 one-sentence benchmark prompts with reference specs; its
   README says how a trial is run (frozen copy of the skill, fresh agent, `build/m5_trials/<round>/`).
-- Abbreviations are rules (`src/acs_chem_svg/abbrev.py`, registry `src/acs_chem_svg/data/abbreviations.yaml`; acs-style.md §3.5).
+- Abbreviations are rules (`src/chem_svg_cdxml/abbrev.py`, registry `src/chem_svg_cdxml/data/abbreviations.yaml`; style-spec.md §3.5).
 - The regression gallery is `tests/test_gallery.py` (part of `uv run pytest`), with CDXML text snapshots in `tests/gallery/cdxml/`. `scripts/gallery.py` reports which cases
   differ; `--review DIR` writes the new or changed renders for the user to look at. `--update` rewrites
   `tests/gallery/`; run it only after the user approves the new images.

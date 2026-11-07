@@ -16,7 +16,7 @@ The output is a plain `Molecule` in pt, y down, so drawing never touches RDKit.
   molfile atom alias on a carbon (CH3, H3C, CH2, ..., as ChemDraw imports it), or
   `show_carbons` ("terminal" or atom ids). Only terminal (degree <= 1) carbons can be
   labeled: where ChemDraw puts the H of a CH2/CH with bonds on both sides is unmeasured
-  (acs-style.md §6 Open 8).
+  (style-spec.md §6 Open 8).
 - Abbreviations (M2): named groups (OMe, OBn, ...) collapse to one labeled atom at the
   attachment atom's position (RDKit rdAbbreviations). A molfile alias that names one does the same.
 - Alignment (M2): a scheme product takes the coordinates of the atoms it shares with the
@@ -50,7 +50,7 @@ STANDARD_BOND = 1.5  # A; molfile bond length that maps exactly onto the preset 
 _RDKIT_DIR = {Chem.BondDir.BEGINWEDGE: "wedge", Chem.BondDir.BEGINDASH: "hash"}
 # Abbreviations come from the registry (abbrev.py, data/abbreviations.yaml): label -> group
 # SMILES (* = attachment) for groups and formulas, and the right-justified text by the reversal
-# rule (OMe -> MeO, CO2Me -> MeO2C, TMS unchanged; acs-style.md §3.5). Views of abbrev.default().
+# rule (OMe -> MeO, CO2Me -> MeO2C, TMS unchanged; style-spec.md §3.5). Views of abbrev.default().
 ABBREVIATIONS = {k: e.smiles for k, e in abbrev.default().entries.items() if e.smiles}
 ABBREVIATIONS_REVERSED = {k: abbrev.reverse(k) for k in ABBREVIATIONS}
 ABBREV_PROP = "_abbrevInfo"  # a collapsed dummy atom's abbrev.LabelInfo (JSON)
@@ -559,10 +559,10 @@ def _alias_label(a: Chem.Atom, reg: abbrev.Registry | None = None) -> tuple[bool
                              f"{a.GetTotalNumHs(includeNeighbors=False)} H")
         if a.GetDegree() > 1:
             raise NotImplementedError(f"atom {a.GetIdx() + 1}: alias {alias!r} on a non-terminal carbon "
-                                      "(unmeasured, acs-style.md §6 Open 8)")
+                                      "(unmeasured, style-spec.md §6 Open 8)")
         return True, None
     raise ValueError(f"atom {a.GetIdx() + 1}: alias {alias!r} is a nickname or condensed label we don't "
-                     f"draw; define it under the spec's `abbreviations:` (acs-style.md §3.5)")
+                     f"draw; define it under the spec's `abbreviations:` (style-spec.md §3.5)")
 
 
 def composed_info(key: str, element: str, degree: int, n_h: int | None = None,
@@ -617,7 +617,7 @@ def show_carbons(m: Molecule, which: str | list[str | int] | None) -> Molecule:
         inner = sorted(a.id for a in m.atoms if a.id in ids and m.degree(a.idx) > 1)
         if inner:
             raise NotImplementedError(f"show_carbons: carbon {', '.join(inner)} in {m.name} is not terminal; "
-                                      "CH2/CH labels are unmeasured (acs-style.md §6 Open 8)")
+                                      "CH2/CH labels are unmeasured (style-spec.md §6 Open 8)")
     for a in m.atoms:
         if a.element == "C" and m.degree(a.idx) <= 1 and (which == "terminal" or a.id in ids):
             a.show_label = True
@@ -650,7 +650,7 @@ def condense(mol: Chem.Mol, labels: list[str] | None, name: str = "",
     text = [lab for lab in labels if reg.get(lab) is not None and reg.get(lab).kind == "text"]
     if text:
         raise ValueError(f"{name}: abbreviate {', '.join(text)}: a text label has no structure to collapse; "
-                         "draw it on a stand-in atom with `labels:` (acs-style.md §3.5)")
+                         "draw it on a stand-in atom with `labels:` (style-spec.md §3.5)")
     defs = rdAbbreviations.ParseAbbreviations("\n".join(f"{lab} {reg.get(lab).smiles}" for lab in labels))
     ar = Chem.Mol(_dative_as_single(mol))
     Chem.SetAromaticity(ar)

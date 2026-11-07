@@ -1,4 +1,4 @@
-# Equilibrium arrows (acs-style.md §3.6): balanced, favoring products, favoring reactants,
+# Equilibrium arrows (style-spec.md §3.6): balanced, favoring products, favoring reactants,
 # one sequence per row. At x1.0 the heads are the large variant (arrow.default_head).
 preset: acs1996
 species:

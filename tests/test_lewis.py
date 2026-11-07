@@ -5,13 +5,13 @@ import math
 import pytest
 import yaml
 
-from acs_chem_svg import chem
-from acs_chem_svg.draw_mol import Drawer, element_x
-from acs_chem_svg.fontmetrics import load_face
-from acs_chem_svg.geometry_checks import check_lewis
-from acs_chem_svg.preset import load_preset
-from acs_chem_svg.scene import Circle, Group, Polyline
-from acs_chem_svg.spec import Spec
+from chem_svg_cdxml import chem
+from chem_svg_cdxml.draw_mol import Drawer, element_x
+from chem_svg_cdxml.fontmetrics import load_face
+from chem_svg_cdxml.geometry_checks import check_lewis
+from chem_svg_cdxml.preset import load_preset
+from chem_svg_cdxml.scene import Circle, Group, Polyline
+from chem_svg_cdxml.spec import Spec
 
 PRESET = load_preset("acs1996")
 L = PRESET.lewis.bond_length

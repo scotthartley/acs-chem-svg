@@ -1,4 +1,4 @@
-"""Arc arrows and arc equilibrium arrows (acs-style.md §15.1)."""
+"""Arc arrows and arc equilibrium arrows (style-spec.md §15.1)."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from pathlib import Path
 
 from lxml import etree
 
-from acs_chem_svg.geometry import add, dot, length, mul, sub, unit
+from chem_svg_cdxml.geometry import add, dot, length, mul, sub, unit
 
 from .core import REF_DIR, Shape, load, stats
 from .measurements import _r
@@ -40,7 +40,7 @@ def arc_circle(a, off=(0.0, 0.0)):
     """(center, radius, sweep in degrees, + counterclockwise on the page) of a CDXML arc <arrow>,
     from Head3D, Tail3D and the signed AngularSize alone: the center is on the chord's
     perpendicular bisector, on the left of tail -> head (as seen on the page) for a positive
-    sweep. Center3D agrees within 0.07 when the arc was drawn, not flipped (acs-style.md §15.1)."""
+    sweep. Center3D agrees within 0.07 when the arc was drawn, not flipped (style-spec.md §15.1)."""
     def p(k):
         v = [float(x) for x in a.get(k).split()[:2]]
         return (v[0] + off[0], v[1] + off[1])
@@ -65,7 +65,7 @@ def arc_shaft(doc, tail):
 
 
 def arc_summary(name: str, ref_dir: Path = REF_DIR) -> dict:
-    """Arc arrows (acs-style.md §15.1): per CDXML <arrow> with AngularSize, the circle
+    """Arc arrows (style-spec.md §15.1): per CDXML <arrow> with AngularSize, the circle
     (arc_circle: from Head3D, Tail3D and AngularSize), the sweep Tail3D -> Head3D on the page,
     where Center3D and the axis ends sit relative to it, and the drawn shaft (the
     stroked cubic path from Tail3D) and head (the curved fill polygon with a vertex on Head3D).
@@ -171,7 +171,7 @@ def path_samples(s: Shape, n: int = 8) -> list:
 
 
 def arc_eq_arrows(name: str, ref_dir: Path = REF_DIR) -> list[dict]:
-    """The arc arrows of an arcs_eq_x* reference (acs-style.md §15.1): per CDXML <arrow>, its
+    """The arc arrows of an arcs_eq_x* reference (style-spec.md §15.1): per CDXML <arrow>, its
     circle (Center3D and the major axis end), kind (equilibrium, equilibrium_products, none),
     Tail3D angle a0 and sweep, glitch (minor and major axis radii more than 1 pt apart: an
     ellipse, which ChemDraw draws short), and per drawn shaft (the strokes and half heads whose

@@ -1,4 +1,4 @@
-"""Abbreviation and NH label parameters (acs-style.md §2, §3.5)."""
+"""Abbreviation and NH label parameters (style-spec.md §2, §3.5)."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from pathlib import Path
 
 from lxml import etree
 
-from acs_chem_svg.geometry import unit
+from chem_svg_cdxml.geometry import unit
 
 from .core import (
     ACS_PRESETS, Doc, Glyph, REF_DIR, _glyph_chain, _kern, _line_from_shape, assign, frame, label_glyphs, load, stats,
@@ -27,8 +27,8 @@ def abbrev_summary(name: str, ref_dir: Path = REF_DIR, preset_name: str | None =
     atom y, and each bond end with its residual against the §2.1 model (preset values) on the
     anchor glyphs label_glyphs picks. `preset_name`: the preset to model with (default: the ACS
     preset of the file name's _x<k>)."""
-    from acs_chem_svg import draw_mol
-    from acs_chem_svg.preset import load_preset
+    from chem_svg_cdxml import draw_mol
+    from chem_svg_cdxml.preset import load_preset
 
     doc = load(name, ref_dir)
     asg = assign(doc)

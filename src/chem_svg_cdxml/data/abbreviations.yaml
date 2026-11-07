@@ -1,4 +1,4 @@
-# Abbreviation registry (acs-style.md §3.5; abbrev.py). Each key is the label in plain ASCII, as
+# Abbreviation registry (style-spec.md §3.5; abbrev.py). Each key is the label in plain ASCII, as
 # a spec's `abbreviate:` names it and as the CDXML label text holds it.
 #
 #   smiles:   the group, `*` = the bond to the rest of the molecule (one `*`)

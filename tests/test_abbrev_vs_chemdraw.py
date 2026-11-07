@@ -1,4 +1,4 @@
-"""Abbreviation labels vs ChemDraw (acs-style.md §3.5). abbrev_x*: the first 21 registry labels
+"""Abbreviation labels vs ChemDraw (style-spec.md §3.5). abbrev_x*: the first 21 registry labels
 on a benzene ring, bond leaving the label to the left (OMe) and to the right (MeO), plus ±30°
 bonds for OMe, CO2Me and NO2. abbrev_2_x*: about 30 more groups and formulas the same way, ring
 NTs turned in 60° steps (Ts beside, above and below N), OTBS / NHBoc up and down, OTf / NHBoc at
@@ -13,7 +13,7 @@ import pytest
 from compare import render_reference
 
 import measure_refs as mr
-from acs_chem_svg.chem import ABBREVIATIONS, ABBREVIATIONS_REVERSED
+from chem_svg_cdxml.chem import ABBREVIATIONS, ABBREVIATIONS_REVERSED
 
 pytestmark = pytest.mark.skipif(not (mr.REF_DIR / "abbrev_x1.0.cdxml").exists(),
                                 reason="ChemDraw references (reference_renders/) are local only")
@@ -27,7 +27,7 @@ ABBREV_X = ["OMe", "OEt", "OBn", "OPh", "OAc", "SMe", "NHAc", "CO2Me", "CO2Et", 
 # deliberate differences (user decision 2026-11-03): one reversal rule, not ChemDraw's reading;
 # right-justified only (the bond end differs with the anchor: ChemDraw's ₃, our P)
 DECIDED_TEXT = {"P(o-tol)3": "(o-tol)3P", "IPr": "IPr"}
-# bond ends ChemDraw puts elsewhere (acs-style.md §3.5):
+# bond ends ChemDraw puts elsewhere (style-spec.md §3.5):
 # - a bond 3° or 9° off horizontal into a ring NTs: Open 28's cut, not emulated (as nh_x*)
 NEAR_AXIS_KNOWN = 0.65
 # - (reference, label as drawn[, bond direction]) -> allowed difference:
@@ -118,7 +118,7 @@ N_ENDS = {"abbrev": 48, "abbrev_2": 89, "ligands": 17}
 def test_ring_nts_tail_line(ref):
     """Ring NTs (abbrev_2_x*): ChemDraw's LabelAlignment and, with Ts above or below N, the Ts
     line's origin x and baseline pitch from N's, as ours draws them."""
-    from acs_chem_svg.draw_mol import Drawer
+    from chem_svg_cdxml.draw_mol import Drawer
     r, _, _ = measured(ref)
     summary = _forms_by_atom(ref)
     side = {"Left": "right", "Right": "left", "Above": "top", "Below": "bottom"}

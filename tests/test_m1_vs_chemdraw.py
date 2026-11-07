@@ -16,7 +16,7 @@ pytestmark = pytest.mark.skipif(not mr.REF_DIR.exists(),
                                 reason="ChemDraw references (reference_renders/) are local only")
 
 TOL = 0.1
-X1_BAR_LENGTH = 3.935  # m1_set_x1.0 / labels_x1.0 charge bars (acs-style.md §2.2)
+X1_BAR_LENGTH = 3.935  # m1_set_x1.0 / labels_x1.0 charge bars (style-spec.md §2.2)
 REFS = ["m1_set_x1.0", "m1_set_x0.8", "m1_set_x0.6", "double_bonds_x1.0", "labels_x1.0", "double_bonds_2",
         "stereo_x1.0", "stereo_x0.8", "stereo_x0.6", "clearance_x1.0", "clearance_x0.8", "clearance_x0.6"]
 
@@ -164,7 +164,7 @@ def _bond_ink(svg_text, w, h, px, blanks=(), radius=4.0, boxes=()):
     around each point in `blanks` (charge signs, labeled atoms), and each box in `boxes`."""
     from lxml import etree
 
-    from acs_chem_svg.preview import alpha
+    from chem_svg_cdxml.preview import alpha
     root = etree.fromstring(svg_text.encode())
     for el in list(root.iter("{http://www.w3.org/2000/svg}text")):
         el.getparent().remove(el)

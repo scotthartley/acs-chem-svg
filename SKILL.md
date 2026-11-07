@@ -1,11 +1,11 @@
 ---
-name: acs-chem-svg
-description: Draw chemical structures, Lewis structures, reaction schemes, and arrow-pushing mechanisms in ACS (ChemDraw ACS Document 1996) style as editable SVG, with a PNG preview Claude inspects before delivering. Use when the user asks to draw a molecule, a Lewis structure, a reaction scheme, a mechanism with curved arrows, resonance structures, or a catalytic cycle.
+name: chem-svg-cdxml
+description: Draw chemical structures, Lewis structures, reaction schemes, and arrow-pushing mechanisms in the ChemDraw ACS Document 1996 style as editable SVG or CDXML, with a PNG preview Claude inspects before delivering. Use when the user asks to draw a molecule, a Lewis structure, a reaction scheme, a mechanism with curved arrows, resonance structures, or a catalytic cycle.
 ---
 
-# acs-chem-svg
+# chem-svg-cdxml
 
-`<repo>` is this skill's directory: the target of the project's `.claude/skills/acs-chem-svg` symlink.
+`<repo>` is this skill's directory: the target of the project's `.claude/skills/chem-svg-cdxml` symlink.
 Run every command as `uv run --project <repo> python <repo>/scripts/<script> ...`.
 If the Read tool refuses `<repo>` files (outside the working directory, symlink or not), read them with `cat` / `sed`.
 
@@ -41,7 +41,7 @@ If the Read tool refuses `<repo>` files (outside the working directory, symlink 
      stereo (`chair: {flip: true}`, `{axial: [maps]}`, `{start: map}`); see `references/scheme-schema.md`.
    - Charges: `charges: {circled: true}` (spec) or `circled_charges` (species) circles ±1 signs;
      `charge_labels: {1: "+3"}` (species, by atom map) draws a text, display only.
-   - Abbreviations: `abbreviate: [OTf, Boc, t-Bu, TBS, …]` (registry `src/acs_chem_svg/data/abbreviations.yaml`);
+   - Abbreviations: `abbreviate: [OTf, Boc, t-Bu, TBS, …]` (registry `src/chem_svg_cdxml/data/abbreviations.yaml`);
      a group on a heteroatom merges (TBS on O → OTBS, Ts on ring N → NTs). Define others under `abbreviations:`;
      ligand text (L, Lₙ, dppf, XPhos) goes on a `[*:n]` atom via top-level `labels:`. See `references/scheme-schema.md`.
 2. **Validate:** `scripts/validate.py spec.yaml`. Fix the spec until it prints OK (schema,

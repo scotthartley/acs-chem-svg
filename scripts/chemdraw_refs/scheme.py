@@ -1,10 +1,10 @@
-"""Scheme, multi-row, resonance and equilibrium parameters per preset (acs-style.md §3, §4.3)."""
+"""Scheme, multi-row, resonance and equilibrium parameters per preset (style-spec.md §3, §4.3)."""
 
 from __future__ import annotations
 
 import statistics
 
-from acs_chem_svg.geometry import add, length, mul, sub, unit
+from chem_svg_cdxml.geometry import add, length, mul, sub, unit
 
 from .core import Doc, load, stats, union
 from .measurements import _caption_glyphs, _r, _structures, measure, text_lines
@@ -17,7 +17,7 @@ SCHEME_REFS = {"1.0": ["scheme_basic_x1.0", "scheme_multi_x1.0"], "0.8": ["schem
 
 
 def scheme_summary(results: dict) -> dict:
-    """Scheme parameters per preset (acs-style.md §3) from measure() results of
+    """Scheme parameters per preset (style-spec.md §3) from measure() results of
     scheme_basic_x<k> + scheme_multi_x<k>. Medians unless noted; `n` is the sample count."""
     def med(vals):
         vals = [v for v in vals if v is not None]
@@ -81,7 +81,7 @@ WRAP_REFS = {"1.0": "scheme_wrap_x1.0", "0.8": "scheme_wrap_x0.8", "0.6": "schem
 
 
 def wrap_summary(name: str | Doc) -> dict:
-    """Multi-row scheme parameters (acs-style.md §3.4) from one scheme_wrap_x<k> file (or a
+    """Multi-row scheme parameters (style-spec.md §3.4) from one scheme_wrap_x<k> file (or a
     loaded Doc: compare.py measures our layout the same way). Every structure, arrow and caption
     joins the row of the nearest arrow axis; a row's ink is the union of its structure ink,
     arrow boxes (axis ± head half-width) and caption ink."""
@@ -142,7 +142,7 @@ def _charge_box(c):
 
 
 def resonance_summary(name: str | Doc) -> dict:
-    """Resonance parameters (acs-style.md §4.3) from one resonance_x<k> file: the double-headed
+    """Resonance parameters (style-spec.md §4.3) from one resonance_x<k> file: the double-headed
     arrows (exact heads; hand-drawn length), structure ink (bonds, labels and charges: each
     charge joins the structure of its atom) -> arrow end gaps, the bracket gaps to the content
     ink, and the contributors' ring centers against the arrow axis. `name` may be a loaded Doc."""
@@ -189,7 +189,7 @@ EQUILIBRIUM_REFS = {"1.0": "equilibrium_x1.0", "0.8": "equilibrium_x0.8", "0.6":
 
 
 def equilibrium_summary(name: str | Doc) -> dict:
-    """Equilibrium arrows and head variants (acs-style.md §3.1, §3.6) from one reference: per
+    """Equilibrium arrows and head variants (style-spec.md §3.1, §3.6) from one reference: per
     arrow its CDXML head attributes (HeadSize / ArrowheadCenterSize / ArrowheadWidth say which
     variant), then for equilibrium arrows the kind (balanced, or unbalanced favoring products or
     reactants: the long shaft's tip on the right or the left), shaft spacing and stagger, the

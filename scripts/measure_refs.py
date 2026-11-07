@@ -1,4 +1,4 @@
-"""Measure ChemDraw reference renders into numbers for references/acs-style.md.
+"""Measure ChemDraw reference renders into numbers for references/style-spec.md.
 
 Atom positions, bond orders, stereo flags, and object types come from the
 .cdxml saved next to each export (exact, no clustering heuristics). Drawn
@@ -58,7 +58,7 @@ for _m in (core, measurements, clip, scheme, mech, labels, cdxml, chair, arcs):
 
 
 
-# References --fit-clip leaves out unless named (acs-style.md §2.1): bond ends the model is not
+# References --fit-clip leaves out unless named (style-spec.md §2.1): bond ends the model is not
 # fitted to. nh_x*: bonds 6-9° off the axes end up to 0.6 pt short, a ChemDraw error (Open 28);
 # metals_x*: the bond straight down from a centered Pd (Open 25; a refit with them still leaves it
 # 0.16-0.25 off and moves the other parameters); chair_x*: a rear bond cut at a crossing (§14.2).

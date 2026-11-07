@@ -1,4 +1,4 @@
-"""Curved arrows (acs-style.md §4): two-electron arrows and fishhooks on a step's reactants.
+"""Curved arrows (style-spec.md §4): two-electron arrows and fishhooks on a step's reactants.
 
 Exact (§4.1, mech_basic_x*, the same at every preset):
 - The stroke is a cubic Bézier, stroke_width wide, with no fill. It ends at the head's notch.
@@ -75,7 +75,7 @@ Hand-placed (§4.2, round placement defaults):
   center) costs half a clash plus its miss / 360: less than a clash, and the closest miss first. For an arc or loop
   onto an atom the tip, stroke end and controls are solved together (solve_end), since the end
   tangent decides where the tip stops.
-- Tangent arrows (user decision 2026-11-05; acs-style.md §4.2): set by their end directions, not by
+- Tangent arrows (user decision 2026-11-05; style-spec.md §4.2): set by their end directions, not by
   fixed handle ratios. An arc or loop of at least TANGENT_MIN_CHORD bond lengths whose exit is more
   than TANGENT_OFF off square, or which clashes, gives way to the smoothest clean cubic that leaves
   square (the pair's direction, a bond's normal), or as near as TANGENT_TURNS gets, and lands exactly

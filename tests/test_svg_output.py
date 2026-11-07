@@ -5,11 +5,11 @@ import re
 import pytest
 from lxml import etree
 
-from acs_chem_svg import chem
-from acs_chem_svg.draw_mol import draw_molecule
-from acs_chem_svg.preset import load_preset
-from acs_chem_svg.preview import rasterize
-from acs_chem_svg.svg_writer import FONT_FAMILY, to_svg
+from chem_svg_cdxml import chem
+from chem_svg_cdxml.draw_mol import draw_molecule
+from chem_svg_cdxml.preset import load_preset
+from chem_svg_cdxml.preview import rasterize
+from chem_svg_cdxml.svg_writer import FONT_FAMILY, to_svg
 
 NS = "{http://www.w3.org/2000/svg}"
 
@@ -74,7 +74,7 @@ def test_transparent_background(svg):
 
 
 def test_font_provenance_comment(svg):
-    assert re.search(r"<!-- acs-chem-svg: text measured with .+\.(ttc|otf)", svg)
+    assert re.search(r"<!-- chem-svg-cdxml: text measured with .+\.(ttc|otf)", svg)
 
 
 def test_bold_and_italic_by_editor():
@@ -83,10 +83,10 @@ def test_bold_and_italic_by_editor():
     form Affinity imports as bold/italic (user checks, 2026-10-24 and 2026-10-26). Regular text
     keeps the family list either way; resvg renders both (rasterize maps face names back;
     scripts/check_rasterizer.py)."""
-    from acs_chem_svg import richtext
-    from acs_chem_svg.preset import load_preset
-    from acs_chem_svg.scene import Group
-    from acs_chem_svg.svg_writer import FONT_FAMILY, to_svg
+    from chem_svg_cdxml import richtext
+    from chem_svg_cdxml.preset import load_preset
+    from chem_svg_cdxml.scene import Group
+    from chem_svg_cdxml.svg_writer import FONT_FAMILY, to_svg
 
     p = load_preset("acs1996")
     runs = (richtext.layout_line("*n*-BuLi", 0, 10, 10, p).runs
@@ -111,7 +111,7 @@ ARROW_SPECS = ["m4_nitration_x1.0", "m4_resonance_x0.8", "m3_radical_propagation
 
 def _old_reaction_head(tip, u, p):
     """The reaction head as arrows._head built it before markers (separate Path)."""
-    from acs_chem_svg.geometry import add, mul, perp
+    from chem_svg_cdxml.geometry import add, mul, perp
     a, n = p.head(), perp(u)
 
     def at(back, side):
@@ -128,8 +128,8 @@ def _close(ps, qs):
 
 @pytest.mark.parametrize("preset", ["acs1996", "acs1996_x0.6"])
 def test_reaction_and_resonance_markers_place_the_old_heads(preset):
-    from acs_chem_svg.arrows import reaction_arrow, resonance_arrow
-    from acs_chem_svg.geometry import mul, sub, unit
+    from chem_svg_cdxml.arrows import reaction_arrow, resonance_arrow
+    from chem_svg_cdxml.geometry import mul, sub, unit
     p = load_preset(preset)
     tail, head = (3.0, 7.0), (40.0, -5.0)  # slanted, so a frame mix-up shows
     u = unit(sub(head, tail))
@@ -145,7 +145,7 @@ def test_reaction_and_resonance_markers_place_the_old_heads(preset):
 def arrow_case(request):
     from pathlib import Path
 
-    from acs_chem_svg.figure import render_spec
+    from chem_svg_cdxml.figure import render_spec
     root = render_spec(Path(__file__).resolve().parents[1] / "examples" / request.param[:2] / f"{request.param}.yaml")
     return root, to_svg(root)[0], to_svg(root, affinity=True)[0]
 

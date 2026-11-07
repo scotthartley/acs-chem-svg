@@ -1,4 +1,4 @@
-"""Catalytic cycles (acs-style.md §15; design.md §10): species on a circle, arc arrows between
+"""Catalytic cycles (style-spec.md §15; design.md §10): species on a circle, arc arrows between
 them, and tails for species entering and leaving.
 
 ChemDraw has no cycle layout, so every rule here is ours (the presets' `cycle:` keys,

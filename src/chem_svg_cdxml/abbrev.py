@@ -1,4 +1,4 @@
-"""Abbreviation labels as rules (acs-style.md §3.5; abbrev_x*, abbrev_2_x*, ligands_x*, metals_x*).
+"""Abbreviation labels as rules (style-spec.md §3.5; abbrev_x*, abbrev_2_x*, ligands_x*, metals_x*).
 
 The registry (data/abbreviations.yaml, plus a spec's `abbreviations:` block) holds three kinds of
 entry: **groups** (Me, Boc, TBS: named substituents that also merge into a heteroatom's label),

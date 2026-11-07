@@ -1,17 +1,17 @@
-"""Charges (acs-style.md §2.2): clearance from lone pairs, circled signs, 2+ / override texts.
+"""Charges (style-spec.md §2.2): clearance from lone pairs, circled signs, 2+ / override texts.
 All placements here are unmeasured rules (user decision 2026-10-26)."""
 
 from pathlib import Path
 
 import pytest
 
-from acs_chem_svg import chem
-from acs_chem_svg.draw_mol import CHARGE_DOT_CLEARANCE, Drawer, parse_charge_text
-from acs_chem_svg.geometry import segment_box_dist
-from acs_chem_svg.preset import load_preset
-from acs_chem_svg.scene import Circle, Polyline, TextRun
-from acs_chem_svg.spec import Spec, molecules
-from acs_chem_svg.svg_writer import to_svg
+from chem_svg_cdxml import chem
+from chem_svg_cdxml.draw_mol import CHARGE_DOT_CLEARANCE, Drawer, parse_charge_text
+from chem_svg_cdxml.geometry import segment_box_dist
+from chem_svg_cdxml.preset import load_preset
+from chem_svg_cdxml.scene import Circle, Polyline, TextRun
+from chem_svg_cdxml.spec import Spec, molecules
+from chem_svg_cdxml.svg_writer import to_svg
 
 PRESETS = ["acs1996", "acs1996_x0.8", "acs1996_x0.6"]
 HERE = Path(__file__).parent

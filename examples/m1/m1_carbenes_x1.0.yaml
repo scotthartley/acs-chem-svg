@@ -1,7 +1,7 @@
 # M1 carbenes and nitrenes: an atom written with two unpaired electrons ([CH2], [C], [N]) is a
 # singlet, its pair always drawn (label sides, or the widest gap's bisector on a skeletal C), unless
 # the species lists it in triplet: (two dots). Placement reuses the lone-pair and radical rules;
-# unmeasured, no reference (acs-style.md §6 Open, user decision 2026-10-29).
+# unmeasured, no reference (style-spec.md §6 Open, user decision 2026-10-29).
 preset: acs1996
 species:
   methylene: {smiles: "[CH2]"}
